@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Strain Log</title>
+<meta name="theme-color" content="#14130F" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%2314130F%22/><path d=%22M6 8v8M18 8v8M4 11h2v2H4zM18 11h2v2h-2zM9 12h6%22 stroke=%22%23C43B2E%22 stroke-width=%222%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; }
+  body { background: #14130F; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid #B8D93B; outline-offset: 1px; }
+  ::placeholder { color: #6B6558; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  function showDiag(title, detail) {
+    var root = document.getElementById("root");
+    if (!root) return;
+    root.innerHTML = '<div style="min-height:100vh;background:#14130F;color:#EDBAB3;font-family:monospace;padding:24px;white-space:pre-wrap;line-height:1.5;">' +
+      '<h2 style="color:#C43B2E;margin-bottom:12px;">' + title + '</h2>' +
+      '<div style="color:#B8B29F;font-size:13px;">' + detail + '</div>' +
+      '</div>';
+  }
+  var OUR_CDN_HOSTS = ["unpkg.com", "cdn.jsdelivr.net", "fonts.googleapis.com"];
+  function isOurResource(url) {
+    if (!url) return false;
+    try {
+      var host = new URL(url, location.href).hostname;
+      return OUR_CDN_HOSTS.indexOf(host) !== -1;
+    } catch (e) { return false; }
+  }
+  function isFromExtension(filename) {
+    return !!filename && (filename.indexOf("extension://") !== -1 || filename.indexOf("chrome-extension") !== -1);
+  }
+  window.addEventListener("error", function (e) {
+    if (e.target && (e.target.tagName === "SCRIPT" || e.target.tagName === "LINK")) {
+      var url = e.target.src || e.target.href;
+      if (!isOurResource(url)) return;
+      showDiag("A required resource failed to load", "Blocked or unreachable: " + url + "\n\nThis is usually an ad blocker, browser extension, or network/firewall blocking the CDN. Try disabling ad blockers for this page, or try a different network/browser.");
+      return;
+    }
+    if (isFromExtension(e.filename)) return;
+    var root = document.getElementById("root");
+    if (root && root.querySelector("#__strain_loading")) {
+      showDiag("Something failed to load", (e.message || "Unknown error") + (e.filename ? ("\n\nFile: " + e.filename + ":" + e.lineno) : ""));
+    }
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    var msg = String(e.reason && e.reason.message ? e.reason.message : e.reason);
+    if (/extension/i.test(msg)) return;
+    var root = document.getElementById("root");
+    if (root && root.querySelector("#__strain_loading")) {
+      showDiag("A background request failed", msg);
+    }
+  });
+  setTimeout(function () {
+    var root = document.getElementById("root");
+    if (root && root.querySelector("#__strain_loading")) {
+      showDiag("Still loading after 8 seconds", "The app scripts (React/Babel/Supabase) haven't finished running. This usually means:\n\n1. An ad blocker or privacy extension is blocking unpkg.com or jsdelivr.net\n2. Your network/firewall is blocking those CDNs\n3. A slow connection\n\nTry: disabling browser extensions for this page, switching networks, or opening in a different browser.");
+    }
+  }, 8000);
+</script>
+</head>
+<body>
+<div id="root">
+  <div id="__strain_loading" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#14130F;color:#8A8477;font-family:sans-serif;font-size:14px;">Loading…</div>
+</div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ============================================================
+   CONFIG — paste your Supabase project details here
+   ============================================================ */
+const SUPABASE_URL = "https://lhgqsfprvjwtlcrjbuhd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_CNkTXzVDi5dn12QaoPDwtA_pt8IA4Mv";
+const COACH_PASSCODE = "jimmy2026"; // change this before sharing the link widely
+
+const sb = (SUPABASE_URL.startsWith("http"))
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+/* ---------- tiny dependency-free icon set ---------- */
+function Icon({ name, size = 18, color = "currentColor", strokeWidth = 2 }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "dumbbell": return <svg {...common}><path d="M6 8v8M18 8v8M3 11v2M21 11v2M6 12h12" /></svg>;
+    case "plus": return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
+    case "x": return <svg {...common}><path d="M18 6L6 18M6 6l12 12" /></svg>;
+    case "trash": return <svg {...common}><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6" /></svg>;
+    case "calendar": return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>;
+    case "flame": return <svg {...common}><path d="M12 2c1 4-3 5-3 9a3 3 0 006 0c0-1.5-1-2-1-3.5 2 1 3 3 3 5.5a5 5 0 01-10 0c0-4 3-6 5-11z" /></svg>;
+    case "activity": return <svg {...common}><path d="M22 12h-4l-3 9-6-18-3 9H2" /></svg>;
+    case "users": return <svg {...common}><circle cx="9" cy="8" r="3" /><path d="M2 21v-2a5 5 0 015-5h4a5 5 0 015 5v2" /><circle cx="18" cy="8" r="2.3" /><path d="M17 11.2c1.9.4 3 1.9 3 3.8v2" /></svg>;
+    case "lock": return <svg {...common}><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 018 0v3" /></svg>;
+    case "back": return <svg {...common}><path d="M15 18l-6-6 6-6" /></svg>;
+    default: return null;
+  }
+}
+
+/* ---------- data ---------- */
+const MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Glutes", "Full Body"];
+const MUSCLE_COLORS = {
+  Chest: "#C43B2E", Back: "#3B7FC4", Legs: "#B8D93B", Shoulders: "#D98E36",
+  Arms: "#9B5FC4", Core: "#4CC4A8", Glutes: "#D9527D", "Full Body": "#8A8477",
+};
+const LIFT_MUSCLE_MAP = {
+  "Bench Press": "Chest", "Incline Bench": "Chest", "Dumbbell Fly": "Chest", "Push-up": "Chest",
+  "Back Squat": "Legs", "Front Squat": "Legs", "Leg Press": "Legs", "Lunges": "Legs", "Romanian Deadlift": "Legs",
+  "Deadlift": "Back", "Barbell Row": "Back", "Pull-up": "Back", "Lat Pulldown": "Back",
+  "Overhead Press": "Shoulders", "Shoulder Press": "Shoulders", "Lateral Raise": "Shoulders",
+  "Bicep Curl": "Arms", "Tricep Extension": "Arms", "Hip Thrust": "Glutes", "Plank": "Core",
+};
+const COMMON_LIFTS = Object.keys(LIFT_MUSCLE_MAP);
+function guessMuscleGroup(name) {
+  const hit = Object.keys(LIFT_MUSCLE_MAP).find((k) => k.toLowerCase() === name.trim().toLowerCase());
+  return hit ? LIFT_MUSCLE_MAP[hit] : "Full Body";
+}
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+function todayISO() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+function fmtDate(iso) { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-US",{month:"short",day:"numeric"}).toUpperCase(); }
+function fmtDateFull(iso) { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }
+
+const PREF_KEY = "strain-log-prefs";
+const NAME_KEY = "strain-log-client-name";
+
+/* ---------- shared computation helpers ---------- */
+function computeGrouped(entries, filter) {
+  const filtered = filter === "All" ? entries : entries.filter((e) => e.exercise === filter);
+  const byDate = {};
+  filtered.forEach((e) => { (byDate[e.date] = byDate[e.date] || []).push(e); });
+  return Object.entries(byDate).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+}
+function computeMaxWeightByExercise(entries) {
+  const map = {};
+  entries.forEach((e) => e.sets.forEach((s) => {
+    const w = Number(s.weight) || 0;
+    if (!map[e.exercise] || w > map[e.exercise]) map[e.exercise] = w;
+  }));
+  return map;
+}
+function computeWeekVolume(entries) {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+  let vol = 0;
+  entries.forEach((e) => { if (new Date(e.date) >= cutoff) e.sets.forEach((s) => { vol += (Number(s.reps)||0) * (Number(s.weight)||0); }); });
+  return Math.round(vol);
+}
+function computeMuscleVolume(entries, statsRange, statsMetric) {
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+  const totals = {}, setCounts = {};
+  MUSCLE_GROUPS.forEach((m) => { totals[m] = 0; setCounts[m] = 0; });
+  entries.forEach((e) => {
+    if (statsRange === "week" && new Date(e.date) < cutoff) return;
+    const mg = e.muscleGroup || "Full Body";
+    const entryVol = e.sets.reduce((acc, s) => acc + (Number(s.reps)||0) * (Number(s.weight)||0), 0);
+    totals[mg] = (totals[mg]||0) + entryVol;
+    setCounts[mg] = (setCounts[mg]||0) + e.sets.length;
+  });
+  return MUSCLE_GROUPS
+    .map((m) => ({ muscle: m, volume: Math.round(totals[m]||0), sets: setCounts[m]||0 }))
+    .filter((x) => x.volume > 0 || x.sets > 0)
+    .sort((a, b) => statsMetric === "sets" ? b.sets - a.sets : b.volume - a.volume);
+}
+function plateSize(weight, maxW) { if (!maxW || maxW<=0) return 44; return Math.round(40 + (weight/maxW)*30); }
+
+/* ---------- reusable Log feed (read-only when onDelete is null) ---------- */
+function LogFeed({ entries, unit, filter, setFilter, exerciseNames, onDelete }) {
+  const maxWeightByExercise = useMemo(() => computeMaxWeightByExercise(entries), [entries]);
+  const grouped = useMemo(() => computeGrouped(entries, filter), [entries, filter]);
+
+  return (
+    <React.Fragment>
+      <div style={styles.toolbar}>
+        <div style={styles.filterWrap}>
+          <label style={styles.filterLabel}>FILTER</label>
+          <select style={styles.select} value={filter} onChange={(e)=>setFilter(e.target.value)}>
+            {exerciseNames.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
+      <main style={styles.feed}>
+        {grouped.length === 0 && (
+          <div style={styles.empty}>
+            <Icon name="calendar" size={28} color="#5A5548" />
+            <p style={styles.emptyText}>No sessions logged yet.</p>
+          </div>
+        )}
+        {grouped.map(([d, list]) => (
+          <section key={d} style={styles.dayBlock}>
+            <div style={styles.dayHeader}>
+              <span style={styles.dayDate}>{fmtDate(d)}</span>
+              <span style={styles.dayFull}>{fmtDateFull(d)}</span>
+            </div>
+            {list.map((entry) => {
+              const maxW = maxWeightByExercise[entry.exercise] || 0;
+              const mColor = MUSCLE_COLORS[entry.muscleGroup] || MUSCLE_COLORS["Full Body"];
+              return (
+                <div key={entry.id} style={styles.card}>
+                  <div style={styles.cardHeader}>
+                    <div style={styles.cardHeaderLeft}>
+                      <span style={styles.exerciseName}>{entry.exercise}</span>
+                      <span style={{...styles.muscleTag, borderColor: mColor, color: mColor}}>{entry.muscleGroup || "Full Body"}</span>
+                    </div>
+                    {onDelete && (
+                      <button style={styles.deleteBtn} onClick={()=>onDelete(entry.id)} aria-label="Delete entry">
+                        <Icon name="trash" size={15} />
+                      </button>
+                    )}
+                  </div>
+                  <div style={styles.platesRow}>
+                    {entry.sets.map((s, i) => {
+                      const isPR = maxW > 0 && s.weight === maxW;
+                      const size = plateSize(s.weight, maxW || s.weight);
+                      return (
+                        <div key={i} style={styles.plateWrap}>
+                          <div style={{...styles.plate, width:size, height:size, background: isPR?"#B8D93B":"#C43B2E", color: isPR?"#14130F":"#EDE8DC", boxShadow: isPR?"0 0 0 2px #B8D93B55":"none"}}>
+                            <span style={styles.plateReps}>{s.reps}</span>
+                          </div>
+                          <span style={styles.plateWeight}>{s.weight}{unit}</span>
+                          {isPR && <span style={styles.prTag}>PR</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        ))}
+      </main>
+    </React.Fragment>
+  );
+}
+
+/* ---------- reusable Stats panel ---------- */
+function StatsPanel({ entries, unit, statsRange, setStatsRange, statsMetric, setStatsMetric }) {
+  const muscleVolume = useMemo(() => computeMuscleVolume(entries, statsRange, statsMetric), [entries, statsRange, statsMetric]);
+  const totalVolumeStats = useMemo(() => muscleVolume.reduce((a,x) => a+x.volume, 0), [muscleVolume]);
+  const totalSetsStats = useMemo(() => muscleVolume.reduce((a,x) => a+x.sets, 0), [muscleVolume]);
+  const maxMuscleMetric = useMemo(() => Math.max(1, ...muscleVolume.map((x) => statsMetric === "sets" ? x.sets : x.volume)), [muscleVolume, statsMetric]);
+
+  return (
+    <main style={styles.feed}>
+      <div style={styles.rangeToggle}>
+        <button style={{...styles.rangeBtn, ...(statsRange==="week"?styles.rangeBtnActive:{})}} onClick={()=>setStatsRange("week")}>LAST 7 DAYS</button>
+        <button style={{...styles.rangeBtn, ...(statsRange==="all"?styles.rangeBtnActive:{})}} onClick={()=>setStatsRange("all")}>ALL TIME</button>
+      </div>
+      <div style={styles.metricToggle}>
+        <button style={{...styles.metricBtn, ...(statsMetric==="volume"?styles.metricBtnActive:{})}} onClick={()=>setStatsMetric("volume")}>VOLUME ({unit})</button>
+        <button style={{...styles.metricBtn, ...(statsMetric==="sets"?styles.metricBtnActive:{})}} onClick={()=>setStatsMetric("sets")}>SETS</button>
+      </div>
+      {muscleVolume.length === 0 && (
+        <div style={styles.empty}>
+          <Icon name="activity" size={28} color="#5A5548" />
+          <p style={styles.emptyText}>No volume to show yet.</p>
+        </div>
+      )}
+      {muscleVolume.length > 0 && (
+        <div style={styles.statsTotalCard}>
+          <span style={styles.statsTotalLabel}>{statsMetric==="sets"?"TOTAL SETS":"TOTAL VOLUME"}</span>
+          <span style={styles.statsTotalValue}>
+            {statsMetric==="sets" ? totalSetsStats.toLocaleString() : totalVolumeStats.toLocaleString()}{" "}
+            <span style={styles.statUnit}>{statsMetric==="sets"?"sets":unit}</span>
+          </span>
+        </div>
+      )}
+      <div style={styles.muscleList}>
+        {muscleVolume.map(({muscle, volume, sets: setCount}) => {
+          const metricVal = statsMetric === "sets" ? setCount : volume;
+          const totalForShare = statsMetric === "sets" ? totalSetsStats : totalVolumeStats;
+          const pct = Math.round((metricVal / maxMuscleMetric) * 100);
+          const share = totalForShare > 0 ? Math.round((metricVal / totalForShare) * 100) : 0;
+          const color = MUSCLE_COLORS[muscle];
+          return (
+            <div key={muscle} style={styles.muscleRow}>
+              <div style={styles.muscleRowTop}>
+                <span style={{...styles.muscleName, color}}>{muscle}</span>
+                <span style={styles.muscleVolText}>
+                  {statsMetric === "sets" ? `${setCount} set${setCount===1?"":"s"}` : `${volume.toLocaleString()} ${unit}`}{" "}
+                  <span style={styles.muscleShare}>· {share}%</span>
+                </span>
+              </div>
+              <div style={styles.barTrack}><div style={{...styles.barFill, width:`${pct}%`, background:color}} /></div>
+            </div>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+/* ---------- name gate ---------- */
+function NameGate({ onSubmit }) {
+  const [val, setVal] = useState("");
+  return (
+    <div style={styles.gateWrap}>
+      <Icon name="dumbbell" size={32} color="#C43B2E" />
+      <h1 style={styles.gateTitle}>STRAIN LOG</h1>
+      <p style={styles.gateSub}>What's your name? Your log stays private to you.</p>
+      <input
+        autoFocus
+        style={styles.input}
+        placeholder="e.g. Alex"
+        value={val}
+        onChange={(e)=>setVal(e.target.value)}
+        onKeyDown={(e)=>{ if (e.key==="Enter" && val.trim()) onSubmit(val.trim()); }}
+      />
+      <button style={styles.saveBtn} disabled={!val.trim()} onClick={()=>onSubmit(val.trim())}>CONTINUE</button>
+    </div>
+  );
+}
+
+/* ---------- coach dashboard ---------- */
+function CoachView({ unlocked, onUnlock }) {
+  const [passcode, setPasscode] = useState("");
+  const [passError, setPassError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [allEntries, setAllEntries] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [filter, setFilter] = useState("All");
+  const [statsRange, setStatsRange] = useState("week");
+  const [statsMetric, setStatsMetric] = useState("volume");
+  const [detailTab, setDetailTab] = useState("log");
+
+  useEffect(() => {
+    if (!unlocked || !sb) return;
+    setLoading(true);
+    sb.from("workout_entries").select("*").order("date", { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setAllEntries(data.map((r) => ({ id: r.id, date: r.date, exercise: r.exercise, muscleGroup: r.muscle_group, sets: r.sets, clientName: r.client_name })));
+        }
+        setLoading(false);
+      });
+  }, [unlocked]);
+
+  if (!unlocked) {
+    return (
+      <div style={styles.gateWrap}>
+        <Icon name="lock" size={28} color="#B8D93B" />
+        <h1 style={styles.gateTitle}>COACH ACCESS</h1>
+        <p style={styles.gateSub}>Enter the coach passcode to view all clients.</p>
+        <input
+          type="password"
+          style={styles.input}
+          placeholder="Passcode"
+          value={passcode}
+          onChange={(e)=>{setPasscode(e.target.value); setPassError("");}}
+          onKeyDown={(e)=>{ if(e.key==="Enter") checkPass(); }}
+        />
+        {passError && <span style={{color:"#EDBAB3", fontSize:12, fontFamily:"'JetBrains Mono', monospace"}}>{passError}</span>}
+        <button style={styles.saveBtn} onClick={checkPass}>UNLOCK</button>
+      </div>
+    );
+  }
+
+  function checkPass() {
+    if (passcode === COACH_PASSCODE) onUnlock();
+    else setPassError("Wrong passcode.");
+  }
+
+  const roster = useMemo(() => {
+    const byClient = {};
+    allEntries.forEach((e) => {
+      if (!byClient[e.clientName]) byClient[e.clientName] = [];
+      byClient[e.clientName].push(e);
+    });
+    return Object.entries(byClient).map(([name, list]) => {
+      const sessions = new Set(list.map((e) => e.date)).size;
+      const lastDate = list.reduce((max, e) => (e.date > max ? e.date : max), list[0]?.date || "");
+      const vol7 = computeWeekVolume(list);
+      return { name, sessions, lastDate, vol7, entries: list };
+    }).sort((a, b) => (a.lastDate < b.lastDate ? 1 : -1));
+  }, [allEntries]);
+
+  if (!sb) {
+    return <div style={styles.empty}><p style={styles.emptyText}>Supabase isn't configured yet — add your project URL and key at the top of the file.</p></div>;
+  }
+
+  if (loading) return <div style={styles.empty}><p style={styles.emptyText}>Loading clients…</p></div>;
+
+  if (selectedClient) {
+    const client = roster.find((r) => r.name === selectedClient);
+    const exerciseNames = ["All", ...Array.from(new Set(client.entries.map((e) => e.exercise))).sort()];
+    return (
+      <div>
+        <button style={styles.backBtn} onClick={()=>setSelectedClient(null)}>
+          <Icon name="back" size={16} /> ALL CLIENTS
+        </button>
+        <div style={{padding: "4px 18px 12px"}}>
+          <span style={styles.gateTitleSmall}>{client.name}</span>
+        </div>
+        <div style={styles.rangeToggle2}>
+          <button style={{...styles.rangeBtn, ...(detailTab==="log"?styles.rangeBtnActive:{})}} onClick={()=>setDetailTab("log")}>LOG</button>
+          <button style={{...styles.rangeBtn, ...(detailTab==="stats"?styles.rangeBtnActive:{})}} onClick={()=>setDetailTab("stats")}>MUSCLES</button>
+        </div>
+        {detailTab === "log" ? (
+          <LogFeed entries={client.entries} unit="kg" filter={filter} setFilter={setFilter} exerciseNames={exerciseNames} onDelete={null} />
+        ) : (
+          <StatsPanel entries={client.entries} unit="kg" statsRange={statsRange} setStatsRange={setStatsRange} statsMetric={statsMetric} setStatsMetric={setStatsMetric} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <main style={styles.feed}>
+      {roster.length === 0 && <div style={styles.empty}><Icon name="users" size={28} color="#5A5548" /><p style={styles.emptyText}>No clients have logged anything yet.</p></div>}
+      <div style={{display:"flex", flexDirection:"column", gap:10}}>
+        {roster.map((r) => (
+          <button key={r.name} style={styles.clientCard} onClick={()=>setSelectedClient(r.name)}>
+            <div style={{display:"flex", flexDirection:"column", alignItems:"flex-start", gap:4}}>
+              <span style={styles.exerciseName}>{r.name}</span>
+              <span style={styles.muscleSubText}>{r.sessions} session{r.sessions===1?"":"s"} · last {r.lastDate ? fmtDate(r.lastDate) : "—"}</span>
+            </div>
+            <span style={styles.statValue}>{r.vol7.toLocaleString()}<span style={styles.statUnit}> vol/7d</span></span>
+          </button>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+/* ---------- main app ---------- */
+function TrainingLog() {
+  const [clientName, setClientName] = useState(null);
+  const [nameChecked, setNameChecked] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [entries, setEntries] = useState([]);
+  const [unit, setUnit] = useState("kg");
+  const [appName, setAppName] = useState("STRAIN LOG");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const [tab, setTab] = useState("log");
+  const [statsRange, setStatsRange] = useState("week");
+  const [statsMetric, setStatsMetric] = useState("volume");
+  const [coachUnlocked, setCoachUnlocked] = useState(false);
+
+  const [date, setDate] = useState(todayISO());
+  const [exercise, setExercise] = useState("");
+  const [muscleGroup, setMuscleGroup] = useState("Full Body");
+  const [muscleTouched, setMuscleTouched] = useState(false);
+  const [sets, setSets] = useState([{ reps: "", weight: "" }]);
+  const [saving, setSaving] = useState(false);
+  const errorTimer = useRef(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const savedName = localStorage.getItem(NAME_KEY);
+    if (savedName) setClientName(savedName);
+    setNameChecked(true);
+    try {
+      const raw = localStorage.getItem(PREF_KEY);
+      if (raw) { const p = JSON.parse(raw); setUnit(p.unit || "kg"); setAppName(p.appName || "STRAIN LOG"); }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    if (!clientName || !sb) { setLoaded(true); return; }
+    sb.from("workout_entries").select("*").eq("client_name", clientName).order("date", { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setEntries(data.map((r) => ({ id: r.id, date: r.date, exercise: r.exercise, muscleGroup: r.muscle_group, sets: r.sets })));
+        }
+        setLoaded(true);
+      });
+  }, [clientName]);
+
+  function persistPrefs(nextUnit, nextName) {
+    localStorage.setItem(PREF_KEY, JSON.stringify({ unit: nextUnit !== undefined ? nextUnit : unit, appName: nextName !== undefined ? nextName : appName }));
+  }
+
+  function handleNameSubmit(name) {
+    localStorage.setItem(NAME_KEY, name);
+    setClientName(name);
+  }
+
+  const exerciseNames = useMemo(() => ["All", ...Array.from(new Set(entries.map((e) => e.exercise))).sort()], [entries]);
+  const weekVolume = useMemo(() => computeWeekVolume(entries), [entries]);
+
+  function updateSetRow(idx, field, val) { setSets((p) => p.map((s,i) => i===idx ? {...s,[field]:val} : s)); }
+  function addSetRow() { setSets((p) => [...p, { reps: "", weight: "" }]); }
+  function removeSetRow(idx) { setSets((p) => p.length===1 ? p : p.filter((_,i)=>i!==idx)); }
+  function handleExerciseChange(val) { setExercise(val); if (!muscleTouched) setMuscleGroup(guessMuscleGroup(val)); }
+  function resetForm() { setDate(todayISO()); setExercise(""); setMuscleGroup("Full Body"); setMuscleTouched(false); setSets([{reps:"",weight:""}]); }
+
+  async function handleSave() {
+    const cleanSets = sets.map((s) => ({ reps: Number(s.reps), weight: Number(s.weight) }))
+      .filter((s) => s.reps > 0 && !Number.isNaN(s.weight) && s.weight >= 0);
+    if (!exercise.trim() || cleanSets.length === 0) {
+      setError("Add an exercise and at least one valid set.");
+      clearTimeout(errorTimer.current);
+      errorTimer.current = setTimeout(() => setError(""), 3000);
+      return;
+    }
+    if (!sb) { setError("Backend not configured yet."); return; }
+    setSaving(true);
+    const { data, error: err } = await sb.from("workout_entries").insert([{
+      client_name: clientName, date, exercise: exercise.trim(), muscle_group: muscleGroup, sets: cleanSets,
+    }]).select();
+    setSaving(false);
+    if (err || !data) {
+      setError("Couldn't save. Try again.");
+      clearTimeout(errorTimer.current);
+      errorTimer.current = setTimeout(() => setError(""), 3000);
+      return;
+    }
+    const row = data[0];
+    setEntries((prev) => [{ id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets }, ...prev]);
+    resetForm();
+    setShowForm(false);
+  }
+
+  async function handleDelete(id) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    if (sb) await sb.from("workout_entries").delete().eq("id", id);
+  }
+
+  function startEditingName() { setNameDraft(appName); setEditingName(true); }
+  function commitName() {
+    const trimmed = nameDraft.trim();
+    const nextName = trimmed || appName;
+    setAppName(nextName); setEditingName(false); persistPrefs(undefined, nextName);
+  }
+  function toggleUnit() { const nextUnit = unit === "kg" ? "lb" : "kg"; setUnit(nextUnit); persistPrefs(nextUnit); }
+
+  if (!nameChecked) return null;
+  if (!clientName) return <NameGate onSubmit={handleNameSubmit} />;
+
+  return (
+    <div style={styles.app}>
+      <header style={styles.header}>
+        <div style={styles.headerLeft}>
+          <Icon name="dumbbell" size={22} color="#C43B2E" strokeWidth={2.5} />
+          {editingName ? (
+            <input autoFocus value={nameDraft} onChange={(e)=>setNameDraft(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e)=>{ if(e.key==="Enter") commitName(); if(e.key==="Escape") setEditingName(false); }}
+              maxLength={28} style={styles.titleInput} />
+          ) : (
+            <h1 style={styles.title} onClick={startEditingName} title="Tap to rename">{appName}</h1>
+          )}
+        </div>
+        <div style={styles.headerRight}>
+          <div style={styles.statBlock}>
+            <span style={styles.statLabel}>7-DAY VOLUME</span>
+            <span style={styles.statValue}>{weekVolume.toLocaleString()} <span style={styles.statUnit}>{unit}</span></span>
+          </div>
+          <button style={styles.unitToggle} onClick={toggleUnit} aria-label="Toggle unit">{unit.toUpperCase()}</button>
+        </div>
+      </header>
+
+      {tab === "log" && (
+        <React.Fragment>
+          <div style={{padding:"16px 18px 0", display:"flex", justifyContent:"flex-end"}}>
+            <button style={styles.newBtn} onClick={()=>setShowForm(true)}>
+              <Icon name="plus" size={16} strokeWidth={3} /> NEW EXERCISE
+            </button>
+          </div>
+          {error && <div style={styles.errorBanner}>{error}</div>}
+          {!loaded ? <div style={styles.empty}>Loading your log…</div> : (
+            <LogFeed entries={entries} unit={unit} filter={filter} setFilter={setFilter} exerciseNames={exerciseNames} onDelete={handleDelete} />
+          )}
+        </React.Fragment>
+      )}
+
+      {tab === "stats" && (
+        <StatsPanel entries={entries} unit={unit} statsRange={statsRange} setStatsRange={setStatsRange} statsMetric={statsMetric} setStatsMetric={setStatsMetric} />
+      )}
+
+      {tab === "coach" && <CoachView unlocked={coachUnlocked} onUnlock={()=>setCoachUnlocked(true)} />}
+
+      <nav style={styles.bottomNav}>
+        <button style={{...styles.navBtn, ...(tab==="log"?styles.navBtnActive:{})}} onClick={()=>setTab("log")}>
+          <Icon name="dumbbell" size={18} color={tab==="log"?"#B8D93B":"#6B6558"} />
+          <span style={{color: tab==="log"?"#B8D93B":"#6B6558"}}>LOG</span>
+        </button>
+        <button style={{...styles.navBtn, ...(tab==="stats"?styles.navBtnActive:{})}} onClick={()=>setTab("stats")}>
+          <Icon name="activity" size={18} color={tab==="stats"?"#B8D93B":"#6B6558"} />
+          <span style={{color: tab==="stats"?"#B8D93B":"#6B6558"}}>MUSCLES</span>
+        </button>
+        <button style={{...styles.navBtn, ...(tab==="coach"?styles.navBtnActive:{})}} onClick={()=>setTab("coach")}>
+          <Icon name="users" size={18} color={tab==="coach"?"#B8D93B":"#6B6558"} />
+          <span style={{color: tab==="coach"?"#B8D93B":"#6B6558"}}>COACH</span>
+        </button>
+      </nav>
+
+      {showForm && (
+        <div style={styles.overlay} onClick={()=>setShowForm(false)}>
+          <div style={styles.sheet} onClick={(e)=>e.stopPropagation()}>
+            <div style={styles.sheetHeader}>
+              <span style={styles.sheetTitle}>NEW EXERCISE</span>
+              <button style={styles.closeBtn} onClick={()=>setShowForm(false)}><Icon name="x" size={18} /></button>
+            </div>
+            <label style={styles.formLabel}>DATE</label>
+            <input type="date" value={date} max={todayISO()} onChange={(e)=>setDate(e.target.value)} style={styles.input} />
+            <label style={styles.formLabel}>EXERCISE</label>
+            <input list="lift-suggestions" type="text" value={exercise} placeholder="e.g. Bench Press" onChange={(e)=>handleExerciseChange(e.target.value)} style={styles.input} />
+            <datalist id="lift-suggestions">{COMMON_LIFTS.map((l)=><option key={l} value={l} />)}</datalist>
+            <label style={styles.formLabel}>MUSCLE GROUP</label>
+            <select value={muscleGroup} onChange={(e)=>{setMuscleGroup(e.target.value); setMuscleTouched(true);}} style={styles.input}>
+              {MUSCLE_GROUPS.map((m)=><option key={m} value={m}>{m}</option>)}
+            </select>
+            <label style={styles.formLabel}>SETS</label>
+            <div style={styles.setRows}>
+              <div style={styles.setRowHeader}>
+                <span style={styles.setColLabel}>SET</span>
+                <span style={styles.setColLabel}>REPS</span>
+                <span style={styles.setColLabel}>WEIGHT ({unit})</span>
+                <span></span>
+              </div>
+              {sets.map((s,i)=>(
+                <div key={i} style={styles.setRow}>
+                  <span style={styles.setIndex}>{i+1}</span>
+                  <input type="number" min="0" value={s.reps} onChange={(e)=>updateSetRow(i,"reps",e.target.value)} style={styles.setInput} placeholder="8" />
+                  <input type="number" min="0" step="0.5" value={s.weight} onChange={(e)=>updateSetRow(i,"weight",e.target.value)} style={styles.setInput} placeholder="60" />
+                  <button style={styles.rowDelete} onClick={()=>removeSetRow(i)} disabled={sets.length===1} aria-label="Remove set"><Icon name="x" size={14} /></button>
+                </div>
+              ))}
+            </div>
+            <button style={styles.addSetBtn} onClick={addSetRow}><Icon name="plus" size={14} strokeWidth={3} /> ADD SET</button>
+            <button style={styles.saveBtn} onClick={handleSave} disabled={saving}><Icon name="flame" size={16} /> {saving?"SAVING…":"SAVE ENTRY"}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const styles = {
+  app: { minHeight: "100vh", background: "#14130F", color: "#EDE8DC", fontFamily: "'Inter', sans-serif", paddingBottom: 76 },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 18px 14px", borderBottom: "1px solid #2A2820", flexWrap: "wrap", gap: 12 },
+  headerLeft: { display: "flex", alignItems: "center", gap: 8 },
+  title: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 22, letterSpacing: "0.06em", margin: 0, color: "#EDE8DC", cursor: "pointer" },
+  titleInput: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 22, letterSpacing: "0.06em", color: "#EDE8DC", background: "transparent", border: "none", borderBottom: "1px solid #B8D93B", padding: "0 0 2px", outline: "none", maxWidth: 220 },
+  headerRight: { display: "flex", alignItems: "center", gap: 14 },
+  statBlock: { display: "flex", flexDirection: "column", alignItems: "flex-end" },
+  statLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#8A8477", letterSpacing: "0.08em" },
+  statValue: { fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: "#B8D93B" },
+  statUnit: { fontSize: 11, color: "#8A8477" },
+  unitToggle: { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 12, background: "transparent", color: "#EDE8DC", border: "1px solid #3A362C", borderRadius: 6, padding: "6px 10px", cursor: "pointer" },
+  toolbar: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "16px 18px 8px", flexWrap: "wrap", gap: 12 },
+  filterWrap: { display: "flex", flexDirection: "column", gap: 4 },
+  filterLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#8A8477", letterSpacing: "0.08em" },
+  select: { background: "#1F1D17", color: "#EDE8DC", border: "1px solid #3A362C", borderRadius: 6, padding: "8px 10px", fontFamily: "'Inter', sans-serif", fontSize: 13, minWidth: 140 },
+  newBtn: { display: "flex", alignItems: "center", gap: 6, background: "#C43B2E", color: "#EDE8DC", border: "none", borderRadius: 8, padding: "10px 16px", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.04em", cursor: "pointer" },
+  errorBanner: { margin: "8px 18px 0", padding: "8px 12px", background: "#3A1F1B", border: "1px solid #C43B2E", borderRadius: 6, fontSize: 12, color: "#EDBAB3" },
+  feed: { padding: "12px 18px 0" },
+  empty: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "60px 20px", color: "#8A8477", textAlign: "center" },
+  emptyText: { margin: 0, fontSize: 15, color: "#B8B29F", fontWeight: 500 },
+  emptySub: { margin: 0, fontSize: 13, color: "#6B6558" },
+  dayBlock: { marginBottom: 22 },
+  dayHeader: { display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, borderBottom: "1px solid #2A2820", paddingBottom: 6 },
+  dayDate: { fontFamily: "'Oswald', sans-serif", fontSize: 15, fontWeight: 600, color: "#B8D93B", letterSpacing: "0.05em" },
+  dayFull: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5A5548" },
+  card: { background: "#1B1913", border: "1px solid #2A2820", borderRadius: 10, padding: "12px 14px", marginBottom: 10 },
+  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 8 },
+  cardHeaderLeft: { display: "flex", flexDirection: "column", gap: 5 },
+  exerciseName: { fontFamily: "'Oswald', sans-serif", fontSize: 15, fontWeight: 500, letterSpacing: "0.02em", color: "#EDE8DC" },
+  muscleTag: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: "0.06em", border: "1px solid", borderRadius: 4, padding: "2px 6px", width: "fit-content" },
+  deleteBtn: { background: "transparent", border: "none", color: "#6B6558", cursor: "pointer", padding: 4 },
+  platesRow: { display: "flex", flexWrap: "wrap", gap: 14 },
+  plateWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, position: "relative" },
+  plate: { borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, border: "2px solid #14130F" },
+  plateReps: { fontSize: 13 },
+  plateWeight: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#8A8477" },
+  prTag: { position: "absolute", top: -8, right: -6, background: "#B8D93B", color: "#14130F", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 8, padding: "1px 4px", borderRadius: 4 },
+  rangeToggle: { display: "flex", gap: 8, marginBottom: 16 },
+  rangeToggle2: { display: "flex", gap: 8, padding: "0 18px 12px" },
+  rangeBtn: { flex: 1, background: "#1B1913", border: "1px solid #2A2820", borderRadius: 8, padding: "10px", color: "#8A8477", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.05em", cursor: "pointer" },
+  rangeBtnActive: { background: "#26241B", borderColor: "#B8D93B", color: "#B8D93B" },
+  metricToggle: { display: "flex", gap: 8, marginBottom: 18 },
+  metricBtn: { flex: 1, background: "transparent", border: "1px solid #2A2820", borderRadius: 8, padding: "8px", color: "#8A8477", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.05em", cursor: "pointer" },
+  metricBtnActive: { borderColor: "#C43B2E", color: "#C43B2E" },
+  statsTotalCard: { display: "flex", flexDirection: "column", background: "#1B1913", border: "1px solid #2A2820", borderRadius: 10, padding: "14px 16px", marginBottom: 18 },
+  statsTotalLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#8A8477", letterSpacing: "0.08em" },
+  statsTotalValue: { fontFamily: "'JetBrains Mono', monospace", fontSize: 24, fontWeight: 700, color: "#EDE8DC", marginTop: 4 },
+  muscleList: { display: "flex", flexDirection: "column", gap: 16 },
+  muscleRow: { display: "flex", flexDirection: "column", gap: 6 },
+  muscleRowTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
+  muscleName: { fontFamily: "'Oswald', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: "0.03em" },
+  muscleVolText: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#B8B29F" },
+  muscleShare: { color: "#6B6558" },
+  muscleSubText: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#5A5548" },
+  barTrack: { width: "100%", height: 10, background: "#1F1D17", borderRadius: 6, overflow: "hidden", border: "1px solid #2A2820" },
+  barFill: { height: "100%", borderRadius: 6 },
+  bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", background: "#1B1913", borderTop: "1px solid #2A2820", padding: "8px 0 max(8px, env(safe-area-inset-bottom))", zIndex: 40 },
+  navBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.06em" },
+  navBtnActive: {},
+  overlay: { position: "fixed", inset: 0, background: "#0A0906cc", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50 },
+  sheet: { background: "#1B1913", borderTop: "1px solid #3A362C", borderRadius: "16px 16px 0 0", padding: "18px 20px 24px", width: "100%", maxWidth: 480, maxHeight: "88vh", overflowY: "auto" },
+  sheetHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  sheetTitle: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: "0.06em" },
+  closeBtn: { background: "transparent", border: "none", color: "#8A8477", cursor: "pointer" },
+  formLabel: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#8A8477", letterSpacing: "0.08em", marginTop: 14, marginBottom: 6 },
+  input: { width: "100%", background: "#14130F", border: "1px solid #3A362C", borderRadius: 8, padding: "10px 12px", color: "#EDE8DC", fontFamily: "'Inter', sans-serif", fontSize: 14 },
+  setRows: { display: "flex", flexDirection: "column", gap: 6 },
+  setRowHeader: { display: "grid", gridTemplateColumns: "28px 1fr 1fr 24px", gap: 8, padding: "0 2px" },
+  setColLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#5A5548", letterSpacing: "0.06em" },
+  setRow: { display: "grid", gridTemplateColumns: "28px 1fr 1fr 24px", gap: 8, alignItems: "center" },
+  setIndex: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#8A8477", textAlign: "center" },
+  setInput: { background: "#14130F", border: "1px solid #3A362C", borderRadius: 6, padding: "8px 10px", color: "#EDE8DC", fontFamily: "'JetBrains Mono', monospace", fontSize: 13, width: "100%" },
+  rowDelete: { background: "transparent", border: "none", color: "#6B6558", cursor: "pointer" },
+  addSetBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "1px dashed #3A362C", borderRadius: 8, padding: "8px 12px", color: "#B8D93B", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.05em", cursor: "pointer", marginTop: 10, width: "100%", justifyContent: "center" },
+  saveBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "#C43B2E", color: "#EDE8DC", border: "none", borderRadius: 10, padding: "13px", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.05em", cursor: "pointer", marginTop: 20 },
+  gateWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "20px 30px", background: "#14130F", color: "#EDE8DC", textAlign: "center" },
+  gateTitle: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 22, letterSpacing: "0.06em", margin: "4px 0 2px" },
+  gateTitleSmall: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 18, letterSpacing: "0.04em" },
+  gateSub: { fontSize: 13, color: "#8A8477", marginBottom: 8, maxWidth: 280 },
+  backBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: "#8A8477", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.05em", cursor: "pointer", padding: "14px 18px 4px" },
+  clientCard: { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1B1913", border: "1px solid #2A2820", borderRadius: 10, padding: "14px 16px", cursor: "pointer", textAlign: "left" },
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<TrainingLog />);
+</script>
+</body>
+</html>
