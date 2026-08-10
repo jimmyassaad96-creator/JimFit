@@ -270,6 +270,19 @@
         setLoading(false);
       });
     }, [unlocked]);
+    const roster = useMemo(() => {
+      const byClient = {};
+      allEntries.forEach((e) => {
+        if (!byClient[e.clientName]) byClient[e.clientName] = [];
+        byClient[e.clientName].push(e);
+      });
+      return Object.entries(byClient).map(([name, list]) => {
+        const sessions = new Set(list.map((e) => e.date)).size;
+        const lastDate = list.reduce((max, e) => e.date > max ? e.date : max, list[0]?.date || "");
+        const vol7 = computeWeekVolume(list);
+        return { name, sessions, lastDate, vol7, entries: list };
+      }).sort((a, b) => a.lastDate < b.lastDate ? 1 : -1);
+    }, [allEntries]);
     if (!unlocked) {
       return /* @__PURE__ */ React.createElement("div", { style: styles.gateWrap }, /* @__PURE__ */ React.createElement(Icon, { name: "lock", size: 28, color: "#B8D93B" }), /* @__PURE__ */ React.createElement("h1", { style: styles.gateTitle }, "COACH ACCESS"), /* @__PURE__ */ React.createElement("p", { style: styles.gateSub }, "Enter the coach passcode to view all clients."), /* @__PURE__ */ React.createElement(
         "input",
@@ -292,19 +305,6 @@
       if (passcode === COACH_PASSCODE) onUnlock();
       else setPassError("Wrong passcode.");
     }
-    const roster = useMemo(() => {
-      const byClient = {};
-      allEntries.forEach((e) => {
-        if (!byClient[e.clientName]) byClient[e.clientName] = [];
-        byClient[e.clientName].push(e);
-      });
-      return Object.entries(byClient).map(([name, list]) => {
-        const sessions = new Set(list.map((e) => e.date)).size;
-        const lastDate = list.reduce((max, e) => e.date > max ? e.date : max, list[0]?.date || "");
-        const vol7 = computeWeekVolume(list);
-        return { name, sessions, lastDate, vol7, entries: list };
-      }).sort((a, b) => a.lastDate < b.lastDate ? 1 : -1);
-    }, [allEntries]);
     if (!sb) {
       return /* @__PURE__ */ React.createElement("div", { style: styles.empty }, /* @__PURE__ */ React.createElement("p", { style: styles.emptyText }, "Supabase isn't configured yet \u2014 add your project URL and key at the top of the file."));
     }
