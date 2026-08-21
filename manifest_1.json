@@ -1,0 +1,23 @@
+{
+  "name": "JimFit",
+  "short_name": "JimFit",
+  "description": "Workout logging, coaching, and client management for JimFit.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B1526",
+  "theme_color": "#0B1526",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
