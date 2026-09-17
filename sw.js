@@ -38,6 +38,42 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Sept 17 2026 — real push notifications ("your program is ready" etc),
+// sent by the send-push Supabase Edge Function whenever a client is
+// subscribed. Each push payload is plain JSON: { title, body }. Kept
+// defensive throughout (try/catch, sane fallbacks) since a malformed or
+// missing payload should never leave the service worker silently broken —
+// worst case it should just show a generic notification instead of none.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (err) {}
+  const title = data.title || "JimFit";
+  const body = data.body || "You have a new update in JimFit.";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      data: { url: data.url || "./" }
+    })
+  );
+});
+
+// Tapping the notification focuses an already-open JimFit tab if there is
+// one, instead of always opening a new one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   // Only handle same-origin requests ourselves — let CDN scripts, fonts,
