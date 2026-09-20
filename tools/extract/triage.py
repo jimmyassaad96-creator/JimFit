@@ -171,6 +171,37 @@ def main():
         for b in set(edge[(x, y)]):
             proposed[b] = to_shared(b)
 
+    # Split any destination that grew past the size budget into one file per
+    # symbol, grouping the small ones so the tree does not fragment into
+    # hundreds of ten-line files. Pure bookkeeping: no body is touched.
+    BUDGET, BIG = 400, 60
+    sizes = {n: len(bodies[n].split("\n")) for n in names}
+    grouped = collections.defaultdict(list)
+    for n in names:
+        grouped[proposed.get(n, home[n])].append(n)
+    for dest, syms in list(grouped.items()):
+        total = sum(sizes[n] for n in syms)
+        if total <= BUDGET or len(syms) == 1:
+            continue
+        folder = dest.rsplit("/", 1)[0]
+        bucket, used = [], 0
+        for n in sorted(syms, key=lambda x: -sizes[x]):
+            if sizes[n] >= BIG:
+                proposed[n] = "%s/%s.js" % (folder, n)
+            else:
+                if used + sizes[n] > BUDGET and bucket:
+                    bucket, used = [], 0
+                bucket.append(n); used += sizes[n]
+                proposed[n] = "%s/group%d.js" % (folder, len(grouped[dest]) and (used // BUDGET) + 1)
+        # name the small-symbol groups stably by index
+        small = [n for n in sorted(syms) if sizes[n] < BIG]
+        chunk, used, idx = [], 0, 1
+        for n in small:
+            if used + sizes[n] > BUDGET and chunk:
+                idx += 1; chunk, used = [], 0
+            chunk.append(n); used += sizes[n]
+            proposed[n] = "%s/group%d.js" % (folder, idx)
+
     mapping["overrides_auto"] = proposed
     json.dump(mapping, io.open(os.path.join(HERE, "module-map.json"), "w"), indent=2)
 

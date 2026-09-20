@@ -2,8 +2,8 @@
 import { sb } from "../../platform/supabase.js";
 import { e } from "../../shared/react.js";
 import { C } from "../../shared/theme.js";
-import { Icon } from "../../shared/ui/cross.js";
-import { VoiceMicButton } from "../../shared/widgets/index.js";
+import { Icon } from "../../shared/ui/Icon.js";
+import { VoiceMicButton } from "../../shared/widgets/VoiceMicButton.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
   // Owner-only for now (wired in behind isManager, same as the rest of CoachView).

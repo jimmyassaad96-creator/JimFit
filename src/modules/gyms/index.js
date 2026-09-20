@@ -3,9 +3,10 @@ import { B2B_FLAT_RATE_MONTHLY } from "../../domain/access.js";
 import { sb } from "../../platform/supabase.js";
 import { e } from "../../shared/react.js";
 import { C, styles } from "../../shared/theme.js";
-import { Icon, StatTile } from "../../shared/ui/cross.js";
+import { Icon } from "../../shared/ui/Icon.js";
 import { GymsEmptyArt } from "../../shared/ui/empty-art.js";
-import { EditableStat } from "../../shared/widgets/index.js";
+import { StatTile } from "../../shared/ui/group1.js";
+import { EditableStat } from "../../shared/widgets/EditableStat.js";
 import { useEffect, useState } from "react";
 
   // Jimmy's platform-level view of every self-serve gym: what each owes this
