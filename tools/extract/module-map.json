@@ -1,0 +1,189 @@
+{
+  "_comment": [
+    "Target module for every top-level declaration in index.html's app script.",
+    "'overrides' wins over 'rules'. 'rules' are tried in order, first match wins.",
+    "Anything unmatched lands in 'fallback' and should be triaged by hand.",
+    "Edit this file, re-run extract.py \u2014 it is pure data, no code changes needed."
+  ],
+  "externals": {
+    "React": "react",
+    "ReactDOM": "react-dom/client",
+    "useState": "react",
+    "useEffect": "react",
+    "useLayoutEffect": "react",
+    "useMemo": "react",
+    "useRef": "react",
+    "useCallback": "react"
+  },
+  "overrides": {
+    "e": "shared/react.js",
+    "sb": "platform/supabase.js",
+    "SUPABASE_URL": "platform/supabase.js",
+    "SUPABASE_ANON_KEY": "platform/supabase.js",
+    "TURNSTILE_SITE_KEY": "platform/captcha.js",
+    "TURNSTILE_ENABLED": "platform/captcha.js",
+    "TurnstileWidget": "platform/captcha.js",
+    "EMAILJS_PUBLIC_KEY": "platform/email.js",
+    "EMAILJS_SERVICE_ID": "platform/email.js",
+    "EMAILJS_TEMPLATE_ID": "platform/email.js",
+    "EMAILJS_READY": "platform/email.js",
+    "VAPID_PUBLIC_KEY": "platform/push.js",
+    "PUSH_SUPPORTED": "platform/push.js",
+    "C": "shared/theme.js",
+    "styles": "shared/theme.js",
+    "buildStyles": "shared/theme.js",
+    "DARK_THEME": "shared/theme.js",
+    "LIGHT_THEME": "shared/theme.js",
+    "MEAL_THEME": "shared/theme.js",
+    "withAlpha": "shared/theme.js",
+    "THEME_KEY": "shared/theme.js",
+    "ThemeToggle": "shared/theme.js",
+    "LEVEL_ALPHA": "shared/theme.js",
+    "TrainingLog": "app/TrainingLog.js",
+    "CoachView": "app/CoachView.js",
+    "ManagerDashboard": "app/ManagerDashboard.js",
+    "GymOwnerView": "modules/gyms/GymOwnerView.js",
+    "TrainerView": "modules/trainers/TrainerView.js",
+    "SideMenu": "app/SideMenu.js",
+    "MANAGER_EMAILS": "domain/access.js",
+    "OWNER_TRAINER_EMAIL": "domain/access.js",
+    "OWNER_TRAINER_NAME": "domain/access.js",
+    "SELF_TRAIN_EMAIL": "domain/access.js",
+    "SELF_TRAIN_NAME": "domain/access.js",
+    "isTrainerPaymentOverdue": "domain/access.js",
+    "DietPanel": "modules/diet/DietPanel.js",
+    "ProgramsPanel": "modules/programs/ProgramsPanel.js",
+    "exerciseCatalogSyncPromise": "data/queries.js",
+    "exerciseCatalogListCache": "data/queries.js",
+    "repdbCatalogSyncPromise": "data/queries.js",
+    "repdbNameSetPromise": "data/queries.js",
+    "ownerTrainerCache": "domain/access.js",
+    "selfTrainCache": "domain/access.js",
+    "getOwnerTrainerId": "domain/access.js",
+    "getSelfTrainTrainerId": "domain/access.js"
+  },
+  "rules": [
+    [
+      "^(LOGO_DATA_URI|BrandMark|JFMark|GateDecor|ProgramWatermark)$",
+      "shared/brand.js"
+    ],
+    [
+      "EmptyArt$",
+      "shared/ui/empty-art.js"
+    ],
+    [
+      "^(Icon|IconBadge|ExerciseIcon)$",
+      "shared/ui/Icon.js"
+    ],
+    [
+      "^(Dot|Segmented|Select|StatTile|Sparkline|EditableStat|ConfirmDialog|SlideToUnlock|AutoSaveTextarea|PasswordField|WizardShell|InfoSectionCard|WorkoutFilterSelect)$",
+      "shared/ui/controls.js"
+    ],
+    [
+      "^(fmt|format)",
+      "shared/lib/format.js"
+    ],
+    [
+      "^(todayISO|dayKey|parseDate|startOfWeek|endOfWeek|addDays|weekKey|monthKey|isSameDay)",
+      "shared/lib/dates.js"
+    ],
+    [
+      "^(normalize|norm[A-Z]|slug|titleCase|escapeHtml|clamp|uid|randomId)",
+      "shared/lib/strings.js"
+    ],
+    [
+      "^(MUSCLE_|PRIMARY_MUSCLE|GROUP_TO_PRIMARY|LIFT_MUSCLE|COMMON_LIFTS|WORKOUT_TITLE|BASIC_EXERCISE)",
+      "domain/muscles.js"
+    ],
+    [
+      "^(DIET_GOAL|DIET_CALORIES|DIET_MACRO|DIET_WATER|MEAL_GEN|recalcBmr|calcBmr|calcMacros|MANUAL_BMR)",
+      "domain/nutrition.js"
+    ],
+    [
+      "^(RESISTANCE_TRAINING_MET|SECONDS_PER_SET|DEFAULT_REST|computeWeekly|computeVolume|computePR|volumeFor|prFor)",
+      "domain/training.js"
+    ],
+    [
+      "^(PROGRAM_PRICE|DIET_PLAN_PRICE|SELF_TRAIN_MONTHLY_PRICE|B2B_FLAT_RATE|WHISH_|PAYMENT_CLAIM|AT_RISK_DAYS|TRIAL_)",
+      "domain/access.js"
+    ],
+    [
+      "^(AGE_RANGE|HEIGHT_CM_RANGE|WEIGHT_KG_RANGE|BODY_FAT|FAT_MASS|FAT_PCT|MUSCLE_MASS_KG|WATER_PCT|MEASUREMENT_|ASSESSMENT_METRICS|MEASUREMENT_METRICS)",
+      "domain/body.js"
+    ],
+    [
+      "^(fetch|load|ensure|sync)[A-Z]",
+      "data/queries.js"
+    ],
+    [
+      "^(save|insert|update|upsert|delete|remove|persist)[A-Z]",
+      "data/mutations.js"
+    ],
+    [
+      "^(derive|pick|select)[A-Z]",
+      "domain/selectors.js"
+    ],
+    [
+      "^(WelcomeGate|RoleGate|AuthGate|ProfileGate|ResetPasswordScreen|PrivacyPolicyModal|SIGNUP_DRAFT_KEY|MIN_SIGNUP_AGE|ALLOW_GYM_SIGNUP|PENDING_GYM_CREATE_KEY|PENDING_TRAINER_CREATE_KEY|PROFILE_WIZARD_STEPS|PROFILE_VOICE_FIELD_LABELS|GENDER_CHIPS|GOAL_CHIPS|GOAL_TYPES)",
+      "modules/auth/index.js"
+    ],
+    [
+      "(Voice|TalkingTrainerEmoji|AudioCtx|useTalkingLevel|summarizeVoiceSets)",
+      "modules/voice/index.js"
+    ],
+    [
+      "^(AiChat|SUGGESTED_PROMPTS)",
+      "modules/ai-chat/index.js"
+    ],
+    [
+      "^(Push|notify|InjuryReminder|Birthday|MONTH_MILESTONES|SESSION_MILESTONES|MilestoneBadges)",
+      "modules/notifications/index.js"
+    ],
+    [
+      "^(Diet|Meal|Food|Instant|MacroStatusRow|CalorieCalculator|DietTargetTile)",
+      "modules/diet/index.js"
+    ],
+    [
+      "^(Program|Exercise|RestTimer|LogProgramWeight|BLANK_EXERCISE_FORM|BLANK_CUSTOM_ITEM_FORM|PROGRESSIVE_OVERLOAD)",
+      "modules/programs/index.js"
+    ],
+    [
+      "^(Log|Session|Workout|Calendar|DayTimeline|TrainingHeatmap|HOURS)",
+      "modules/logging/index.js"
+    ],
+    [
+      "^(Client|CLIENT_)",
+      "modules/clients/index.js"
+    ],
+    [
+      "^(Trainer|TRAINER_|FindTrainer|SelfTrain|AppAccessCard)",
+      "modules/trainers/index.js"
+    ],
+    [
+      "^(Gym|GYMS_)",
+      "modules/gyms/index.js"
+    ],
+    [
+      "^(Payment|Whish|Billing|MonthlyBreakdown)",
+      "modules/payments/index.js"
+    ],
+    [
+      "^(Progress|Assessment|Measurement|Metric|PersonalRecords|WeeklyRecap|ThisWeek|CheckIn|Stats|MuscleBalance|MuscleDiagram|MuscleVolume|Trend)",
+      "modules/progress/index.js"
+    ],
+    [
+      "^(INJURY_|ACTIVITY_LEVELS|TRAINING_STYLES|MOOD_EMOJI)",
+      "domain/body.js"
+    ]
+  ],
+  "fallback": "shared/lib/misc.js",
+  "default_imports": {
+    "React": "react",
+    "ReactDOM": "react-dom/client"
+  },
+  "entry": {
+    "marker": "^  const root = ReactDOM\\.createRoot",
+    "out": "main.js",
+    "_note": "everything from this line to EOF is the bootstrap; it becomes src/main.js"
+  }
+}
