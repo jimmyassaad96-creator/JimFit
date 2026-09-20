@@ -13,6 +13,15 @@ const GATE_PATCHES = [
    `const [trainerInfo, setTrainerInfo] = useState(window.__DEMO.trainer);`],
   [`const [pushGateSkipped, setPushGateSkipped] = useState(false);`,
    `const [pushGateSkipped, setPushGateSkipped] = useState(true);`],
+  // CoachView only renders when the signed-in email is in MANAGER_EMAILS, and
+  // the demo seed leaves the session empty — so the manager variant needs the
+  // email threaded in the same way the other gate values are.
+  [`const [userEmail, setUserEmail] = useState(null);`,
+   `const [userEmail, setUserEmail] = useState(window.__DEMO.userEmail || null);`],
+  // …and the session callbacks would immediately clear it again, exactly as
+  // they do for clientName. All three call sites take the same fallback.
+  [`setUserEmail(user ? user.email : null);`,
+   `setUserEmail(user ? user.email : (window.__DEMO.userEmail || null));`, 3],
   [`return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : null;`,
    `return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : window.__DEMO.clientName;`],
 ];
@@ -29,10 +38,12 @@ const ALWAYS = [
 const BOOT = `<script>window.__jimfitBootStart = Date.now();</script>`;
 
 function apply(src, patches) {
-  for (const [from, to] of patches) {
+  for (const [from, to, expected = 1] of patches) {
     const hits = src.split(from).length - 1;
-    if (hits !== 1) throw new Error(`harness drift: ${hits} matches for "${from.slice(0, 70)}"`);
-    src = src.replace(from, to);
+    if (hits !== expected) {
+      throw new Error(`harness drift: ${hits} matches (expected ${expected}) for "${from.slice(0, 70)}"`);
+    }
+    src = src.split(from).join(to);
   }
   return src;
 }
@@ -60,6 +71,7 @@ export function demoState(role, patch = {}) {
   const far = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
   const base = {
     role,
+    userEmail: patch.userEmail || null,
     clientName: role === "trainer" ? "Demo Trainer" : "Demo Client",
     profile: role === "trainer" ? null : {
       id: "demo-profile", client_name: "Demo Client", last_name: "User",
@@ -73,6 +85,7 @@ export function demoState(role, patch = {}) {
       phone: "+96171000000", is_approved: true, next_payment_date: null, gym_id: null,
     },
   };
+  if (patch.userEmail) base.userEmail = patch.userEmail;
   if (patch.trainer) base.trainer = { ...base.trainer, ...patch.trainer };
   if (patch.profile) base.profile = { ...base.profile, ...patch.profile };
   return base;
@@ -86,5 +99,7 @@ export const VARIANTS = {
   "trainer-unapproved": ["trainer", { trainer: { is_approved: false } }],
   "trainer-overdue": ["trainer", { trainer: { next_payment_date: "2020-01-01" } }],
   // trial expired and nothing paid through: the self-train access gate
+  // MANAGER_EMAILS[0] in index.html — the only address that reaches CoachView
+  coach: ["client", { userEmail: "jimmyassaad96@gmail.com" }],
   "client-locked": ["client", { profile: { trial_ends_at: "2020-01-01", access_paid_through: null } }],
 };
