@@ -13,15 +13,6 @@ const PATCHES = [
    `const [profile, setProfile] = useState(window.__DEMO.profile);`],
   [`const [trainerInfo, setTrainerInfo] = useState(null);`,
    `const [trainerInfo, setTrainerInfo] = useState(window.__DEMO.trainer);`],
-  // The three "have we checked yet" flags are set inside promise callbacks on
-  // the real Supabase session call. Under test that call is anonymous and can
-  // reject, leaving the gate chain parked on `return null` forever.
-  [`const [nameChecked, setNameChecked] = useState(false);`,
-   `const [nameChecked, setNameChecked] = useState(true);`],
-  [`const [trainerChecked, setTrainerChecked] = useState(false);`,
-   `const [trainerChecked, setTrainerChecked] = useState(true);`],
-  [`const [profileChecked, setProfileChecked] = useState(false);`,
-   `const [profileChecked, setProfileChecked] = useState(true);`],
   [`const [pushGateSkipped, setPushGateSkipped] = useState(false);`,
    `const [pushGateSkipped, setPushGateSkipped] = useState(true);`],
   [`if ("serviceWorker" in navigator) {`, `if (false) {`],
