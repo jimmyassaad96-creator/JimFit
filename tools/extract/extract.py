@@ -63,8 +63,12 @@ def leading_comment_start(lines, decl_line):
 
 
 def target_for(name, mapping):
+    # Hand-written decisions outrank anything triage.py generated, so a human
+    # call is never silently reverted by re-running the classifier.
     if name in mapping['overrides']:
         return mapping['overrides'][name]
+    if name in mapping.get('overrides_auto', {}):
+        return mapping['overrides_auto'][name]
     for pat, dest in mapping['rules']:
         if re.search(pat, name):
             return dest
@@ -165,11 +169,19 @@ def main():
 
     # ---- reference graph ----------------------------------------------------
     externals = mapping['externals']
+    def shadowed(name, clean):
+        # `catch (e)` is everywhere in this codebase and `e` is also the
+        # React.createElement alias. Binding it locally without ever calling or
+        # dereferencing it means the unit does not depend on the module-level one.
+        if not re.search(r'catch\s*\(\s*%s\s*\)' % re.escape(name), clean):
+            return False
+        return not re.search(r'(?<![.\w$])%s\s*[(.\[]' % re.escape(name), clean)
+
     needs = defaultdict(set)
     for u in units:
         clean = strip_literals(u['body'])
         for ref in set(IDENT.findall(clean)):
-            if ref == u['name']:
+            if ref == u['name'] or shadowed(ref, clean):
                 continue
             if ref in home and home[ref] != home[u['name']]:
                 needs[home[u['name']]].add(ref)
