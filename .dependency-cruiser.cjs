@@ -10,6 +10,7 @@
 //   shared/lib/     -> shared/lib/                     (pure utilities)
 //   shared/theme/   -> shared/lib/
 //   shared/ui/      -> shared/ui|lib|theme, domain/    (presentational only)
+//   shared/styles/  -> shared/palette                  (stylesheet slices)
 //   shared/widgets/ -> anything except modules/, app/  (cross-cutting features)
 //   platform/       -> platform/, shared/lib/
 //   data/           -> data/, domain/, platform/, shared/lib/
@@ -34,8 +35,15 @@ module.exports = {
       name: "shared-ui-has-no-backend",
       severity: "error",
       comment: "Presentational components must not reach data/ or platform/.",
-      from: { path: "^src/shared/(ui|theme)" },
-      to: { pathNot: "^(src/(shared/(ui|lib|theme|react|brand)|domain)|node_modules)" },
+      from: { path: "^src/shared/(ui|theme|styles|palette)" },
+      to: { pathNot: "^(src/(shared/(ui|lib|theme|react|brand|styles|palette)|domain)|node_modules)" },
+    },
+    {
+      name: "stylesheet-reads-only-the-palette",
+      severity: "error",
+      comment: "A stylesheet slice may read colour tokens and nothing else.",
+      from: { path: "^src/shared/(styles/|palette)" },
+      to: { pathNot: "^src/shared/palette" },
     },
     {
       name: "shared-never-imports-features",
