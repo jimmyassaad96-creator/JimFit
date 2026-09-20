@@ -1,0 +1,32 @@
+{
+  "name": "jimfit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "boundaries": "depcruise src --config .dependency-cruiser.cjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63",
+    "@testing-library/react": "^16",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "dependency-cruiser": "^16",
+    "happy-dom": "^20",
+    "msw": "^2",
+    "typescript": "^5",
+    "vite": "^7",
+    "vitest": "^5"
+  }
+}

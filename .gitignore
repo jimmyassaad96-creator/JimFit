@@ -1,6 +1,7 @@
 .idea/
 node_modules/
 dist/
+.demo*/
 .DS_Store
 test-results/
 playwright-report/
