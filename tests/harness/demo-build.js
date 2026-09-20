@@ -4,9 +4,7 @@ import { join } from "node:path";
 // Every patch must match exactly once. index.html is regenerated wholesale on
 // every release, so a silent zero-match would leave the harness serving an
 // unpatched build and the suite asserting against the login screen.
-const PATCHES = [
-  [`const TURNSTILE_SITE_KEY = "0x4AAAAAAE4BdmWSch95dAg1";`,
-   `const TURNSTILE_SITE_KEY = "";`],
+const GATE_PATCHES = [
   [`const [clientName, setClientName] = useState(null);`,
    `const [clientName, setClientName] = useState(window.__DEMO.clientName);`],
   [`const [profile, setProfile] = useState(null);`,
@@ -15,22 +13,42 @@ const PATCHES = [
    `const [trainerInfo, setTrainerInfo] = useState(window.__DEMO.trainer);`],
   [`const [pushGateSkipped, setPushGateSkipped] = useState(false);`,
    `const [pushGateSkipped, setPushGateSkipped] = useState(true);`],
-  [`if ("serviceWorker" in navigator) {`, `if (false) {`],
   [`return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : null;`,
    `return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : window.__DEMO.clientName;`],
 ];
 
+// Applied to every variant, including the one that keeps the real auth gates:
+// the production Turnstile key is bound to jimfit.app and renders an error on
+// localhost, and the service worker would serve a stale build between runs.
+const ALWAYS = [
+  [`const TURNSTILE_SITE_KEY = "0x4AAAAAAE4BdmWSch95dAg1";`,
+   `const TURNSTILE_SITE_KEY = "";`],
+  [`if ("serviceWorker" in navigator) {`, `if (false) {`],
+];
+
 const BOOT = `<script>window.__jimfitBootStart = Date.now();</script>`;
 
-export function buildDemo(outDir, role = "client") {
-  let src = readFileSync("index.html", "utf8");
-  src = src.replace(BOOT, BOOT + `\n<script>window.__DEMO=${JSON.stringify(demoState(role))};</script>`);
-  for (const [from, to] of PATCHES) {
+function apply(src, patches) {
+  for (const [from, to] of patches) {
     const hits = src.split(from).length - 1;
-    if (hits !== 1) {
-      throw new Error(`harness drift: ${hits} matches for "${from.slice(0, 70)}"`);
-    }
+    if (hits !== 1) throw new Error(`harness drift: ${hits} matches for "${from.slice(0, 70)}"`);
     src = src.replace(from, to);
+  }
+  return src;
+}
+
+/**
+ * @param outDir   where the patched copy is written
+ * @param role     "client" | "trainer" | "gates" ("gates" keeps the real
+ *                 Welcome/Role/Auth/Profile chain in place)
+ * @param patch    optional overrides merged into the seeded trainer/profile
+ */
+export function buildDemo(outDir, role = "client", patch = {}) {
+  let src = apply(readFileSync("index.html", "utf8"), ALWAYS);
+  if (role !== "gates") {
+    const state = demoState(role, patch);
+    src = src.replace(BOOT, `${BOOT}\n<script>window.__DEMO=${JSON.stringify(state)};</script>`);
+    src = apply(src, GATE_PATCHES);
   }
   mkdirSync(outDir, { recursive: true });
   const out = join(outDir, "index.html");
@@ -38,9 +56,9 @@ export function buildDemo(outDir, role = "client") {
   return out;
 }
 
-function demoState(role) {
+export function demoState(role, patch = {}) {
   const far = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
-  return {
+  const base = {
     role,
     clientName: role === "trainer" ? "Demo Trainer" : "Demo Client",
     profile: role === "trainer" ? null : {
@@ -55,4 +73,18 @@ function demoState(role) {
       phone: "+96171000000", is_approved: true, next_payment_date: null, gym_id: null,
     },
   };
+  if (patch.trainer) base.trainer = { ...base.trainer, ...patch.trainer };
+  if (patch.profile) base.profile = { ...base.profile, ...patch.profile };
+  return base;
 }
+
+// Named variants, each served under /<name>/ by serve.js.
+export const VARIANTS = {
+  client: ["client", {}],
+  trainer: ["trainer", {}],
+  gates: ["gates", {}],
+  "trainer-unapproved": ["trainer", { trainer: { is_approved: false } }],
+  "trainer-overdue": ["trainer", { trainer: { next_payment_date: "2020-01-01" } }],
+  // trial expired and nothing paid through: the self-train access gate
+  "client-locked": ["client", { profile: { trial_ends_at: "2020-01-01", access_paid_through: null } }],
+};

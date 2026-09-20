@@ -35,3 +35,22 @@ export async function installSupabaseFixtures(page) {
   // The demo build already bypasses the auth gates, so the real (anonymous)
   // auth call failing is the same path the app takes in the browser today.
 }
+
+/** Bottom-nav tabs are plain buttons; the label also appears in page copy, so
+ *  take the last match — the nav sits at the end of the tree. */
+export async function openTab(page, label) {
+  await page.getByText(label, { exact: true }).last().click();
+  await page.waitForTimeout(400);
+}
+
+export async function boot(page, variant) {
+  await installSupabaseFixtures(page);
+  await page.goto(`/${variant}/`);
+  await page.locator("#root").waitFor({ state: "attached" });
+  // The splash paints "Loading…" first, and some gated screens resolve several
+  // seconds later — waiting only for non-empty text catches the splash.
+  await page.waitForFunction(() => {
+    const t = document.getElementById("root").innerText.trim();
+    return t.length > 40 && !/loading…?$/i.test(t);
+  }, null, { timeout: 20000 });
+}
