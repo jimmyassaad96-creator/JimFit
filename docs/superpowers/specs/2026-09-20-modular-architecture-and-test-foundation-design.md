@@ -315,9 +315,57 @@ components that remain oversized — `DietPanel` 2,215, `TrainingLog` 1,840,
 
 ## 11. Success criteria
 
-- No file in `src/` over ~400 lines; no component over ~200.
-- `dependency-cruiser` passes in CI with zero boundary violations.
-- Every flow in §8.5 covered by a passing Playwright test.
-- `domain/` at 100% line coverage; overall coverage gate agreed in planning.
-- A single `main` build produces the web deploy, the iOS app and the Android app.
-- `jimfit.app` behavior is indistinguishable from today's at every phase boundary.
+| criterion | status |
+|---|---|
+| `dependency-cruiser` passes in CI with zero boundary violations | **met** — 0 errors, 5 warnings (intra-layer import cycles that predate the split) |
+| Every flow in §8.5 covered by a passing test | **partly** — 77 e2e (60 against `index.html`, 17 against the built `src/`) and 23 unit. Signup submission, password recovery and the payment-claim round trip are still uncovered |
+| No file in `src/` over ~400 lines; no component over ~200 | **not met** — 16 files remain over 400, listed below |
+| `domain/` at 100% line coverage | **not met** — only `access`, `group3` (`parseQuickSets`) and `roster` have unit tests |
+| A single `main` build produces web, iOS and Android | **not started** — Phase 4 onward, blocked on repo admin and Supabase access |
+| `jimfit.app` indistinguishable from today's | **holds** — `index.html` is byte-identical to `main` and remains the shipped artifact |
+
+### Where the decomposition landed
+
+From one 25,330-line file to **130 modules, 17 hooks, 27,298 lines**. The five
+components the work targeted:
+
+| file | at the start | now |
+|---|---|---|
+| `modules/diet/DietPanel.js` | 2,244 | **551** |
+| `app/TrainingLog.js` | 1,897 | **941** |
+| `app/CoachView.js` | 1,702 | **1,126** |
+| `modules/programs/ProgramsPanel.js` | 1,009 | **819** |
+| `app/TrainerView.js` | 998 | **906** |
+
+### Files still over 400 lines, and why
+
+| file | lines | why |
+|---|---|---|
+| `app/CoachView.js` | 1,126 | Four hooks out; the remaining bulk is one render tree of owner tabs, each needing a different slice of state |
+| `app/TrainingLog.js` | 941 | Five hooks, the entry sheet and the header out; what is left is seven tab branches, each its own component's worth of work |
+| `app/TrainerView.js` | 906 | One hook out. Never carried a second cluster worth extracting |
+| `modules/clients/ClientCustomProgramCard.js` | 857 | Never among the targeted five |
+| `modules/programs/ProgramsPanel.js` | 819 | `useProgramBuilder` out; the exercise form is a second cluster, ~26 names, not yet cut |
+| `modules/diet/DietPlanSection.js` | 784 | Extracted whole from `DietPanel`; has internal seams (plan hero, meal detail, notes, template browser) for a further pass |
+| `modules/clients/ClientLogPanel.js` | 644 | Never among the targeted five |
+| `modules/diet/DietPanel.js` | 551 | Six hooks and both views out; what is left is hook wiring and derivations |
+| `modules/auth/ProfileGate.js` | 485 | Never targeted |
+| `modules/trainers/TrainerMyProfilePanel.js` | 461 | Never targeted |
+| `modules/logging/SessionsPanel.js` | 451 | Never targeted |
+| `modules/clients/ClientProgramCard.js` | 441 | Never targeted |
+| `domain/group1.js`, `group2.js`, `group3.js` | 421, 419, 413 | Codemod grouping buckets of small pure helpers, not single units — worth splitting by topic |
+| `modules/diet/DietPlanTemplatesPanel.js` | 416 | Never targeted |
+
+### What the gate is, and what it still cannot see
+
+`bun run typecheck && boundaries && order && imports && test && e2e`.
+
+`order` and `imports` exist because four TDZ faults and 23 missing imports got
+through everything else. The e2e suite drives both `index.html` and a patched
+build of `src/`, and asserts no uncaught page error on every surface — that
+sweep found a broken AI Chat tab that had been shipping since the codemod.
+
+It still cannot see a silent wrong result: a hook returning the wrong value,
+or a handler wired to nothing, renders fine and raises no error. The one time
+that happened — a quick-entry button that did nothing — only a specific
+assertion about three set rows caught it.
