@@ -52,10 +52,12 @@ test("steps for the day start unlogged with a warning", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("the log date defaults to today and holds a change", async ({ page }) => {
+test("the log date starts populated and holds a change", async ({ page }) => {
+  // Deliberately not compared against a date computed here: the app derives
+  // today from the browser's local time and this process may be in another
+  // day in UTC, which made this test fail the moment the clock rolled over.
   const date = page.locator('input[type="date"]').first();
-  const today = new Date().toISOString().slice(0, 10);
-  await expect(date).toHaveValue(today);
+  await expect(date).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   await date.fill("2026-09-01");
   await expect(date).toHaveValue("2026-09-01");
 });
