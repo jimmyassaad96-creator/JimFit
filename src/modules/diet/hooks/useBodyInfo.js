@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { fetchLatestDisplayAssessment } from "../../../data/fetchLatestDisplayAssessment.js";
 import { dietGoalKeyFromText, defaultActivityKey } from "../../../domain/group2.js";
 import { sb } from "../../../platform/supabase.js";
+import { ACTIVITY_LEVELS, AGE_RANGE, HEIGHT_CM_RANGE, WEIGHT_KG_RANGE } from "../../../domain/body.js";
+import { bmrFromBody } from "../../../domain/group1.js";
+import { inRange, leanMassKgFrom, macroTargetsFromCalories } from "../../../domain/group3.js";
+import { waterTargetMlFromWeight } from "../../../domain/group4.js";
+import { DIET_GOAL_CAL_MULT } from "../../../domain/nutrition.js";
 
 /**
  * The self-serve body-info form on the Diet tab: the client's latest
