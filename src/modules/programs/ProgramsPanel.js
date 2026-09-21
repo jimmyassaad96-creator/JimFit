@@ -17,6 +17,8 @@ import { ClientProgramCard } from "../clients/ClientProgramCard.js";
 import { ExerciseForm } from "./ExerciseForm.js";
 import { IconBadge, programVisual } from "./group1.js";
 import React, { useEffect, useRef, useState } from "react";
+import { PROGRAM_PRICE } from "../../domain/access.js";
+import { withAlpha } from "../../shared/theme.js";
 
   function ProgramsPanel({ canManage = false, canAssign = null, canBrowse = true, clientName = null, clientId = null, userId = null, userEmail = null, isSelfTrain = false, gatePayment = false, appAccessOk = true, paidAccessOk = true, trainerId = null }) {
     // canAssign controls the "assign a program to yourself/this client" button

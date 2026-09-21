@@ -13,6 +13,7 @@ import { LogProgramWeightModal } from "../../shared/widgets/LogProgramWeightModa
 import { PaymentStatusStepper } from "../../shared/widgets/PaymentStatusStepper.js";
 import { ProgramExerciseRow } from "../../shared/widgets/ProgramExerciseRow.js";
 import React, { useEffect, useRef, useState } from "react";
+import { withAlpha } from "../../shared/theme.js";
 
   // Shows (and, for a trainer/manager, lets you set) the ONE program a specific client is
   // actually following right now — distinct from the full template library in ProgramsPanel,

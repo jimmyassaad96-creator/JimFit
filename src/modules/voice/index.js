@@ -8,6 +8,7 @@ import { C, styles, withAlpha } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { TalkingTrainerEmoji, VoiceLoadingDots, useTalkingLevel } from "../../shared/ui/group1.js";
 import { useRef, useState } from "react";
+import { PROFILE_VOICE_FIELD_LABELS } from "../../domain/group1.js";
 
   // Sept 18 2026, Jimmy: "can we do the confirm and save to show as popup
   // animation to look fun and pro?" then "before i save i want to see

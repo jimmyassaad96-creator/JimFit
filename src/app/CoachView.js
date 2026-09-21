@@ -51,6 +51,7 @@ import { EditableStat } from "../shared/widgets/EditableStat.js";
 import { VoiceMicButton } from "../shared/widgets/VoiceMicButton.js";
 import { ManagerDashboard } from "./ManagerDashboard.js";
 import React, { useEffect, useMemo, useState } from "react";
+import { fmtDate, fmtDateMed, fmtDateTimeMed } from "../shared/lib/format.js";
 
   function CoachView() {
     const [loading, setLoading] = useState(false);

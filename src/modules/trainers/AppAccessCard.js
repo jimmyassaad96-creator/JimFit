@@ -7,6 +7,7 @@ import { e } from "../../shared/react.js";
 import { C, styles } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { useState } from "react";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   // Manager-side control for a self-train client's monthly app access — same
   // manual "mark as paid" pattern as the program paywall and diet-plan

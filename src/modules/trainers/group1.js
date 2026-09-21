@@ -7,6 +7,7 @@ import { Icon } from "../../shared/ui/Icon.js";
 import { PaymentStatusStepper } from "../../shared/widgets/PaymentStatusStepper.js";
 import { IconBadge } from "../programs/group1.js";
 import React, { useEffect, useState } from "react";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   // A trainer's real photo where one's been uploaded, falling back to the
   // same letter-in-a-circle every other avatar in the app already uses.

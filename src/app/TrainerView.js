@@ -38,6 +38,7 @@ import { BirthdayBadge, DashboardStatGrid } from "../shared/ui/group1.js";
 import { EditableStat } from "../shared/widgets/EditableStat.js";
 import { GymOwnerView } from "./GymOwnerView.js";
 import React, { useEffect, useMemo, useState } from "react";
+import { fmtDate } from "../shared/lib/format.js";
 
   function TrainerView({ trainer, onLogout, theme, onToggleTheme }) {
     const [loading, setLoading] = useState(true);

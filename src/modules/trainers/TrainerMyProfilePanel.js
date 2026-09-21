@@ -17,6 +17,7 @@ import { EditableStat } from "../../shared/widgets/EditableStat.js";
 import { TrainerPhotoUploader } from "./TrainerPhotoUploader.js";
 import { AutoSaveTextarea, InfoSectionCard } from "./group1.js";
 import React, { useEffect, useState } from "react";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   // A trainer's own birthday isn't something the manager types in for them —
   // this is the one settings screen every trainer gets (not just gym owners)

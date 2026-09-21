@@ -4,6 +4,7 @@ import { e } from "../react.js";
 import { C, styles, withAlpha } from "../theme.js";
 import { Icon } from "./Icon.js";
 import React, { useEffect, useRef, useState } from "react";
+import { fmtRest } from "../lib/format.js";
 
   const MUSCLE_COLORS = {
     Chest: "#3987e5",

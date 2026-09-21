@@ -6,6 +6,7 @@ import { e } from "../../shared/react.js";
 import { C, styles } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { useEffect, useMemo, useState } from "react";
+import { withAlpha } from "../../shared/theme.js";
 
   // Sept 18 2026, Jimmy: "injuries collected at signup never show up
   // anywhere again" review finding — the structured list added Sept 15 only

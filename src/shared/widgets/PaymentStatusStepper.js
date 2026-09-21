@@ -5,6 +5,7 @@ import { e } from "../react.js";
 import { C, styles } from "../theme.js";
 import { WhishPayBox } from "../ui/group1.js";
 import { useEffect, useState } from "react";
+import { fmtDateTimeMed } from "../lib/format.js";
 
   // Real 3-step payment status: "Send payment" (with an "I've sent it"
   // button that records a real timestamp), "Under review" (the natural

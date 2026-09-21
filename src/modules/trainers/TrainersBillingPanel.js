@@ -10,6 +10,7 @@ import { PeopleEmptyArt } from "../../shared/ui/empty-art.js";
 import { StatTile } from "../../shared/ui/group1.js";
 import { EditableStat } from "../../shared/widgets/EditableStat.js";
 import { useEffect, useState } from "react";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   // Platform-wide, per-trainer billing (Sept 1 2026 pricing pivot) — every
   // real trainer using JimFit pays B2B_FLAT_RATE_MONTHLY individually for

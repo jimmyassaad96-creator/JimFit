@@ -7,6 +7,7 @@ import { e } from "../../shared/react.js";
 import { C, styles } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { useEffect, useState } from "react";
+import { styleLabel } from "../../domain/group4.js";
 
   // Manual "mark as paid" gate for a self-train client's access to whichever ONE
   // program they've picked from the shared library — same pattern as the diet

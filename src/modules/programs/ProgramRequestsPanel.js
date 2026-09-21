@@ -9,6 +9,7 @@ import { ProgramsEmptyArt } from "../../shared/ui/empty-art.js";
 import { Segmented } from "../../shared/ui/group1.js";
 import { ProgramRequestRow } from "./ProgramRequestRow.js";
 import { useEffect, useMemo, useState } from "react";
+import { styleLabel } from "../../domain/group4.js";
 
   // Queue of pending program picks from self-train clients (no trainer) who've
   // chosen a program from the library but haven't paid for it yet — same idea

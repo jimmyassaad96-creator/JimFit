@@ -13,6 +13,7 @@ import { ProgramExerciseRow } from "../../shared/widgets/ProgramExerciseRow.js";
 import { ProgramSetsForm } from "../../shared/widgets/ProgramSetsForm.js";
 import { VoiceMicButton } from "../../shared/widgets/VoiceMicButton.js";
 import React, { useEffect, useRef, useState } from "react";
+import { withAlpha } from "../../shared/theme.js";
 
   // Sept 13 2026, Jimmy: "what if later i want to check for every client the
   // program we are working on" — onProgramChange (optional) tells a caller

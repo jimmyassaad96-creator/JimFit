@@ -4,6 +4,8 @@ import { e } from "../../shared/react.js";
 import { C, styles } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { useMemo } from "react";
+import { dateToISO } from "../../domain/group2.js";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   function SessionGoalCard({ entries, daysPerWeek }) {
     if (!daysPerWeek) return null;

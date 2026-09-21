@@ -3,6 +3,7 @@ import { todayISO } from "../shared/lib/dates.js";
 import { AUTO_ASSESSMENT_NOTES, SIGNUP_DRAFT_KEY, basicExerciseRank } from "./group1.js";
 import { LIFT_MUSCLE_MAP, PRIMARY_MUSCLE_TO_GROUP, WORKOUT_TITLE_TO_MUSCLES } from "./muscles.js";
 import { DIET_CALORIES_RANGE, DIET_MACRO_G_RANGE, MEAL_GEN_FOODS } from "./nutrition.js";
+import { SUPPORT_EMAIL } from "./group1.js";
 
   function openSupportEmail(fromName) {
     const subject = encodeURIComponent(`JimFit support${fromName ? ` — ${fromName}` : ""}`);

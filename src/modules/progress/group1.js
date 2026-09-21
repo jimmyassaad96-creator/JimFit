@@ -10,6 +10,7 @@ import { C, styles, withAlpha } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { Dot, MUSCLE_COLORS } from "../../shared/ui/group1.js";
 import { useEffect, useMemo, useState } from "react";
+import { fmtDateMed } from "../../shared/lib/format.js";
 
   function Sparkline({ points, color, width = 236, height = 40 }) {
     const pad = 6;
