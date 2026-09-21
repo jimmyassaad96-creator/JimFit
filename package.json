@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "boundaries": "depcruise src --config .dependency-cruiser.cjs"
+    "boundaries": "depcruise src --config .dependency-cruiser.cjs",
+    "order": "python3 tools/extract/check-order.py",
+    "imports": "python3 tools/extract/check-imports.py"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",
