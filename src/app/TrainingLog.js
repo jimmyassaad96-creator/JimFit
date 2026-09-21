@@ -75,28 +75,43 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
     const unit = "kg"; // locked to kg — no lb toggle
     const [appName, setAppName] = useState("JimFit");
 
+    const session = useSession({ setAppName });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       clientName, setClientName, clientLastName, setClientLastName,
       clientPhone, setClientPhone, userId, setUserId, userEmail, setUserEmail,
       nameChecked, recoveryMode, setRecoveryMode, handleRecoveryDone,
-    } = useSession({ setAppName });
+    } = session;
     const [profile, setProfile] = useState(null);
 
+    const trainerIdentity = useTrainerIdentity({ userEmail, setProfile });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       trainerChecked, setTrainerChecked, trainerInfo, setTrainerInfo,
       trainerNotOnRoster, setTrainerNotOnRoster,
       trainerHasEverPaid, setTrainerHasEverPaid,
-    } = useTrainerIdentity({ userEmail, setProfile });
-    const { profileChecked, profileFetchFailed, setProfileRetryTick } =
-      useClientProfile({ userId, trainerInfo, profile, setProfile });
+    } = trainerIdentity;
+    const clientProfile = useClientProfile({ userId, trainerInfo, profile, setProfile });
+    const { profileChecked, profileFetchFailed, setProfileRetryTick } = clientProfile;
 
+    const workoutEntries = useWorkoutEntries({ clientName, profile, profileChecked });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       entries, setEntries, loaded,
       titleFilter, setTitleFilter, dateFilter, setDateFilter,
       lastDeleted, setLastDeleted,
-    } = useWorkoutEntries({ clientName, profile, profileChecked });
+    } = workoutEntries;
     const isManager = !!userEmail && MANAGER_EMAILS.includes(userEmail.toLowerCase());
 
+    const entryForm = useWorkoutEntryForm({
+      clientName, profile, isManager,
+      entries, setEntries, lastDeleted, setLastDeleted,
+    });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       showForm, setShowForm, editingId, addBeforeId,
       date, setDate, sessionTitle, setSessionTitle,
@@ -111,10 +126,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       resetForm, resetFormKeepSession, openNewExercise, openAddToWorkout,
       closeSheet, startEdit, startDuplicate,
       handleSave, handleDelete, handleDeleteSet, handleUndoDelete, dismissUndo,
-    } = useWorkoutEntryForm({
-      clientName, profile, isManager,
-      entries, setEntries, lastDeleted, setLastDeleted,
-    });
+    } = entryForm;
     const [editingName, setEditingName] = useState(false);
     const [nameDraft, setNameDraft] = useState("");
     // Sept 13 2026, Jimmy: "when i refresh any where on the tab to keep me
