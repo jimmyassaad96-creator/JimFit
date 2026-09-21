@@ -19,6 +19,88 @@ There are two copies of this app and they are not interchangeable.
 Every change so far has gone into `src/` only. If you edit `index.html` you are
 editing production.
 
+## If you are checking this branch for Jimmy
+
+Jimmy owns this app and does not work from a terminal. If he has asked you to
+check this branch, this is what he wants to know: **does the live app still
+work, and did anything he ships change?**
+
+Answer those two, in this order.
+
+### 1. Prove the live app was not touched
+
+```bash
+git fetch origin
+git checkout refactor/modular-architecture-and-tests
+git diff main --stat -- index.html
+```
+
+**Expected: no output at all.** `index.html` is the entire shipped app, and an
+empty diff means it is byte-for-byte what is on `main`. If anything prints
+here, stop and tell him — that would mean the live app was modified, which this
+branch is not supposed to do.
+
+Also worth showing him:
+
+```bash
+git diff main --stat -- index.html privacy.html sw.js manifest.json CNAME
+```
+
+Same expectation. Every file GitHub Pages actually serves is untouched; all the
+new work is in `src/`, `tests/`, `tools/` and `docs/`, none of which is served
+to anyone.
+
+### 2. Run the checks
+
+Needs Node 20+ or bun. With bun:
+
+```bash
+bun install
+bun x playwright install chromium
+bun run typecheck && bun run boundaries && bun run order && bun run imports
+bun run test
+bun run e2e
+```
+
+With npm, substitute `npm install`, `npx playwright install chromium`, and
+`npm run <script>` — the scripts are the same.
+
+Expected: every command exits 0. **23 unit tests and 77 end-to-end tests pass.**
+The end-to-end ones open the real app in a browser and click through it: the
+client dashboard, logging a workout, the diet tabs, the trainer roster, the
+payment screens, the owner menu. 60 of them drive the shipped `index.html` and
+17 drive the new split-up version, which is how we know the two behave the same.
+
+If something fails, the message names the file and the assertion. Report it
+verbatim rather than trying to fix it.
+
+### 3. Let him see it running
+
+```bash
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000`. That serves the shipped `index.html`
+straight from the repo — the same file, same login, same data. It is the
+simplest demonstration that the branch did not break the app.
+
+### What to tell him
+
+In plain terms: the app he ships is unchanged, the code behind it has been
+split into smaller pieces with tests around it, and nothing goes live until he
+merges. If he asks whether it is safe to merge, the honest answer is that
+merging this branch alone changes nothing users can see — `index.html` is
+identical — but the follow-up work (actually serving `src/` instead) is a
+separate decision that has not been made.
+
+### What is NOT proven
+
+Say so if he asks. Signing up, resetting a password, and the payment-claim
+round trip have no test coverage — they need a real Supabase login. The
+approve-a-trainer action, which sets approval and records the first payment in
+one step, is also untested. Those need a human clicking through with a real
+account.
+
 ## Hard rules
 
 - **Never push.** A `git-guard` hook enforces it; Said pushes himself.
