@@ -86,10 +86,13 @@ def main():
         local |= set(re.findall(r'\(([^()]*)\)\s*=>', code)) and set(
             re.findall(r'[A-Za-z_$][\w$]*', " ".join(re.findall(r'\(([^()]*)\)\s*=>', code))))
         local |= set(re.findall(r'(?:catch|function[^(]*)\(\s*([A-Za-z_$][\w$]*)', code))
-        local |= set(re.findall(r'\{\s*([A-Za-z_$][\w$,\s]*)\}\s*=', code)) and set(
-            re.findall(r'[A-Za-z_$][\w$]*', " ".join(re.findall(r'\{([^{}]*)\}\s*=', code))))
-        local |= set(re.findall(r'\[([A-Za-z_$][\w$,\s]*)\]\s*=', code)) and set(
-            re.findall(r'[A-Za-z_$][\w$]*', " ".join(re.findall(r'\[([^\[\]]*)\]\s*=', code))))
+        # Destructuring counts as a local binding only in a declaration —
+        # matching any "{...} =" swept object literals in and hid real misses
+        # (styles was "locally bound" in four modules that never imported it).
+        for pat in (r'^\s*(?:const|let|var)\s*\{([^{}]*)\}\s*=',
+                    r'^\s*(?:const|let|var)\s*\[([^\[\]]*)\]\s*='):
+            for grp in re.findall(pat, code, re.M):
+                local |= set(re.findall(r'[A-Za-z_$][\w$]*', grp))
         # `catch (e)` binds e locally in 14 places in one file alone; a name
         # bound that way is never a missing import.
         caught = set(re.findall(r'catch\s*\(\s*([A-Za-z_$][\w$]*)', code))

@@ -7,6 +7,7 @@ import { C } from "../theme.js";
 import { Icon } from "../ui/Icon.js";
 import { TalkingTrainerEmoji, VoiceLoadingDots, useTalkingLevel } from "../ui/group1.js";
 import { useRef, useState } from "react";
+import { styles } from "../theme.js";
 
   // One mic button that fills an entire New Exercise form from a single
   // spoken note — say it in English, Arabic, Lebanese dialect, or a mix of

@@ -5,6 +5,7 @@ import { C } from "../../shared/theme.js";
 import { Icon } from "../../shared/ui/Icon.js";
 import { VoiceMicButton } from "../../shared/widgets/VoiceMicButton.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { styles } from "../../shared/theme.js";
 
   // Owner-only for now (wired in behind isManager, same as the rest of CoachView).
   // Calls a Supabase Edge Function ("ai-chat") which holds the real AI provider

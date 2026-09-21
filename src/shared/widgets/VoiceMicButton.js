@@ -6,6 +6,7 @@ import { C } from "../theme.js";
 import { Icon } from "../ui/Icon.js";
 import { TalkingTrainerEmoji, VoiceLoadingDots, useTalkingLevel } from "../ui/group1.js";
 import { useRef, useState } from "react";
+import { styles } from "../theme.js";
 
   function VoiceMicButton({ onTranscribed, title = "Speak instead of typing" }) {
     const [recording, setRecording] = useState(false);
