@@ -17,9 +17,17 @@ IDENT = re.compile(r'(?<![.\w$])([A-Za-z_$][\w$]*)')
 
 
 def component_bindings(text):
-    """Every name bound at component scope, including `const {\n a, b,\n} = useX()`."""
+    """Every name bound at component scope.
+
+    Includes multi-line hook destructures and the component's own props — a
+    subtree reading `profile` straight off the signature was reported as
+    needing nothing, and rendered a blank screen.
+    """
     clean = strip_literals(text)
     names = set()
+    for m in re.finditer(r'function\s+[A-Z][\w$]*\(\s*\{([^}]*)\}', clean):
+        names |= {n for n in re.findall(r'[A-Za-z_$][\w$]*', m.group(1))
+                  if n not in ("true", "false", "null", "undefined")}
     for m in re.finditer(r'^    (?:async )?(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)', clean, re.M):
         names.add(m.group(1))
     for m in re.finditer(r'^    (?:const|let|var)\s*\[([^\]]*)\]\s*=', clean, re.M):
