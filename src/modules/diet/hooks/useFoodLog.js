@@ -40,16 +40,6 @@ export function useFoodLog({ userId, clientName, setSaving, setError }) {
     }
 
 
-    // Ready diet plan templates — needed both for a client browsing/picking one
-    // and for resolving the name/goal/macros of whichever one they've already
-    // picked, so fetch the whole library once regardless of canManage.
-    useEffect(() => {
-      if (!sb) { setTemplatesLoaded(true); return; }
-      sb.from("diet_plan_templates").select("*").order("goal", { ascending: true }).order("order_index", { ascending: true }).then(({ data, error: err }) => {
-        setTemplates(!err && data ? data : []);
-        setTemplatesLoaded(true);
-      });
-    }, []);
 
     // Sept 6 2026, Jimmy: "if he bought 2 he see two no?" — every ready
     // template this person has ever actually paid for (client_payments

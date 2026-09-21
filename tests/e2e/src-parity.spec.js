@@ -31,6 +31,19 @@ test("src: the diet tab renders its sub-tabs and BMR precondition", async ({ pag
   await expect(page.getByText(/^no bmr yet$/i).first()).toBeVisible();
 });
 
+test("src: the diet plan browser renders", async ({ page }) => {
+  // The template browser is the only place useDietTemplates' state is read,
+  // and nothing else in the suite opens it — a missing setter there threw
+  // "setTemplates is not defined" while every other test stayed green.
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await bootSrc(page, "client");
+  await page.getByText("Diet", { exact: true }).last().click();
+  await page.getByText("Diet plan", { exact: true }).first().click();
+  await expect(page.getByText(/^your goal$/i).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("src: the trainer lands on their roster", async ({ page }) => {
   await bootSrc(page, "trainer");
   await expect(page.getByText("Demo Trainer's clients")).toBeVisible();
