@@ -17,19 +17,22 @@ const PATCHES = [
   ["src/domain/selectors.js",
    [[`return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : null;`,
      `return user ? (user.user_metadata && user.user_metadata.display_name) || user.email || user.phone : (globalThis.__DEMO ? globalThis.__DEMO.clientName : null);`, 1]]],
-  ["src/app/TrainingLog.js",
+  // clientName and the session email moved into useSession in task 9; the
+  // gate seeds follow the state rather than the file.
+  ["src/app/hooks/useSession.js",
    [[`const [clientName, setClientName] = useState(null);`,
      `const [clientName, setClientName] = useState(window.__DEMO.clientName);`, 1],
-    [`const [profile, setProfile] = useState(null);`,
-     `const [profile, setProfile] = useState(window.__DEMO.profile);`, 1],
-    [`const [trainerInfo, setTrainerInfo] = useState(null);`,
-     `const [trainerInfo, setTrainerInfo] = useState(window.__DEMO.trainer);`, 1],
-    [`const [pushGateSkipped, setPushGateSkipped] = useState(false);`,
-     `const [pushGateSkipped, setPushGateSkipped] = useState(true);`, 1],
     [`const [userEmail, setUserEmail] = useState(null);`,
      `const [userEmail, setUserEmail] = useState(window.__DEMO.userEmail || null);`, 1],
     [`setUserEmail(user ? user.email : null);`,
      `setUserEmail(user ? user.email : (window.__DEMO.userEmail || null));`, 3]]],
+  ["src/app/TrainingLog.js",
+   [[`const [profile, setProfile] = useState(null);`,
+     `const [profile, setProfile] = useState(window.__DEMO.profile);`, 1],
+    [`const [trainerInfo, setTrainerInfo] = useState(null);`,
+     `const [trainerInfo, setTrainerInfo] = useState(window.__DEMO.trainer);`, 1],
+    [`const [pushGateSkipped, setPushGateSkipped] = useState(false);`,
+     `const [pushGateSkipped, setPushGateSkipped] = useState(true);`, 1]]],
 ];
 
 // src/platform/supabase.js still reads window.supabase.createClient, the CDN
