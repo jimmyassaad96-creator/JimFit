@@ -77,6 +77,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
     const trainerRestricted = canManage && restricted && !selfLog;
     const [saving, setSaving] = useState(false);
 
+    const dietPlan = useDietPlan({ userId, clientName, setSaving });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       plan, setPlan, planLoaded, mapPlanRow,
       mealPlanDraft, setMealPlanDraft, editingMealPlan, setEditingMealPlan,
@@ -84,9 +87,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       editingDietaryNotes, setEditingDietaryNotes, savingDietaryNotes,
       fetchPlan, handleSaveMealPlan, handleCancelMealPlan,
       handleSaveDietaryNotes, handleCancelDietaryNotes,
-    } = useDietPlan({ userId, clientName, setSaving });
+    } = dietPlan;
     const [error, setError] = useState("");
 
+    const foodLog = useFoodLog({ userId, clientName, setSaving, setError });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       logs, setLogs, logsLoaded, mapLogRow, selectedLog,
       logDate, setLogDate,
@@ -96,8 +102,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       confirmDeleteLogId, setConfirmDeleteLogId, deletingLogId,
       displayedWaterMl,
       handleSaveTodayLog, handleAddWater, handleDeleteLog, handleResetWater,
-    } = useFoodLog({ userId, clientName, setSaving, setError });
+    } = foodLog;
 
+    const meals = useMealItems({ plan, ensurePlanId });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       mealItems, setMealItems, mealItemsLoaded, mealGroups,
       addMealTarget, setAddMealTarget,
@@ -105,8 +114,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       mealItemForm, setMealItemForm, mealItemSaving, mealItemError,
       openAddToMeal, openAddNewMeal, openEditMealItem, closeMealItemForm,
       handleSaveMealItem, handleDeleteMealItem,
-    } = useMealItems({ plan, ensurePlanId });
+    } = meals;
 
+    const dietTemplates = useDietTemplates({
+      userId, clientName, profile, plan, setPlan, mapPlanRow,
+      handleSwitchToPaidPlan, trainerRestricted,
+    });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       templates, templatesLoaded, assignedTemplate,
       dietPlanView, setDietPlanView,
@@ -120,11 +135,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       paidTemplateIds, everPaidDiet, paidTemplates, switchingToPaidId,
       handleSetDietPreference, handlePickTemplate, handleSwitchTemplate,
       assignedTemplateMealGroups, resolvedMealGroups,
-    } = useDietTemplates({
-      userId, clientName, profile, plan, setPlan, mapPlanRow,
-      handleSwitchToPaidPlan, trainerRestricted,
-    });
+    } = dietTemplates;
 
+    const bodyInfo = useBodyInfo({
+      userId, clientName, profile,
+      templateGoal, setTemplateGoal, setPlan, mapPlanRow, fetchPlan,
+    });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       latestAssessment, setLatestAssessment, fetchLatestAssessment,
       activityKey, setActivityKey,
@@ -132,11 +150,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       submittingBodyInfo, bodyInfoError, setBodyInfoError,
       skipBodyInfo, setSkipBodyInfo, editingBodyInfo, setEditingBodyInfo,
       openBodyInfoEditor, handleSubmitBodyInfo,
-    } = useBodyInfo({
-      userId, clientName, profile,
-      templateGoal, setTemplateGoal, setPlan, mapPlanRow, fetchPlan,
-    });
+    } = bodyInfo;
 
+    const purchase = useDietPurchase({ userId, clientName, profile, plan, setPlan, mapPlanRow });
+    // Destructured straight back, so every line below is unchanged;
+    // the bag exists so whole groups can be handed to a child component.
     const {
       unlocking, setUnlocking, unlockAmount, setUnlockAmount,
       unlockDate, setUnlockDate, unlockSaving, unlockError,
@@ -145,7 +163,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
       unassigningPlan, confirmUnassignPlan, setConfirmUnassignPlan,
       handleUnlockPlan, handleRequestPlan,
       handleCancelSwitch, handleCancelRequest, handleUnassignPlan,
-    } = useDietPurchase({ userId, clientName, profile, plan, setPlan, mapPlanRow });
+    } = purchase;
     // Sept 11 2026: "View full plan" on the new "Your plan" hero card
     // scrolls down to the existing meal-plan/macro detail instead of
     // duplicating it in a second place.
