@@ -8208,7 +8208,7 @@
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
           `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. You'll be able to log in and see your assigned members as soon as it's approved.`
         ),
-        e("button", { style: { ...styles.saveBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" }, onClick: onLogout }, "Log out")
+        e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" }, onClick: onLogout }, "Log out")
       )
     );
   }
@@ -8278,7 +8278,7 @@
             approvedCopy: "Approved — access resumes"
           })
         ),
-        e("button", { style: { ...styles.saveBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.5s forwards" }, onClick: onLogout }, "Log out")
+        e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.5s forwards" }, onClick: onLogout }, "Log out")
       )
     );
   }
@@ -8316,7 +8316,7 @@
             approvedCopy: "Approved — you're in"
           })
         ),
-        e("button", { style: { ...styles.saveBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.54s forwards" }, onClick: onLogout }, "Log out")
+        e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.54s forwards" }, onClick: onLogout }, "Log out")
       )
     );
   }
@@ -24969,7 +24969,15 @@
     // place rather than forked: Space Grotesk + brand-tinted fill/border to
     // match jimfit-flow_12.html's .ex-apply-btn.
     quickEntryApplyBtn: { flexShrink: 0, background: withAlpha(C.brand, 0.22), border: `1px solid ${withAlpha(C.brand, 0.5)}`, borderRadius: 9, padding: "0 16px", color: C.ink, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12.5, cursor: "pointer" },
-    saveBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: `linear-gradient(180deg, ${C.brand}, ${C.brandDim})`, color: C.brandInk, border: "none", borderRadius: 999, padding: "14px", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.04em", cursor: "pointer", marginTop: 22, boxShadow: "0 6px 18px rgba(62,123,250,0.25)" },
+    // Sept 22 2026, Jimmy: dropped the gradient/full-pill/glow look for a
+    // flatter, calmer button so the interior app reads less "AI-generated" —
+    // same brand blue, smaller radius, a subtle bottom-border accent instead
+    // of the glow shadow. Shared by ~60 Save/Send/Confirm/Add buttons.
+    saveBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: C.brand, color: C.brandInk, border: "none", borderBottom: `3px solid ${C.brandDim}`, borderRadius: 10, padding: "14px", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.04em", cursor: "pointer", marginTop: 22, boxShadow: "none" },
+    // The pending-approval / payment-due "Log out" buttons sit right after
+    // login, before someone is fully inside the app — kept on the original
+    // gradient-pill look on purpose, untouched by the saveBtn restyle above.
+    gateLogoutBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: `linear-gradient(180deg, ${C.brand}, ${C.brandDim})`, color: C.brandInk, border: "none", borderRadius: 999, padding: "14px", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.04em", cursor: "pointer", marginTop: 22, boxShadow: "0 6px 18px rgba(62,123,250,0.25)" },
     // New/Edit-exercise sheet only (jimfit-flow_12.html's .ex-save-btn /
     // .ex-sheet-title) — a rounded-rect gradient CTA in Space Grotesk instead
     // of the shared saveBtn's full pill, and the sheet title in the same
