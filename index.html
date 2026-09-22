@@ -8809,7 +8809,17 @@
           e("div", { style: styles.bodyCol },
             e("div", { style: styles.bodyStepperRow },
               e("button", { type: "button", style: styles.bodyStepperBtn, onClick: () => { setHeight((h) => String(Math.max(HEIGHT_CM_RANGE[0], Number(h || 0) - 1))); setHeightTouched(true); setBodyConfirmed(false); } }, e(Icon, { name: "minus", size: 13 })),
-              e("span", { style: styles.bodyStepperValue }, height || "—"),
+              // Sept 22 2026, Jimmy: typing +/- one at a time to reach a real
+              // height/weight was tedious — let people tap the number and
+              // type the exact value directly; the +/- buttons stay for
+              // quick nudges.
+              e("input", {
+                type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
+                style: { ...styles.bodyStepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", MozAppearance: "textfield", width: 54 },
+                value: height,
+                onChange: (ev) => { setHeight(ev.target.value.replace(/\D/g, "").slice(0, 3)); setHeightTouched(true); setBodyConfirmed(false); },
+                onFocus: (ev) => ev.target.select()
+              }),
               e("button", { type: "button", style: styles.bodyStepperBtn, onClick: () => { setHeight((h) => String(Math.min(HEIGHT_CM_RANGE[1], Number(h || 0) + 1))); setHeightTouched(true); setBodyConfirmed(false); } }, e(Icon, { name: "plus", size: 13 }))
             ),
             e("span", { style: styles.stepperUnit }, "cm")
@@ -8817,7 +8827,13 @@
           e("div", { style: styles.bodyCol },
             e("div", { style: styles.bodyStepperRow },
               e("button", { type: "button", style: styles.bodyStepperBtn, onClick: () => { setWeight((w) => String(Math.max(WEIGHT_KG_RANGE[0], Number(w || 0) - 1))); setWeightTouched(true); setBodyConfirmed(false); } }, e(Icon, { name: "minus", size: 13 })),
-              e("span", { style: styles.bodyStepperValue }, weight || "—"),
+              e("input", {
+                type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
+                style: { ...styles.bodyStepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", MozAppearance: "textfield", width: 54 },
+                value: weight,
+                onChange: (ev) => { setWeight(ev.target.value.replace(/\D/g, "").slice(0, 3)); setWeightTouched(true); setBodyConfirmed(false); },
+                onFocus: (ev) => ev.target.select()
+              }),
               e("button", { type: "button", style: styles.bodyStepperBtn, onClick: () => { setWeight((w) => String(Math.min(WEIGHT_KG_RANGE[1], Number(w || 0) + 1))); setWeightTouched(true); setBodyConfirmed(false); } }, e(Icon, { name: "plus", size: 13 }))
             ),
             e("span", { style: styles.stepperUnit }, "kg")
