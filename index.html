@@ -18566,7 +18566,7 @@
         e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14 } },
           e("div", { style: styles.headerLeft },
             e(BrandMark, { size: 34 }),
-            e("h1", { style: styles.title }, trainerHeaderTitle),
+            e("h1", { style: { ...styles.title, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700 } }, trainerHeaderTitle),
             headerGymCode && e("button", {
               onClick: copyHeaderCode,
               title: "Your invite code — tap to copy",
@@ -25290,7 +25290,7 @@
     // as styles.header/clientHeader.
     backBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 6px" },
     deleteClientBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: `1px solid ${withAlpha(C.criticalStrong, 0.4)}`, borderRadius: 8, color: C.critical, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.04em", cursor: "pointer", padding: "7px 12px", margin: "12px 18px 0" },
-    clientCard: { display: "flex", justifyContent: "space-between", alignItems: "center", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: "15px 16px", cursor: "pointer", textAlign: "left", boxShadow: C.cardShadow },
+    clientCard: { display: "flex", justifyContent: "space-between", alignItems: "center", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: "15px 16px", cursor: "pointer", textAlign: "left" },
     // jimfit-flow_12.html restyle — horizontal-scrolling "PR reel" of cards,
     // replacing PersonalRecordsPanel's vertical list. Same computePersonalRecords
     // data, just laid out like the prototype's .pr-card row.
@@ -25319,7 +25319,7 @@
     // Sept 22 2026, Jimmy: rounded-square instead of a full circle, to
     // match the flatter/less-"AI-generated" look — same brand-tinted fill,
     // same initial letter, used app-wide (roster rows, session cards, etc).
-    avatar: { width: 36, height: 36, borderRadius: 10, background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, flexShrink: 0 },
+    avatar: { width: 36, height: 36, borderRadius: 10, background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 },
     rosterVol: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: C.brand },
     // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Members"
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
