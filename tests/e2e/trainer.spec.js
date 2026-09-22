@@ -10,8 +10,12 @@ test("an approved trainer lands on their own roster, not a client dashboard", as
   await expect(page.getByText("· Trainer")).toBeVisible();
 });
 
-test("bottom navigation exposes all eight trainer tabs", async ({ page }) => {
-  for (const tab of ["Members", "Stats", "Rota", "Diet", "My Log", "Muscles", "AI Chat", "Profile"]) {
+test("bottom navigation exposes five tabs plus a More menu with the rest", async ({ page }) => {
+  for (const tab of ["Members", "Stats", "Rota", "Diet", "My Log", "More"]) {
+    await expect(page.getByText(tab, { exact: true }).last()).toBeVisible();
+  }
+  await openTab(page, "More");
+  for (const tab of ["Muscles", "AI Chat", "Profile"]) {
     await expect(page.getByText(tab, { exact: true }).last()).toBeVisible();
   }
 });
