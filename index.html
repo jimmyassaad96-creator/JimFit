@@ -17973,15 +17973,6 @@
     useEffect(() => {
       try { localStorage.setItem(TRAINER_TAB_KEY, trainerTab); } catch (err) {}
     }, [trainerTab]);
-    // Sept 22 2026, Jimmy: "5 tabs + More" — the bottom nav below was up to
-    // 9 buttons wide (10 for an owner) and getting cramped. Members, Stats,
-    // Rota, Diet, and My Log stay as direct bottom tabs (used most); Muscles,
-    // AI Chat, Profile, and My gym move into this overflow sheet, reusing
-    // the same SideMenu component the client-detail sub-screen already uses
-    // — same destinations, same setTrainerTab(id), just reached through
-    // "More" instead of their own dedicated tab. Purely a nav/layout change:
-    // no data, no screen content, no functionality moved or removed.
-    const [trainerMoreOpen, setTrainerMoreOpen] = useState(false);
     // Mirrors trainer.birthday locally so the "My Profile" panel's save shows
     // up immediately (header banner, side menu) without needing a full re-login
     // to re-fetch the trainer row from the parent component.
@@ -18864,43 +18855,33 @@
       // ever appeared in the old side menu for one. (menuOpen/setMenuOpen
       // stay in use elsewhere in this file — the client-detail sub-screen
       // above still opens its own SideMenu for Log/Muscles/Progress/etc.)
-      (() => {
-        const TRAINER_MORE_IDS = ["myMuscles", "aiChat", "myprofile", "mygym"];
-        const moreActive = TRAINER_MORE_IDS.includes(trainerTab);
-        return e(React.Fragment, null,
-          e("nav", { style: styles.bottomNav }, [
-            { id: "clients", icon: "users", label: "Members" },
-            // Sept 13 2026: was "Dashboard" — the one label out of 7-8 that
-            // didn't fit navBtnLabel's width and clipped to "Dashbo…" on both
-            // the owner and regular-trainer nav (found testing the app end to
-            // end as a trainer). "Stats" fits and matches what's actually on
-            // this screen (sessions/earnings numbers), same id/icon/content —
-            // label only.
-            { id: "dashboard", icon: "trendUp", label: "Stats" },
-            { id: "rota", icon: "calendar", label: "Rota" },
-            { id: "myDiet", icon: "apple", label: "Diet" },
-            { id: "myLog", icon: "dumbbell", label: "My Log" },
-            { id: "more", icon: "menu", label: "More" }
-          ].map((n) => e("button", {
-            key: n.id, style: styles.navBtn,
-            onClick: () => n.id === "more" ? setTrainerMoreOpen(true) : setTrainerTab(n.id)
-          },
-            e("span", { style: { ...styles.navIndicator, ...((n.id === "more" ? moreActive : trainerTab === n.id) ? styles.navIndicatorActive : {}) } }),
-            e(Icon, { name: n.icon, size: 18, color: (n.id === "more" ? moreActive : trainerTab === n.id) ? C.brand : C.ink3 }),
-            e("span", { style: { ...styles.navBtnLabel, color: (n.id === "more" ? moreActive : trainerTab === n.id) ? C.brand : C.ink3 } }, n.label)
-          ))),
-          trainerMoreOpen && e(SideMenu, {
-            title: "More",
-            onClose: () => setTrainerMoreOpen(false),
-            items: [
-              { label: "Muscles", active: trainerTab === "myMuscles", onClick: () => { setTrainerTab("myMuscles"); setTrainerMoreOpen(false); } },
-              { label: "AI Chat", active: trainerTab === "aiChat", onClick: () => { setTrainerTab("aiChat"); setTrainerMoreOpen(false); } },
-              { label: "Profile", active: trainerTab === "myprofile", onClick: () => { setTrainerTab("myprofile"); setTrainerMoreOpen(false); } },
-              trainer.is_owner && { label: "My gym", active: trainerTab === "mygym", onClick: () => { setTrainerTab("mygym"); setTrainerMoreOpen(false); } }
-            ].filter(Boolean)
-          })
-        );
-      })()
+      //
+      // Sept 22 2026, Jimmy: briefly tried collapsing Muscles/AI Chat/
+      // Profile/My gym into a "More" overflow sheet to match a design
+      // mockup — reverted same day at Jimmy's request ("i dont want to
+      // show like this i want it all down"). Back to every destination as
+      // its own direct tab, per the Sept 13 decision above.
+      e("nav", { style: styles.bottomNav }, [
+        { id: "clients", icon: "users", label: "Members" },
+        // Sept 13 2026: was "Dashboard" — the one label out of 7-8 that
+        // didn't fit navBtnLabel's width and clipped to "Dashbo…" on both
+        // the owner and regular-trainer nav (found testing the app end to
+        // end as a trainer). "Stats" fits and matches what's actually on
+        // this screen (sessions/earnings numbers), same id/icon/content —
+        // label only.
+        { id: "dashboard", icon: "trendUp", label: "Stats" },
+        { id: "rota", icon: "calendar", label: "Rota" },
+        { id: "myDiet", icon: "apple", label: "Diet" },
+        { id: "myLog", icon: "dumbbell", label: "My Log" },
+        { id: "myMuscles", icon: "activity", label: "Muscles" },
+        { id: "aiChat", icon: "chat", label: "AI Chat" },
+        { id: "myprofile", icon: "user", label: "Profile" },
+        trainer.is_owner && { id: "mygym", icon: "tag", label: "My gym" }
+      ].filter(Boolean).map((n) => e("button", { key: n.id, style: styles.navBtn, onClick: () => setTrainerTab(n.id) },
+        e("span", { style: { ...styles.navIndicator, ...(trainerTab === n.id ? styles.navIndicatorActive : {}) } }),
+        e(Icon, { name: n.icon, size: 18, color: trainerTab === n.id ? C.brand : C.ink3 }),
+        e("span", { style: { ...styles.navBtnLabel, color: trainerTab === n.id ? C.brand : C.ink3 } }, n.label)
+      )))
     );
   }
 
