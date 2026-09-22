@@ -8823,7 +8823,7 @@
               // quick nudges.
               e("input", {
                 type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
-                style: { ...styles.bodyStepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", MozAppearance: "textfield", width: 54 },
+                style: { ...styles.bodyStepperValue, border: "none", borderBottom: `2px solid ${C.brand}`, background: "transparent", outline: "none", padding: "0 2px 4px", appearance: "none", MozAppearance: "textfield", width: 54 },
                 value: height,
                 onChange: (ev) => { setHeight(ev.target.value.replace(/\D/g, "").slice(0, 3)); setHeightTouched(true); setBodyConfirmed(false); },
                 onFocus: (ev) => ev.target.select()
@@ -8837,7 +8837,7 @@
               e("button", { type: "button", style: styles.bodyStepperBtn, onClick: () => { setWeight((w) => String(Math.max(WEIGHT_KG_RANGE[0], Number(w || 0) - 1))); setWeightTouched(true); setBodyConfirmed(false); } }, e(Icon, { name: "minus", size: 13 })),
               e("input", {
                 type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
-                style: { ...styles.bodyStepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", MozAppearance: "textfield", width: 54 },
+                style: { ...styles.bodyStepperValue, border: "none", borderBottom: `2px solid ${C.brand}`, background: "transparent", outline: "none", padding: "0 2px 4px", appearance: "none", MozAppearance: "textfield", width: 54 },
                 value: weight,
                 onChange: (ev) => { setWeight(ev.target.value.replace(/\D/g, "").slice(0, 3)); setWeightTouched(true); setBodyConfirmed(false); },
                 onFocus: (ev) => ev.target.select()
