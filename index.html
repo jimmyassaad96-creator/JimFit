@@ -8752,7 +8752,15 @@
         e("h1", { style: styles.wizardQuestion }, "How old are you?"),
         e("div", { style: styles.stepperRow },
           e("button", { type: "button", style: styles.stepperBtn, onClick: () => { setAge((a) => String(Math.max(AGE_RANGE[0], Number(a || 0) - 1))); setAgeTouched(true); setAgeConfirmed(false); } }, e(Icon, { name: "minus", size: 15 })),
-          e("div", { style: styles.stepperValueWrap }, e("span", { style: styles.stepperValue }, age || "—")),
+          // Sept 22 2026, Jimmy: same fix as height/weight — tap the number
+          // and type the exact age instead of only tapping +/- one at a time.
+          e("div", { style: styles.stepperValueWrap }, e("input", {
+            type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
+            style: { ...styles.stepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", width: 64, textAlign: "center" },
+            value: age,
+            onChange: (ev) => { setAge(ev.target.value.replace(/\D/g, "").slice(0, 3)); setAgeTouched(true); setAgeConfirmed(false); },
+            onFocus: (ev) => ev.target.select()
+          })),
           e("button", { type: "button", style: styles.stepperBtn, onClick: () => { setAge((a) => String(Math.min(AGE_RANGE[1], Number(a || 0) + 1))); setAgeTouched(true); setAgeConfirmed(false); } }, e(Icon, { name: "plus", size: 15 }))
         ),
         e("div", { style: { marginTop: 16 } }, e(VoiceMicButton, { title: "Say your age", onTranscribed: (text) => { setAge(extractSpokenNumber(text) || age); setAgeTouched(true); setAgeConfirmed(false); } })),
