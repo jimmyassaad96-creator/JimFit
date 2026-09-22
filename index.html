@@ -478,8 +478,8 @@
     // Sept 13 2026, Jimmy: "pending" phrasing (trainer request awaiting
     // review) reads as a caution/waiting state rather than good or bad —
     // gets its own amber token instead of borrowing critical/good.
-    warning: "#EABD4C",
-    warningSoft: "rgba(234,189,76,0.15)",
+    warning: "#4C86FF",
+    warningSoft: "rgba(76,134,255,0.18)",
     subtleFill: "rgba(255,255,255,0.045)",
     // Sept 11 2026, Jimmy: brand pass, step 2 — cards were flat (border
     // only, no depth), unlike the "floating card" look in the reference
@@ -523,8 +523,8 @@
     critical: "#C1443A",
     criticalStrong: "#A5372E",
     criticalSoft: "rgba(193,68,58,0.10)",
-    warning: "#B7791F",
-    warningSoft: "rgba(183,121,31,0.10)",
+    warning: "#2C5BC7",
+    warningSoft: "rgba(44,91,199,0.10)",
     subtleFill: "rgba(15,23,42,0.035)",
     cardShadow: "0 4px 16px rgba(15,23,42,0.10)"
   };
@@ -14450,7 +14450,7 @@
       e("div", { style: { ...styles.slideUnlockFill, width: `${offset + KNOB / 2 + 4}px` } }),
       e("span", { style: styles.slideUnlockLabel }, (busy || triggered) ? "Unlocking…" : `🔒 ${label} — $${price}`),
       e("div", { style: { ...styles.slideUnlockKnob, transform: `translateX(${offset}px)` } },
-        e(Icon, { name: "lock", size: 16, color: "#F5C542" })
+        e(Icon, { name: "lock", size: 16, color: C.brand })
       )
     );
   }
@@ -20789,7 +20789,7 @@
       // Sept 13 2026, Jimmy: "exact same the photo" — jimfit-flow_15.html
       // shows this line bold and gold/amber, not the small gray caption it
       // used to be; same gold as the SlideToUnlock lock icon.
-      amount != null && e("p", { style: { margin: "8px 0 0", fontSize: 16, fontWeight: 700, color: "#F5C542", textAlign: "center" } }, `Send $${amount}${note ? `, ${note}` : ""}`)
+      amount != null && e("p", { style: { margin: "8px 0 0", fontSize: 16, fontWeight: 700, color: C.brand, textAlign: "center" } }, `Send $${amount}${note ? `, ${note}` : ""}`)
     );
   }
 
