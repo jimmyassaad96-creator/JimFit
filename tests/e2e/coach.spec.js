@@ -33,14 +33,14 @@ test("a client row summarises sessions, last date and 7-day volume", async ({ pa
 
 test("selecting a client opens their detail with the destructive actions", async ({ page }) => {
   await page.getByText("Demo Client", { exact: true }).last().click();
-  await expect(page.getByText("All clients", { exact: true })).toBeVisible();
+  await expect(page.getByText("All members", { exact: true })).toBeVisible();
   await expect(page.getByText("Clear workouts", { exact: true })).toBeVisible();
-  await expect(page.getByText("Delete client", { exact: true })).toBeVisible();
+  await expect(page.getByText("Delete member", { exact: true })).toBeVisible();
 });
 
 test("the owner menu lists every section", async ({ page }) => {
   await page.getByText("Menu", { exact: true }).first().click();
-  for (const heading of [/^overview$/i, /^trainers & clients$/i, /^requests$/i,
+  for (const heading of [/^overview$/i, /^trainers & members$/i, /^requests$/i,
                          /^billing$/i, /^tools$/i]) {
     await expect(page.getByText(heading).first()).toBeVisible();
   }
@@ -49,7 +49,7 @@ test("the owner menu lists every section", async ({ page }) => {
 test("the owner menu reaches trainers, requests and billing", async ({ page }) => {
   await page.getByText("Menu", { exact: true }).first().click();
   for (const entry of ["Trainers", "Trainer requests", "Diet plan requests",
-                       "Program requests", "Gyms", "Trainer billing", "Client billing",
+                       "Program requests", "Gyms", "Trainer billing", "Member billing",
                        "Diet plan templates", "Exercise Library"]) {
     await expect(page.getByText(entry, { exact: true }).first()).toBeVisible();
   }
