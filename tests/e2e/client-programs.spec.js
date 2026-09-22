@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 test("an unpicked program states the unlock price", async ({ page }) => {
   await expect(page.getByText("Your program")).toBeVisible();
   await expect(
-    page.getByText("No program picked yet — browse below, choose one, then pay to unlock it ($35).")
+    page.getByText("No program picked yet — browse below, choose one, then unlock it with a one-time $35 payment (no monthly charge).")
   ).toBeVisible();
 });
 
