@@ -8756,7 +8756,7 @@
           // and type the exact age instead of only tapping +/- one at a time.
           e("div", { style: styles.stepperValueWrap }, e("input", {
             type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
-            style: { ...styles.stepperValue, border: "none", background: "transparent", outline: "none", padding: 0, appearance: "none", width: 64, textAlign: "center" },
+            style: { ...styles.stepperValue, border: "none", borderBottom: `2px solid ${C.brand}`, background: "transparent", outline: "none", padding: "0 2px 4px", appearance: "none", width: 64, textAlign: "center" },
             value: age,
             onChange: (ev) => { setAge(ev.target.value.replace(/\D/g, "").slice(0, 3)); setAgeTouched(true); setAgeConfirmed(false); },
             onFocus: (ev) => ev.target.select()
