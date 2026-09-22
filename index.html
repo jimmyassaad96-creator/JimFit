@@ -25,7 +25,7 @@
 <meta name="apple-mobile-web-app-title" content="JimFit" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body, #root { height: 100%; }
@@ -3089,7 +3089,7 @@
         e("span", { style: styles.profileLabel }, "Injuries / limitations"),
         canManage && !adding && e("button", {
           type: "button",
-          style: { display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, cursor: "pointer", color: C.brand, fontSize: 11.5, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" },
+          style: { display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, cursor: "pointer", color: C.brand, fontSize: 11.5, fontWeight: 700, fontFamily: "'Inter', sans-serif" },
           onClick: () => setAdding(true)
         }, e(Icon, { name: "plus", size: 12, strokeWidth: 2.6 }), "ADD")
       ),
@@ -3138,7 +3138,7 @@
             e("div", { style: { flex: 1, minWidth: 0 } },
               e("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" } },
                 e("span", { style: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12.5, color: C.ink } }, r.body_part),
-                e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: sevColor, background: withAlpha(sevColor, 0.16), padding: "2px 6px", borderRadius: 20 } }, r.severity)
+                e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: sevColor, background: withAlpha(sevColor, 0.16), padding: "2px 6px", borderRadius: 20 } }, r.severity)
               ),
               r.note && e("p", { style: { margin: "3px 0 0", fontSize: 12, color: C.ink2, lineHeight: 1.4 } }, r.note)
             ),
@@ -4240,7 +4240,7 @@
                 e("div", { style: styles.browseCardIconWrap }, mood ? e("span", { style: { fontSize: 16 } }, mood) : e(Icon, { name: "mic", size: 16, color: C.ink2 })),
                 e("div", { style: { flex: 1, minWidth: 0 } },
                   e("p", { style: { margin: 0, fontSize: 13.5, color: C.ink, lineHeight: 1.5 } }, c.note),
-                  e("span", { style: { fontSize: 11, color: C.ink3, fontFamily: "'JetBrains Mono', monospace" } },
+                  e("span", { style: { fontSize: 11, color: C.ink3, fontFamily: "'Inter', sans-serif" } },
                     new Date(c.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))
                 ),
                 canManage && e("button", { style: styles.deleteBtn, onClick: () => handleDelete(c.id), "aria-label": "Delete check-in" }, e(Icon, { name: "trash", size: 14 }))
@@ -4762,10 +4762,10 @@
                   transform: `rotate(-90 ${ringCx} ${ringCy})`, style: { transition: "stroke-dasharray 0.4s ease, stroke 0.3s ease" }
                 }),
                 e("text", { x: ringCx, y: ringCy - 1, textAnchor: "middle", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, fill: C.ink }, remaining != null ? Math.abs(remaining).toLocaleString() : "—"),
-                e("text", { x: ringCx, y: ringCy + 12, textAnchor: "middle", fontFamily: "'JetBrains Mono', monospace", fontSize: 6.5, fill: C.ink3 }, remaining == null ? "NO BMR YET" : over ? "KCAL OVER" : "KCAL LEFT")
+                e("text", { x: ringCx, y: ringCy + 12, textAnchor: "middle", fontFamily: "'Inter', sans-serif", fontSize: 6.5, fill: C.ink3 }, remaining == null ? "NO BMR YET" : over ? "KCAL OVER" : "KCAL LEFT")
               ),
               e("div", { style: { flex: 1, minWidth: 0 } },
-                e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em" } }, "🔥 Eaten vs. burned"),
+                e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em" } }, "🔥 Eaten vs. burned"),
                 e("p", { style: { ...styles.emptyText, fontSize: 11.5, margin: "4px 0 0" } }, hint),
                 e("span", { style: { fontFamily: "'Manrope', sans-serif", fontSize: 10.5, color: C.brand, marginTop: 6, display: "block" } }, energyOpen ? "Hide breakdown ‹" : "Tap for the breakdown ›")
               )
@@ -4778,7 +4778,7 @@
             // and shifting the steps row below it. Same four numbers.
             e("div", { style: { marginTop: 10, marginBottom: energyOpen ? 10 : 0, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "11px 13px", display: "flex", flexDirection: "column", gap: 7, opacity: energyOpen ? 1 : 0, transform: energyOpen ? "translateY(0)" : "translateY(4px)", maxHeight: energyOpen ? 200 : 0, overflow: "hidden", pointerEvents: energyOpen ? "auto" : "none", transition: "opacity 0.2s ease, transform 0.2s ease, max-height 0.25s ease, margin-bottom 0.25s ease" } },
               [["BMR", bmr != null ? `${bmr} kcal` : "—"], ["Workout burn (est.)", `${workoutCal} kcal`], ["Steps burn (est.)", `${stepCal} kcal`], ["Food eaten", `${Math.round(totals.calories)} kcal`]].map(([label, val], i) =>
-                e("div", { key: i, style: { display: "flex", justifyContent: "space-between", fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.ink2 } },
+                e("div", { key: i, style: { display: "flex", justifyContent: "space-between", fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.ink2 } },
                   e("span", { style: { color: C.ink3 } }, label), e("span", null, val)
                 )
               )
@@ -5634,7 +5634,7 @@
                 s.label
               ))
             ),
-            e("p", { style: { textAlign: "center", fontSize: 10.5, color: C.ink3, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.03em", marginTop: 10, marginBottom: 0 } }, "Tap a muscle for details"),
+            e("p", { style: { textAlign: "center", fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif", letterSpacing: "0.03em", marginTop: 10, marginBottom: 0 } }, "Tap a muscle for details"),
             // jimfit-flow_12.html restyle — swapped the plain background-tint
             // callout for a proper card (name/status left, matches
             // .muscle-detail-card's anatomy), same tap-to-reveal data as before.
@@ -6076,7 +6076,7 @@
           )
         ),
         e("textarea", {
-          style: { ...styles.input, minHeight: 120, fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, resize: "vertical" },
+          style: { ...styles.input, minHeight: 120, fontFamily: "'Inter', sans-serif", fontSize: 12.5, resize: "vertical" },
           placeholder: "Bench Press - https://youtu.be/abc123\nSquat - https://youtu.be/def456",
           value: bulkText,
           onChange: (ev) => { setBulkText(ev.target.value); setBulkResult(null); }
@@ -7390,13 +7390,13 @@
         e("text", { x: 48, y: 45, textAnchor: "middle", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, fill: C.ink },
           statsMetric === "sets" ? total : Math.round(total).toLocaleString()
         ),
-        e("text", { x: 48, y: 58, textAnchor: "middle", fontFamily: "'JetBrains Mono', monospace", fontSize: 7, fill: C.ink3, letterSpacing: "0.5" },
+        e("text", { x: 48, y: 58, textAnchor: "middle", fontFamily: "'Inter', sans-serif", fontSize: 7, fill: C.ink3, letterSpacing: "0.5" },
           statsMetric === "sets" ? "SETS" : unit.toUpperCase()
         )
       ),
       e("div", { style: styles.donutLegend },
         total <= 0
-          ? e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.ink3, lineHeight: 1.5 } }, "No sets logged in this window yet")
+          ? e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.ink3, lineHeight: 1.5 } }, "No sets logged in this window yet")
           : segments.map((s) => e("button", {
               key: s.muscle, type: "button", onClick: () => toggle(s.muscle),
               style: { ...styles.donutLegendItem, opacity: selected && selected !== s.muscle ? 0.4 : 1 }
@@ -11397,7 +11397,7 @@
                         e("div", { style: { margin: "10px 0" } },
                           e("div", { style: styles.formLabel }, "Invite code"),
                           e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-                            e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1.5, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, selectedTrainer.invite_code || "—")
+                            e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1.5, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, selectedTrainer.invite_code || "—")
                           ),
                           e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, "Members enter this code when they sign up to land directly with this trainer.")
                         ),
@@ -11979,7 +11979,7 @@
     return e("div", { style: styles.trainerStatCard },
       e("div", { style: { display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 } },
         e("span", { style: styles.exerciseName }, req.client_name || "Unknown client"),
-        clientPhone && e("span", { style: { ...styles.muscleSubText, fontFamily: "'JetBrains Mono', monospace" } }, clientPhone),
+        clientPhone && e("span", { style: { ...styles.muscleSubText, fontFamily: "'Inter', sans-serif" } }, clientPhone),
         (() => {
           const reqDate = fmtDate((req.plan_requested_at || "").slice(0, 10));
           // Sept 15 2026, Jimmy QA: same missing-date row this panel could
@@ -12273,7 +12273,7 @@
     return e("div", { style: styles.trainerStatCard },
       e("div", { style: { display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 } },
         e("span", { style: styles.exerciseName }, req.client_name || "Unknown client"),
-        clientProfile && clientProfile.phone && e("span", { style: { ...styles.muscleSubText, fontFamily: "'JetBrains Mono', monospace" } }, clientProfile.phone),
+        clientProfile && clientProfile.phone && e("span", { style: { ...styles.muscleSubText, fontFamily: "'Inter', sans-serif" } }, clientProfile.phone),
         e("span", { style: styles.muscleSubText },
           programName ? `picked "${programName}" on ` : "picked a program on ",
           fmtDate((req.assigned_at || "").slice(0, 10))
@@ -13008,8 +13008,8 @@
       updateSliderFromEvent(ev);
     }
     function handleSliderPointerUp() { draggingRef.current = false; }
-    const compareBadgeStyle = { position: "absolute", top: 10, background: "rgba(11,21,38,0.7)", color: "#FFFFFF", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 0.6, padding: "4px 9px", borderRadius: 20, backdropFilter: "blur(3px)", pointerEvents: "none" };
-    const compareDateChipStyle = { position: "absolute", bottom: 10, background: "rgba(11,21,38,0.7)", color: "#FFFFFF", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 8, backdropFilter: "blur(3px)", pointerEvents: "none" };
+    const compareBadgeStyle = { position: "absolute", top: 10, background: "rgba(11,21,38,0.7)", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 0.6, padding: "4px 9px", borderRadius: 20, backdropFilter: "blur(3px)", pointerEvents: "none" };
+    const compareDateChipStyle = { position: "absolute", bottom: 10, background: "rgba(11,21,38,0.7)", color: "#FFFFFF", fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 8, backdropFilter: "blur(3px)", pointerEvents: "none" };
 
     return e("div", null,
       canManage && e("div", { style: styles.sessionForm },
@@ -13043,8 +13043,8 @@
         },
           e("div", { style: { position: "absolute", inset: 0, right: "50%", display: "flex", alignItems: "center", justifyContent: "center", borderRight: `1px dashed ${C.cardBorderStrong}` } }, e(Icon, { name: "camera", size: 22, color: C.ink3 })),
           e("div", { style: { position: "absolute", inset: 0, left: "50%", display: "flex", alignItems: "center", justifyContent: "center" } }, e(Icon, { name: "camera", size: 22, color: C.ink3 })),
-          e("span", { style: { position: "absolute", top: 8, left: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: C.ink3, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px" } }, "BEFORE"),
-          e("span", { style: { position: "absolute", top: 8, right: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: C.ink3, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px" } }, "AFTER"),
+          e("span", { style: { position: "absolute", top: 8, left: 8, fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: C.ink3, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px" } }, "BEFORE"),
+          e("span", { style: { position: "absolute", top: 8, right: 8, fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: C.ink3, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px" } }, "AFTER"),
           e("div", { style: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 30, height: 30, borderRadius: "50%", background: C.card, border: `1px solid ${C.cardBorderStrong}`, display: "flex", alignItems: "center", justifyContent: "center" } }, e(Icon, { name: "swap", size: 14, color: C.ink3 }))
         )
       ),
@@ -13054,7 +13054,7 @@
             e(BrandMark, { size: 32 }),
             e("div", null,
               e("div", { style: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.02em", color: C.ink } }, "Your transformation"),
-              durationLabel && e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.brand, fontWeight: 700, letterSpacing: 0.4, marginTop: 2 } }, durationLabel)
+              durationLabel && e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.brand, fontWeight: 700, letterSpacing: 0.4, marginTop: 2 } }, durationLabel)
             )
           ),
           e("div", { style: { display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" } },
@@ -13215,11 +13215,11 @@
         coords.map((c, i) => e("circle", { key: i, cx: c[0], cy: c[1], r: i === coords.length - 1 ? 4 : 2.5, fill: i === coords.length - 1 ? C.brand : C.card, stroke: C.brand, strokeWidth: i === coords.length - 1 ? 0 : 1.5 }))
       ),
       e("div", { style: { display: "flex", justifyContent: "space-between", marginTop: 6 } },
-        e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'JetBrains Mono', monospace" } }, `${fmtDateMed(first.date)} · ${first.value}${metric.unit}`),
-        e("span", { style: { fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: dir === "up" ? C.good : dir === "down" ? C.critical : C.ink3 } },
+        e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif" } }, `${fmtDateMed(first.date)} · ${first.value}${metric.unit}`),
+        e("span", { style: { fontSize: 10.5, fontFamily: "'Inter', sans-serif", fontWeight: 700, color: dir === "up" ? C.good : dir === "down" ? C.critical : C.ink3 } },
           dir === "flat" ? "flat" : `${delta > 0 ? "+" : ""}${delta}${metric.unit}`
         ),
-        e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'JetBrains Mono', monospace" } }, `${fmtDateMed(last.date)} · ${last.value}${metric.unit}`)
+        e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif" } }, `${fmtDateMed(last.date)} · ${last.value}${metric.unit}`)
       )
     );
   }
@@ -13726,7 +13726,7 @@
     const week7Range = `${fmtDateMed(dateToISO(week7Start))} – ${fmtDateMed(dateToISO(now))}`;
     const month30Range = `${fmtDateMed(dateToISO(month30Start))} – ${fmtDateMed(dateToISO(now))}`;
     return e("div", { style: styles.goalCard },
-      streak > 0 && e("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 14, color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, fontWeight: 700 } },
+      streak > 0 && e("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 14, color: C.brand, fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 700 } },
         e(Icon, { name: "flame", size: 14, color: C.brand }),
         `${streak} week${streak === 1 ? "" : "s"} in a row hitting your goal`
       ),
@@ -13744,7 +13744,7 @@
         e("div", null,
           e("span", { style: styles.profileLabel }, "Last 7 days"),
           e("span", { style: styles.profileValue }, weekDone, " / ", daysPerWeek, " sessions"),
-          e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, marginTop: 2 } }, week7Range)
+          e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, marginTop: 2 } }, week7Range)
         ),
         e("span", { style: { ...styles.goalChip, ...(weekHit ? styles.goalChipGood : styles.goalChipBad) } }, weekHit ? "On track" : "Behind")
       ),
@@ -13753,7 +13753,7 @@
         e("div", null,
           e("span", { style: styles.profileLabel }, "Last 30 days"),
           e("span", { style: styles.profileValue }, monthDone, " / ", monthTarget, " sessions"),
-          e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, marginTop: 2 } }, month30Range)
+          e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, marginTop: 2 } }, month30Range)
         ),
         e("span", { style: { ...styles.goalChip, ...(monthHit ? styles.goalChipGood : styles.goalChipBad) } }, monthHit ? "On track" : "Behind")
       ),
@@ -13817,7 +13817,7 @@
           e("span", { style: styles.exerciseName }, r.exercise),
           e("span", { style: styles.muscleTag }, e(Dot, { color: mColor, size: 7 }), r.muscleGroup),
           e("span", { style: styles.prCardWeight }, r.weight, unit),
-          e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3 } }, "since ", fmtDate(r.date))
+          e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3 } }, "since ", fmtDate(r.date))
         );
       }))
     );
@@ -13857,7 +13857,7 @@
     return e("div", { style: { ...styles.goalCard, marginBottom: 16 } },
       e("div", { style: { marginBottom: 12 } }, e("span", { style: styles.progressCardTitle }, "Training calendar")),
       e("div", { style: { display: "flex", gap: 3, overflowX: "auto" } },
-        weeksArr.map((week, wi) => e("span", { key: wi, style: { width: 11, flexShrink: 0, fontSize: 9.5, color: C.ink3, fontFamily: "'JetBrains Mono', monospace" } }, monthLabels[wi] || ""))
+        weeksArr.map((week, wi) => e("span", { key: wi, style: { width: 11, flexShrink: 0, fontSize: 9.5, color: C.ink3, fontFamily: "'Inter', sans-serif" } }, monthLabels[wi] || ""))
       ),
       e("div", { style: { display: "flex", gap: 3, overflowX: "auto", paddingBottom: 4, marginTop: 2 } },
         weeksArr.map((week, wi) => e("div", { key: wi, style: { display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 } },
@@ -13882,7 +13882,7 @@
       ),
       selected && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: "9px 12px" } },
         e("span", { style: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 12.5, color: C.ink } }, fmtDateMed(selected.date)),
-        e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 12, color: selected.volume > 0 ? C.brand : C.ink3 } }, selected.volume > 0 ? `${selected.volume.toLocaleString()} vol` : "Rest day")
+        e("span", { style: { fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 12, color: selected.volume > 0 ? C.brand : C.ink3 } }, selected.volume > 0 ? `${selected.volume.toLocaleString()} vol` : "Rest day")
       )
     );
   }
@@ -13937,7 +13937,7 @@
       e("div", { style: { display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 12 } },
         e("div", null,
           e("div", { style: styles.progressCardTitle }, "This week"),
-          e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, marginTop: 3 } }, fmtDateMed(week.start), " – ", fmtDateMed(week.end))
+          e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, marginTop: 3 } }, fmtDateMed(week.start), " – ", fmtDateMed(week.end))
         ),
         streak > 0 && e("span", { style: styles.streakBadge }, e(Icon, { name: "flame", size: 12, color: C.brand }), `${streak}wk streak`)
       ),
@@ -13950,7 +13950,7 @@
             transform: `rotate(-90 ${ringCx} ${ringCy})`, style: { transition: "stroke-dasharray 0.4s ease" }
           }),
           e("text", { x: ringCx, y: ringCy - 1, textAnchor: "middle", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, fill: C.ink }, `${week.sessions}/${week.daysPerWeek}`),
-          e("text", { x: ringCx, y: ringCy + 12, textAnchor: "middle", fontFamily: "'JetBrains Mono', monospace", fontSize: 6.5, fill: C.ink3 }, "SESSIONS")
+          e("text", { x: ringCx, y: ringCy + 12, textAnchor: "middle", fontFamily: "'Inter', sans-serif", fontSize: 6.5, fill: C.ink3 }, "SESSIONS")
         ),
         e("div", { style: { flex: 1, minWidth: 0 } },
           e("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, week.days.map((d) => e("div", {
@@ -13958,7 +13958,7 @@
             title: `${fmtDateMed(d.date)}${d.isFuture ? " — upcoming" : d.trained ? " — trained" : " — no session logged"}`,
             style: {
               width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box",
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
+              fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700,
               background: d.isFuture ? C.subtleFill : d.trained ? withAlpha(C.good, 0.18) : withAlpha(C.critical, 0.12),
               color: d.isFuture ? C.ink3 : d.trained ? C.good : C.critical,
               border: `1px solid ${d.isToday ? C.brand : d.isFuture ? C.cardBorder : d.trained ? withAlpha(C.good, 0.4) : withAlpha(C.critical, 0.3)}`
@@ -14012,7 +14012,7 @@
           title: `${fmtDateMed(d.date)} — ${d.trained ? "trained" : "no session logged"}`,
           style: {
             width: 22, height: 22, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
+            fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700,
             background: d.trained ? withAlpha(C.good, 0.18) : withAlpha(C.critical, 0.12),
             color: d.trained ? C.good : C.critical,
             border: `1px solid ${d.trained ? withAlpha(C.good, 0.4) : withAlpha(C.critical, 0.3)}`
@@ -14068,7 +14068,7 @@
           }
         },
           e("span", { style: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 12.5, color: C.ink } }, recap.prs[selectedPr].exercise),
-          e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 12, color: C.brand } },
+          e("span", { style: { fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 12, color: C.brand } },
             recap.prs[selectedPr].weight, unit, " · since ", fmtDate(recap.prs[selectedPr].date)
           )
         )
@@ -16032,7 +16032,7 @@
                 e("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 } },
                   e("div", { style: { minWidth: 0, flex: 1 } },
                     e("span", { style: { ...styles.exerciseName, fontSize: 15, wordBreak: "break-word" } }, t.name),
-                    e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: C.ink3, display: "block", marginTop: 2 } }, isLocked ? (t.calories_target != null ? `${t.calories_target} kcal` : "No macros set") : (templateMacroSummary(t) || "No macros set"))
+                    e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.ink3, display: "block", marginTop: 2 } }, isLocked ? (t.calories_target != null ? `${t.calories_target} kcal` : "No macros set") : (templateMacroSummary(t) || "No macros set"))
                   ),
                   // A compact status pill instead of a whole extra line —
                   // Active / Owned / a lock icon with the price, in that
@@ -16163,7 +16163,7 @@
               pendingRequest
                 ? "Waiting on Jimmy to confirm your requested plan below — your targets unlock the moment it's marked paid."
                 : e("span", null,
-                    "A diet plan built specifically for you — your calorie and macro targets plus a full meal plan. Pick one below for ",
+                    "A diet plan built specifically for you — your calorie and macro targets plus a full meal plan. Pick one below for a one-time ",
                     e("span", { style: { fontWeight: 700, color: C.brand } }, `$${DIET_PLAN_PRICE}`),
                     "."
                   )
@@ -16180,7 +16180,7 @@
         // else; now called out as its own bold, brand-colored piece so
         // it's the one thing that actually pops when skimming.
         ? e("p", { style: { ...styles.profileGoalText, fontSize: 12.5 } },
-            "Pick a diet plan below to see your calorie and macro targets — they're included once you unlock a plan for ",
+            "Pick a diet plan below to see your calorie and macro targets — they're included once you unlock a plan with a one-time ",
             e("span", { style: { fontWeight: 700, color: C.brand } }, `$${DIET_PLAN_PRICE}`),
             "."
           )
@@ -16386,11 +16386,11 @@
                     style: { ...styles.saveBtn, marginTop: 14, ...(requestingPlan ? styles.btnDisabled : {}) },
                     disabled: requestingPlan,
                     onClick: handleTrainerRequestPlan
-                  }, requestingPlan ? "Requesting\u2026" : `\ud83e\udd57 Request a diet plan for ${clientName} ($${DIET_PLAN_PRICE}) \u2192`)
+                  }, requestingPlan ? "Requesting\u2026" : `\ud83e\udd57 Request a diet plan for ${clientName} (one-time $${DIET_PLAN_PRICE}) \u2192`)
             ),
             // Never a "$30 unlock" prompt on a trainer's own self-log \u2014 there's
             // no one to charge for their own notes/targets.
-            !selfLog && !trainerRestricted && !(plan && plan.unlocked) && !unlocking && e("button", { style: { ...styles.saveBtn, marginTop: 14 }, onClick: () => setUnlocking(true) }, `\ud83d\udd13 Unlock full diet plan ($${DIET_PLAN_PRICE}) \u2192`),
+            !selfLog && !trainerRestricted && !(plan && plan.unlocked) && !unlocking && e("button", { style: { ...styles.saveBtn, marginTop: 14 }, onClick: () => setUnlocking(true) }, `\ud83d\udd13 Unlock full diet plan (one-time $${DIET_PLAN_PRICE}) \u2192`),
             !selfLog && !trainerRestricted && unlocking && e("div", { style: { ...styles.sessionForm, marginTop: 10 } },
               e("label", { style: { ...styles.formLabel, marginTop: 0 } }, "Amount received"),
               e("input", { style: styles.input, type: "number", placeholder: "Amount", value: unlockAmount, onChange: (ev) => setUnlockAmount(ev.target.value) }),
@@ -16431,7 +16431,7 @@
                       e("div", { style: styles.planHeroIconWrap }, e(Icon, { name: "apple", size: 18, color: C.brand })),
                       e("div", null,
                         e("span", { style: { fontWeight: 700, fontSize: 14.5, color: C.ink, display: "block" } }, assignedTemplate ? assignedTemplate.name : (plan.instantPlanGoal ? "Your custom plan" : "Your diet plan")),
-                        (assignedTemplate ? templateMacroSummary(assignedTemplate) : (effCalories != null ? `${effCalories} kcal/day` : null)) && e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: C.brand, display: "block", marginTop: 2 } }, assignedTemplate ? templateMacroSummary(assignedTemplate) : `${effCalories} kcal/day`)
+                        (assignedTemplate ? templateMacroSummary(assignedTemplate) : (effCalories != null ? `${effCalories} kcal/day` : null)) && e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.brand, display: "block", marginTop: 2 } }, assignedTemplate ? templateMacroSummary(assignedTemplate) : `${effCalories} kcal/day`)
                       )
                     ),
                     e("span", { style: styles.currentBadge }, e(Icon, { name: "check", size: 9, color: C.brandInk }), "CURRENT")
@@ -16641,7 +16641,7 @@
                         // clarity fix as ClientProgramCard's purchaseLocked
                         // notice, applied here too since it's the exact same
                         // monthly app subscription (not the diet plan itself).
-                        purchaseLocked && e("p", { style: { ...styles.emptyText, fontSize: 12, marginBottom: 10 } }, `This $${SELF_TRAIN_MONTHLY_PRICE} is your monthly app subscription — not the diet plan — and needs to be paid to actually use a different plan once picked. You can still browse and switch below in the meantime.`),
+                        purchaseLocked && e("p", { style: { ...styles.emptyText, fontSize: 12, marginBottom: 10 } }, `Diet plans are a one-time $${DIET_PLAN_PRICE} — never a monthly charge. To actually use a plan once you switch, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active. Feel free to browse and switch below in the meantime.`),
                         // Sept 14 2026, Jimmy: same "make the $30 clear"
                         // pass as the first-pick browser below — also
                         // fixes this line silently missing its "$" before
@@ -16693,7 +16693,7 @@
                       // Sept 13 2026, Jimmy: same "$10 is a subscription,
                       // not the program/plan" clarity fix as
                       // ClientProgramCard above.
-                      e("p", { style: { margin: 0 } }, `This $${SELF_TRAIN_MONTHLY_PRICE} is your monthly app subscription — not the diet plan — and needs to be paid to actually use a plan once picked. You can still browse and request one below in the meantime.`),
+                      e("p", { style: { margin: 0 } }, `Diet plans are a one-time $${DIET_PLAN_PRICE} — never a monthly charge. To actually use a plan once you request it, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active. Feel free to browse and request one below in the meantime.`),
                       // Same app-access claim as the Log tab / Programs
                       // subscriptionLocked view — it's the same monthly
                       // payment, so marking it sent on any of them clears
@@ -17098,7 +17098,7 @@
         e("div", { style: { fontSize: 13, color: C.ink3, marginBottom: 4 } }, gym.name),
         e("div", { style: { fontSize: 12, color: C.ink3, marginBottom: 10 } }, "Share your invite code with members — they enter it when they sign up so they land with you directly."),
         e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-          e("span", { style: { fontFamily: "monospace", fontSize: 20, fontWeight: 700, letterSpacing: 2, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, trainer.invite_code || "—"),
+          e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: 2, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, trainer.invite_code || "—"),
           trainer.invite_code && e("button", { style: styles.switchModeBtn, onClick: copyCode }, copied ? "Copied!" : "Copy")
         )
       ),
@@ -18573,7 +18573,7 @@
               style: {
                 display: "flex", alignItems: "center", gap: 6, marginLeft: 4, border: "none", cursor: "pointer",
                 background: withAlpha(C.brand, 0.12), color: C.brand, borderRadius: 20, padding: "4px 10px",
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, letterSpacing: 1
+                fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 1
               }
             }, headerCodeCopied ? "Copied!" : headerGymCode)
           ),
@@ -19352,7 +19352,7 @@
       e("span", {
         style: {
           position: "absolute", right: 10, bottom: 8,
-          fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
+          fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700,
           letterSpacing: "0.06em", color: "rgba(140,150,175,0.7)"
         }
       }, "JIMFIT")
@@ -19761,8 +19761,8 @@
                   // without this the $10 read as if it were the program's
                   // price. Spelled out as the recurring monthly app
                   // subscription, separate from the program itself.
-                  ? `This $${SELF_TRAIN_MONTHLY_PRICE} is your monthly app subscription — not the program itself. It needs to be paid first, even while your free trial is still running, before you can pick a program. Pay below, then come back here.`
-                  : gatePayment ? `No program picked yet — browse below, choose one, then pay to unlock it ($${PROGRAM_PRICE}).` : "No program assigned yet.")
+                  ? `Good news — programs are a one-time $${PROGRAM_PRICE}, never a monthly charge. To pick one, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active first, even during your free trial. Pay below and you're all set.`
+                  : gatePayment ? `No program picked yet — browse below, choose one, then unlock it with a one-time $${PROGRAM_PRICE} payment (no monthly charge).` : "No program assigned yet.")
               : (isSelfTrain ? "No program assigned yet — pay to unlock the program library." : "No program assigned yet — ask your trainer.")
           ),
           // Sept 19 2026, walkthrough fix: same one-tap nudge DietPanel
@@ -19856,7 +19856,7 @@
     const isBodyweight = values.isBodyweight;
     return e("div", { style: { ...styles.sessionForm, marginTop: 10, marginBottom: 0, ...(contextLabel ? { borderLeft: `2px solid ${C.brand}` } : {}) } },
       contextLabel && e("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 10 } },
-        e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: C.ink3, letterSpacing: "0.05em", textTransform: "uppercase" } }, contextLabel)
+        e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.ink3, letterSpacing: "0.05em", textTransform: "uppercase" } }, contextLabel)
       ),
       e(SmartVoiceEntryButton, {
         label: "Speak this exercise — name, sets, weight",
@@ -20784,7 +20784,7 @@
       e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
         e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Pay via Whish Money"),
         e("p", { style: { margin: "4px 0 0", fontSize: 14, fontWeight: 600, color: C.ink } }, WHISH_NAME),
-        e("p", { style: { margin: "2px 0 0", fontSize: 14, fontFamily: "'JetBrains Mono', monospace", color: C.ink } }, WHISH_NUMBER)
+        e("p", { style: { margin: "2px 0 0", fontSize: 14, fontFamily: "'Inter', sans-serif", color: C.ink } }, WHISH_NUMBER)
       ),
       // Sept 13 2026, Jimmy: "exact same the photo" — jimfit-flow_15.html
       // shows this line bold and gold/amber, not the small gray caption it
@@ -21992,7 +21992,7 @@
           ? e("div", { style: { marginTop: 12 } },
               e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
                 e(Icon, { name: "lock", size: 12, color: C.ink3 }),
-                e("span", { style: { ...styles.emptyText, fontSize: 12 } }, `Buy this program ($${PROGRAM_PRICE}) to see the full details.`)
+                e("span", { style: { ...styles.emptyText, fontSize: 12 } }, `A one-time $${PROGRAM_PRICE} unlocks the full program — no monthly charge.`)
               ),
               // Sept 10 2026: previously just said "pick it above" with
               // nothing to actually tap here — the client had to remember
@@ -23830,13 +23830,13 @@
                 ? {
                     display: "flex", alignItems: "center", gap: 6, cursor: isManager ? "default" : "pointer",
                     background: `linear-gradient(135deg, ${C.brand}, ${C.brandDim})`, color: C.brandInk, borderRadius: 20, padding: "5px 12px", border: "none",
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+                    fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
                     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 6px 16px -6px ${withAlpha(C.brand, 0.6)}`
                   }
                 : {
                     display: "flex", alignItems: "center", gap: 6, cursor: isManager ? "default" : "pointer",
                     background: withAlpha(C.brand, 0.12), color: C.brand, borderRadius: 20, padding: "4px 10px", border: "none",
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 0.5
+                    fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 0.5
                   }
             },
               myTrainerName === SELF_TRAIN_NAME ? e(Icon, { name: "sparkle", size: 11, color: C.brandInk }) : e(Icon, { name: "check", size: 11, color: C.brand }),
@@ -23870,7 +23870,7 @@
               style: {
                 display: "flex", alignItems: "center", gap: 6, background: withAlpha(C.good, 0.12),
                 border: `1px solid ${withAlpha(C.good, 0.35)}`, borderRadius: 999, padding: "6px 12px",
-                color: C.good, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, cursor: "pointer"
+                color: C.good, fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, cursor: "pointer"
               }
             }, e(Icon, { name: "calendar", size: 12, color: C.good }), `Trial — ${trialDaysLeft}d left`)
           : e("div", { style: { ...styles.setupNotice, marginBottom: 0, flexDirection: "column", alignItems: "stretch", gap: 10, background: withAlpha(C.good, 0.1), borderColor: withAlpha(C.good, 0.35) } },
@@ -24485,7 +24485,7 @@
     // elsewhere, just as a gradient instead of a flat fill) so it reads as
     // the "hero" of the tab without introducing a new color.
     todayCard: { background: `linear-gradient(160deg, ${withAlpha(C.brand, 0.14)}, ${withAlpha(C.brand, 0.04)})`, border: `1px solid ${withAlpha(C.brand, 0.35)}`, borderRadius: 18, padding: "18px 20px" },
-    todayCardLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: C.brand },
+    todayCardLabel: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: C.brand },
     todayCardGreeting: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.ink, marginTop: 5, lineHeight: 1.35 },
     // Sept 12 2026 (jimfit-flow_12.html restyle): each stat used to just be
     // bare text side-by-side — now an actual tile (bordered card, own tap
@@ -24495,17 +24495,17 @@
     todayCardTile: { background: withAlpha(C.ink, 0.03), border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 6px", textAlign: "center", animation: "tileReady 2.6s ease-in-out infinite", transition: "background 0.15s ease, border-color 0.15s ease" },
     todayCardTileActive: { background: withAlpha(C.brand, 0.14), borderColor: withAlpha(C.brand, 0.4), animationPlayState: "paused" },
     todayCardStatValue: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 18, color: C.ink },
-    todayCardStatLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, letterSpacing: "0.05em", textTransform: "uppercase", color: C.ink3, marginTop: 4, whiteSpace: "nowrap" },
+    todayCardStatLabel: { fontFamily: "'Inter', sans-serif", fontSize: 8.5, letterSpacing: "0.05em", textTransform: "uppercase", color: C.ink3, marginTop: 4, whiteSpace: "nowrap" },
     todayCardTileTip: { fontSize: 10.5, color: C.brand, textAlign: "center", marginTop: 12, lineHeight: 1.4 },
-    unitToggle: { fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, letterSpacing: "0.04em", background: C.card, color: C.ink2, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 20, padding: "8px 12px", cursor: "pointer" },
+    unitToggle: { fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11, letterSpacing: "0.04em", background: C.card, color: C.ink2, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 20, padding: "8px 12px", cursor: "pointer" },
 
     statTile: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 },
-    statTileLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, letterSpacing: "0.09em", textTransform: "uppercase" },
-    statTileValue: { fontFamily: "'JetBrains Mono', monospace", fontSize: 17, fontWeight: 700, color: C.brand },
+    statTileLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, letterSpacing: "0.09em", textTransform: "uppercase" },
+    statTileValue: { fontFamily: "'Inter', sans-serif", fontSize: 17, fontWeight: 700, color: C.brand },
     statTileValueLg: { fontFamily: "'Inter', sans-serif", fontSize: 30, fontWeight: 700, color: C.ink, fontVariantNumeric: "proportional-nums" },
     statTileUnit: { fontSize: 11, color: C.ink3 },
     statUnit: { fontSize: 11, color: C.ink3 },
-    deltaChip: { display: "inline-flex", alignItems: "center", gap: 3, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 10, letterSpacing: "0.02em" },
+    deltaChip: { display: "inline-flex", alignItems: "center", gap: 3, fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 10, letterSpacing: "0.02em" },
 
     // Sept 11 2026, Jimmy: "can we make it look like a branded app like we
     // did for the program and diet to look less cluttery?" — the filter
@@ -24529,7 +24529,7 @@
     // removed here) sizes it off its own content instead, so wrap triggers
     // exactly when it's needed.
     filterWrap: { display: "flex", flexDirection: "column", gap: 5, flex: 1 },
-    filterLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, letterSpacing: "0.08em", textTransform: "uppercase" },
+    filterLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, letterSpacing: "0.08em", textTransform: "uppercase" },
 
     // Sept 11 2026, Jimmy: brand pass, step 4 — dropdowns/date filters/text
     // inputs were still at the old 8-9px "boxy" radius while cards (14),
@@ -24589,7 +24589,7 @@
     dayHeader: { display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 },
     dayDate: { fontFamily: "'Oswald', sans-serif", fontSize: 14.5, fontWeight: 600, color: C.brand, letterSpacing: "0.05em" },
     dayRule: { flex: 1, height: 1, background: C.cardBorder },
-    dayFull: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3 },
+    dayFull: { fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3 },
 
     // Sept 11 2026, Jimmy: brand pass, step 2 — a soft shadow (C.cardShadow)
     // + a touch more radius so list rows read as floating cards instead of
@@ -24602,8 +24602,8 @@
     // Space Grotesk (jimfit-flow_12.html's .log-exercise-name) — was Oswald;
     // matches the Today card / New exercise button font swap just above.
     exerciseName: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", color: C.ink },
-    muscleTag: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.04em", color: C.ink2, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px 3px 6px", width: "fit-content" },
-    entryTime: { display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.02em", color: C.ink3, width: "fit-content" },
+    muscleTag: { display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "'Inter', sans-serif", fontSize: 10, letterSpacing: "0.04em", color: C.ink2, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "3px 8px 3px 6px", width: "fit-content" },
+    entryTime: { display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 10, letterSpacing: "0.02em", color: C.ink3, width: "fit-content" },
     deleteBtn: { background: "transparent", border: "none", color: C.ink3, cursor: "pointer", padding: 5, borderRadius: 6 },
     // Sept 12 2026, Jimmy: design audit — a logged workout used to delete
     // on one tap with only an auto-expiring undo toast as a safety net.
@@ -24640,7 +24640,7 @@
     // Edit/Add/Save controls, instead of the tiny ghost editBtn used for
     // compact inline icon buttons elsewhere.
     energyPillBtn: { background: withAlpha(C.brand, 0.14), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.35)}`, borderRadius: 20, padding: "8px 14px", fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" },
-    titleSubHead: { display: "flex", alignItems: "center", gap: 6, color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.07em", textTransform: "uppercase", margin: "4px 0 8px" },
+    titleSubHead: { display: "flex", alignItems: "center", gap: 6, color: C.brand, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.07em", textTransform: "uppercase", margin: "4px 0 8px" },
     // Sept 11 2026, Jimmy: brand pass on the Log tab — radius/shadow bumped
     // to match browseCard/planHeroCard (18 + cardShadow) instead of the
     // older, boxier 14px/no-shadow card, and the title row now carries a
@@ -24661,7 +24661,7 @@
     calendarNavBtn: { display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 8, background: "transparent", border: "none", color: C.ink2, cursor: "pointer" },
     calendarMonthLabel: { fontFamily: "'Oswald', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: "0.03em", color: C.ink },
     calendarWeekRow: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 },
-    calendarWeekday: { textAlign: "center", fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace", color: C.ink3, letterSpacing: "0.04em" },
+    calendarWeekday: { textAlign: "center", fontSize: 10.5, fontFamily: "'Inter', sans-serif", color: C.ink3, letterSpacing: "0.04em" },
     calendarGrid: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 },
     calendarCellEmpty: { padding: "6px 0" },
     calendarCell: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "transparent", border: "1px solid transparent", borderRadius: 8, color: C.ink2, cursor: "pointer", fontSize: 12.5, padding: "6px 0", fontFamily: "'Inter', sans-serif" },
@@ -24673,11 +24673,11 @@
     calendarCellDot: { width: 4, height: 4, borderRadius: 999, background: C.brand },
     // A day with more than one session gets an actual count instead of an
     // identical dot — "3 sessions today" is worth knowing before tapping in.
-    calendarCellBadge: { minWidth: 14, height: 14, padding: "0 3px", borderRadius: 999, background: C.brand, color: C.brandInk, fontSize: 9, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 },
+    calendarCellBadge: { minWidth: 14, height: 14, padding: "0 3px", borderRadius: 999, background: C.brand, color: C.brandInk, fontSize: 9, fontWeight: 700, fontFamily: "'Inter', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 },
     timelineWrap: { marginTop: 2 },
     timelineRow: { display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 8 },
     timelineHourCol: { width: 44, flexShrink: 0, paddingTop: 3, display: "flex", alignItems: "center", gap: 4 },
-    timelineHourLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.ink3 },
+    timelineHourLabel: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.ink3 },
     // The current hour, on today only — a small pulsing brand dot next to
     // its label so "where am I right now" is visible without hunting for a
     // date, the same ambient-pulse language the Log tab's tiles already use.
@@ -24689,14 +24689,14 @@
     // exact date/hour, so scheduling a slot you're already looking at
     // doesn't mean scrolling up and re-picking the date and time by hand.
     timelineSlot: { display: "flex", alignItems: "center", gap: 6, height: 24, width: "100%", marginTop: 2, padding: "0 8px", borderRadius: 8, background: "transparent", border: `1px dashed ${C.cardBorder}`, color: C.ink3, fontSize: 11, fontFamily: "'Inter', sans-serif", textAlign: "left", cursor: "pointer", opacity: 0.7 },
-    timelineOtherHeading: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: C.ink3, marginBottom: 8 },
+    timelineOtherHeading: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: C.ink3, marginBottom: 8 },
     // Session cards (Rota day view): a brand-colored time chip + a
     // left accent bar so a day full of sessions reads as a real branded
     // schedule, not a stack of identical bordered boxes.
-    sessionTimeChip: { flexShrink: 0, background: C.brandSoft, color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11.5, borderRadius: 8, padding: "4px 8px", letterSpacing: "0.01em" },
-    todayJumpBtn: { background: "transparent", border: "none", color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer", padding: 0 },
+    sessionTimeChip: { flexShrink: 0, background: C.brandSoft, color: C.brand, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11.5, borderRadius: 8, padding: "4px 8px", letterSpacing: "0.01em" },
+    todayJumpBtn: { background: "transparent", border: "none", color: C.brand, fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer", padding: 0 },
     sendReminderBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}`, borderRadius: 20, padding: "7px 13px", fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
-    sentTag: { display: "inline-flex", alignItems: "center", gap: 5, color: C.good, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 },
+    sentTag: { display: "inline-flex", alignItems: "center", gap: 5, color: C.good, fontFamily: "'Inter', sans-serif", fontSize: 11 },
     demoToggleBtn: { display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", color: C.ink3, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "4px 10px", fontFamily: "'Inter', sans-serif", fontSize: 11.5, fontWeight: 600, cursor: "pointer", marginTop: 8 },
     demoPanel: { marginTop: 8, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: 10 },
     demoImg: { display: "block", width: "100%", maxWidth: 260, borderRadius: 8, background: "#0B1526" },
@@ -24725,7 +24725,7 @@
     stepperHintLine: { margin: "8px 0 0", fontSize: 12, color: C.ink2, textAlign: "center" },
 
     setsRow: { display: "flex", flexWrap: "wrap", gap: 8 },
-    setChip: { display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.ink2, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "6px 12px" },
+    setChip: { display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.ink2, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "6px 12px" },
     // Sept 14 2026, Jimmy: brand-tinted chip for WeeklyRecapCard's new-PR
     // list — same pill shape as setChip, accented instead of neutral since
     // this is a small celebration, not a plain data value.
@@ -24737,7 +24737,7 @@
     // so it actually reads as a badge, not a small inline abbreviation.
     setChipPRBadge: {
       position: "absolute", top: -11, right: -6, background: C.brand, color: "#fff",
-      fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 800, letterSpacing: "0.03em",
+      fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 800, letterSpacing: "0.03em",
       padding: "1px 7px", borderRadius: 10, lineHeight: 1.5, boxShadow: "0 2px 6px rgba(0,0,0,0.35)"
     },
 
@@ -24750,10 +24750,10 @@
     setListCol: { display: "flex", flexDirection: "column", gap: 2, marginTop: 2 },
     setListRow: { display: "flex", alignItems: "center", gap: 10, padding: "8px 2px", borderRadius: 10 },
     setListRowActive: { background: C.criticalSoft, border: `1px solid ${withAlpha(C.critical, 0.3)}`, padding: "10px", margin: "2px 0" },
-    setListText: { flex: 1, minWidth: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" },
+    setListText: { flex: 1, minWidth: 0, fontFamily: "'Inter', sans-serif", fontSize: 13, color: C.ink, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" },
     setListPRTag: { color: C.brand, fontWeight: 800 },
-    setListTextStrike: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, color: C.ink3, textDecoration: "line-through", marginBottom: 4 },
-    setListTime: { flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.ink3 },
+    setListTextStrike: { fontFamily: "'Inter', sans-serif", fontSize: 12.5, color: C.ink3, textDecoration: "line-through", marginBottom: 4 },
+    setListTime: { flexShrink: 0, fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.ink3 },
     setDeleteBtn: { display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 10, background: withAlpha(C.critical, 0.14), border: `1px solid ${withAlpha(C.critical, 0.3)}`, color: C.critical, cursor: "pointer", flexShrink: 0 },
     setDeleteBtnDisabled: { opacity: 0.35, cursor: "not-allowed" },
     setConfirmCancelBtn: { flex: "none", background: "transparent", border: `1.5px solid ${C.cardBorderStrong}`, borderRadius: 999, padding: "7px 14px", color: C.ink, fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer" },
@@ -24765,15 +24765,15 @@
     // wrapping. flex+wrap keeps one row when it fits, wraps to a second
     // row when it doesn't — same look, no more cutoff.
     segmented: { display: "flex", flexWrap: "wrap", gap: 4, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: 4 },
-    segmentedBtn: { flex: "0 0 auto", background: "transparent", border: "1px solid transparent", borderRadius: 7, padding: "7px 12px", color: C.ink3, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.04em", cursor: "pointer", textTransform: "uppercase" },
+    segmentedBtn: { flex: "0 0 auto", background: "transparent", border: "1px solid transparent", borderRadius: 7, padding: "7px 12px", color: C.ink3, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", cursor: "pointer", textTransform: "uppercase" },
 
     muscleList: { display: "flex", flexDirection: "column", gap: 18, marginTop: 18 },
     muscleRow: { display: "flex", flexDirection: "column", gap: 7 },
     muscleRowTop: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
     muscleName: { fontFamily: "'Oswald', sans-serif", fontSize: 14, fontWeight: 600, letterSpacing: "0.02em", color: C.ink },
-    muscleVolText: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.ink2 },
+    muscleVolText: { fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.ink2 },
     muscleShare: { color: C.ink3 },
-    muscleSubText: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.ink3 },
+    muscleSubText: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.ink3 },
     barTrack: { width: "100%", height: 9, borderRadius: 6, overflow: "hidden", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.18)" },
     barFill: { height: "100%", borderRadius: 6, transition: "width 0.3s ease", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22)" },
 
@@ -24782,7 +24782,7 @@
     // chart that replaces the old muscleList bars below. All scoped to this
     // one tab; nothing here is reused elsewhere.
     muscleViewToggle: { display: "flex", background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 999, padding: 2, flexShrink: 0 },
-    muscleViewToggleBtn: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, color: C.ink3, background: "transparent", border: "none", cursor: "pointer" },
+    muscleViewToggleBtn: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, color: C.ink3, background: "transparent", border: "none", cursor: "pointer" },
     muscleViewToggleBtnActive: { background: C.brand, color: C.brandInk },
     muscleDetailCard: { marginTop: 10, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, transition: "opacity 0.2s ease" },
     muscleDetailCardHidden: { opacity: 0, pointerEvents: "none" },
@@ -24790,7 +24790,7 @@
     muscleDetailSub: { fontFamily: "'Manrope', sans-serif", fontSize: 10.5, color: C.ink3, marginTop: 2 },
     donutRow: { display: "flex", alignItems: "center", gap: 14, marginTop: 4 },
     donutLegend: { flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 },
-    donutLegendItem: { display: "flex", alignItems: "center", gap: 7, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: C.ink2, cursor: "pointer", transition: "opacity 0.15s ease", background: "transparent", border: "none", padding: 0, width: "100%", textAlign: "left" },
+    donutLegendItem: { display: "flex", alignItems: "center", gap: 7, fontFamily: "'Inter', sans-serif", fontSize: 10.5, color: C.ink2, cursor: "pointer", transition: "opacity 0.15s ease", background: "transparent", border: "none", padding: 0, width: "100%", textAlign: "left" },
     donutLegendDot: { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
     donutLegendName: { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
     donutLegendValue: { color: C.ink3, flexShrink: 0 },
@@ -24810,7 +24810,7 @@
     progressList: { display: "flex", flexDirection: "column", gap: 10 },
     progressCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "13px 15px" },
     progressHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-    progressFooter: { display: "flex", justifyContent: "space-between", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, marginTop: 2 },
+    progressFooter: { display: "flex", justifyContent: "space-between", fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, marginTop: 2 },
 
     bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", background: withAlpha(C.panel, 0.92), backdropFilter: "blur(10px)", borderTop: `1px solid ${C.cardBorder}`, padding: "10px 0 max(10px, env(safe-area-inset-bottom))", zIndex: 40 },
     // minWidth: 0 is the load-bearing bit here — without it, a flex:1 item
@@ -24820,7 +24820,7 @@
     // right edge on narrower phones. Smaller font/letter-spacing + an
     // ellipsis fallback on the label keep every tab actually readable at
     // that shrunk width instead of visually mashed together.
-    navBtn: { position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "transparent", border: "none", cursor: "pointer", padding: "6px 2px", fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: "0.01em" },
+    navBtn: { position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "transparent", border: "none", cursor: "pointer", padding: "6px 2px", fontFamily: "'Inter', sans-serif", fontSize: 9, letterSpacing: "0.01em" },
     navBtnLabel: { maxWidth: "100%", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" },
     navIndicator: { position: "absolute", top: -10, width: 28, height: 2, borderRadius: 2, background: "transparent" },
     navIndicatorActive: { background: C.brand },
@@ -24877,12 +24877,12 @@
     sideMenuList: { display: "flex", flexDirection: "column", gap: 3 },
     sideMenuItem: { textAlign: "left", background: "transparent", border: "none", borderLeft: "3px solid transparent", color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 14.5, padding: "12px 10px 12px 12px", borderRadius: 8, cursor: "pointer" },
     sideMenuItemActive: { background: C.brandSoft, borderLeftColor: C.brand, color: C.brand, fontWeight: 600 },
-    sideMenuGroupLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 10px 4px" },
+    sideMenuGroupLabel: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 10px 4px" },
 
     confirmCancelBtn: { flex: 1, background: "transparent", border: `1.5px solid ${C.cardBorderStrong}`, borderRadius: 999, padding: "13px", color: C.ink, fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: "0.03em", cursor: "pointer" },
     confirmDangerBtn: { flex: 1, background: C.criticalStrong, border: "none", borderRadius: 999, padding: "13px", color: "#fff", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: "0.03em", cursor: "pointer" },
 
-    formLabel: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, letterSpacing: "0.08em", marginTop: 16, marginBottom: 7, textTransform: "uppercase" },
+    formLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, letterSpacing: "0.08em", marginTop: 16, marginBottom: 7, textTransform: "uppercase" },
     // Sept 11 2026, Jimmy: "make it look like a branded app... less
     // cluttery" — the New/Edit exercise sheet used to be one continuous
     // stack of labeled fields (Date, Workout title, Exercise, Muscle
@@ -24920,8 +24920,8 @@
     // meal-plan notes) where forcing single-line/no-wrap would break
     // typing multi-line text.
     inputEllipsis: { width: "100%", background: C.bg, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 12, padding: "11px 12px", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-    inlineError: { display: "block", marginTop: 8, color: C.critical, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" },
-    inlineNotice: { display: "block", marginTop: 8, color: C.good, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" },
+    inlineError: { display: "block", marginTop: 8, color: C.critical, fontSize: 12, fontFamily: "'Inter', sans-serif" },
+    inlineNotice: { display: "block", marginTop: 8, color: C.good, fontSize: 12, fontFamily: "'Inter', sans-serif" },
     switchModeBtn: { display: "block", width: "100%", background: "transparent", border: "none", color: C.ink2, fontSize: 12.5, fontFamily: "'Inter', sans-serif", textDecoration: "underline", cursor: "pointer", marginTop: 14, padding: 4 },
     forgotBtn: { display: "block", width: "100%", textAlign: "right", background: "transparent", border: "none", color: C.ink3, fontSize: 11.5, fontFamily: "'Inter', sans-serif", cursor: "pointer", margin: "-4px 0 4px", padding: 4 },
     // Sept 12 2026, Jimmy: "log out to be more clear button" — this used to
@@ -24929,7 +24929,7 @@
     // a button. Now a visible bordered pill, matching Support beside it
     // (both bumped to the same rounded-pill radius as the rest of the
     // header's buttons for one consistent, more "branded" family).
-    logoutBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
+    logoutBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
     // Sept 15 2026, Jimmy: "show here the user is opened like me the owner
     // to know which account i opened even for trainers and clients down
     // the logo jim fit and i want the log out button to be beside the
@@ -24945,26 +24945,26 @@
     // right), which still read as "two unrelated things," not "beside."
     // flex-start groups them right next to each other on the left instead.
     accountIdRow: { display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, flexWrap: "wrap" },
-    accountIdBadge: { display: "flex", alignItems: "center", gap: 6, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 0.3, padding: "5px 12px" },
+    accountIdBadge: { display: "flex", alignItems: "center", gap: 6, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 0.3, padding: "5px 12px" },
     accountIdRole: { color: C.ink3, fontWeight: 600 },
     // Sept 7 2026, Jimmy: this used to be icon-only with just a `title`
     // tooltip — invisible on a phone, since there's no hover on touch. Widened
     // to fit a short "Support" label next to the icon, same look/feel as the
     // header's "Log out" button (uppercase mono, no fixed square width) so
     // people actually know what tapping it does.
-    supportBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
+    supportBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
 
     setRows: { display: "flex", flexDirection: "column", gap: 7 },
     setRowHeader: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, padding: "0 2px" },
-    setColLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.ink3, letterSpacing: "0.06em" },
+    setColLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9, color: C.ink3, letterSpacing: "0.06em" },
     setRow: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, alignItems: "center" },
-    setIndex: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: C.ink3, textAlign: "center" },
+    setIndex: { fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.ink3, textAlign: "center" },
     // Sept 12 2026, Jimmy: "less cluttery" — three fully-boxed inputs side by
     // side per row (each with its own strong border) read as busy, especially
     // stacked 3+ rows deep. Borderless with just a faint fill now — the grid
     // header labels above already say what each column is, so the box lines
     // were mostly just visual noise, not information.
-    setInput: { background: withAlpha(C.brand, 0.05), border: "1px solid transparent", borderRadius: 8, padding: "9px 8px", color: C.ink, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, width: "100%", textAlign: "center" },
+    setInput: { background: withAlpha(C.brand, 0.05), border: "1px solid transparent", borderRadius: 8, padding: "9px 8px", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 13, width: "100%", textAlign: "center" },
     rowDelete: { background: "transparent", border: "none", color: C.ink3, cursor: "pointer" },
     // "Add set" is the button someone taps most on this whole sheet (every
     // set of every exercise) — upgraded from a faint dashed outline to the
@@ -25045,10 +25045,10 @@
     // one-question-at-a-time wizard with its own progress bar.
     gateDecor: { position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 },
     jfMark: { width: 40, height: 40, borderRadius: 10, border: `1px solid ${C.cardBorderStrong}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald', sans-serif", fontWeight: 700, fontStyle: "italic", fontSize: 15, letterSpacing: "0.02em", color: C.ink, background: withAlpha(C.brand, 0.05), position: "relative", zIndex: 1 },
-    gatePillBadge: { display: "inline-flex", alignItems: "center", padding: "5px 14px", borderRadius: 999, border: `1px solid ${withAlpha(C.brand, 0.4)}`, background: withAlpha(C.brand, 0.12), color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", position: "relative", zIndex: 1 },
+    gatePillBadge: { display: "inline-flex", alignItems: "center", padding: "5px 14px", borderRadius: 999, border: `1px solid ${withAlpha(C.brand, 0.4)}`, background: withAlpha(C.brand, 0.12), color: C.brand, fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", position: "relative", zIndex: 1 },
     gateFormCard: { display: "flex", flexDirection: "column", background: withAlpha(C.brand, 0.05), border: `1px solid ${C.cardBorder}`, borderRadius: 16, padding: "18px 18px 20px", marginTop: 16, width: "100%", boxSizing: "border-box", position: "relative", zIndex: 1 },
     gateBanner: { fontFamily: "'Manrope', sans-serif", background: withAlpha(C.brand, 0.1), border: `1px solid ${withAlpha(C.brand, 0.3)}`, borderRadius: 12, padding: "11px 14px", fontSize: 12, lineHeight: 1.4, color: C.ink2, textAlign: "left", marginTop: 14, width: "100%", boxSizing: "border-box", position: "relative", zIndex: 1 },
-    gateLabel: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: C.ink3, letterSpacing: "0.08em", marginTop: 14, marginBottom: 7, textTransform: "uppercase", textAlign: "left" },
+    gateLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 10, color: C.ink3, letterSpacing: "0.08em", marginTop: 14, marginBottom: 7, textTransform: "uppercase", textAlign: "left" },
     roleCircleBtn: { display: "flex", flexDirection: "column", alignItems: "center", gap: 10, background: "transparent", border: "none", cursor: "pointer", padding: 4, position: "relative", zIndex: 1 },
     roleCircle: { width: 86, height: 86, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: withAlpha(C.brand, 0.06), border: `1px solid ${C.cardBorderStrong}`, transition: "border-color .15s, box-shadow .15s" },
     // Sept 12 2026 — per-role tint so Client/Trainer read as two distinct
@@ -25070,7 +25070,7 @@
     stepperBtn: { width: 38, height: 38, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.card, border: `1px solid ${C.cardBorderStrong}`, color: C.brand, cursor: "pointer" },
     stepperValueWrap: { display: "flex", flexDirection: "column", alignItems: "center", minWidth: 64 },
     stepperValue: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 34, color: C.ink, lineHeight: 1 },
-    stepperUnit: { fontSize: 10.5, color: C.ink3, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 },
+    stepperUnit: { fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 },
     // Height/weight step only — two side-by-side columns, each a smaller
     // self-contained stepper with its own unit label underneath.
     bodyRow: { display: "flex", gap: 28 },
@@ -25081,8 +25081,8 @@
     wizardDateRow: { display: "flex", gap: 10, justifyContent: "center" },
     wizardDateInput: { width: 62, textAlign: "center", background: C.bg, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 10, padding: "11px 4px", color: C.ink, fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15 },
     wizardPhoneRow: { display: "flex", alignItems: "center", gap: 8, background: C.bg, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 12, padding: "11px 14px", maxWidth: 280, margin: "0 auto" },
-    wizardPhonePrefix: { color: C.ink3, fontFamily: "'JetBrains Mono', monospace", fontSize: 14, flexShrink: 0 },
-    wizardPhoneInput: { border: "none", background: "transparent", color: C.ink, fontFamily: "'JetBrains Mono', monospace", fontSize: 14, width: "100%", outline: "none" },
+    wizardPhonePrefix: { color: C.ink3, fontFamily: "'Inter', sans-serif", fontSize: 14, flexShrink: 0 },
+    wizardPhoneInput: { border: "none", background: "transparent", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 14, width: "100%", outline: "none" },
     chipRow: { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 300 },
     // Always exactly 2 per row (Male/Female, Prefer not to say/Other), matching
     // the reference flow, regardless of how long "Prefer not to say" runs —
@@ -25142,7 +25142,7 @@
     // this specific card (unlike the rest of the profile screen) is visible
     // to clients browsing for a trainer, reusing the existing warning/amber
     // token rather than a new color.
-    publicChip: { marginLeft: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", color: C.warning, background: C.warningSoft, border: `1px solid ${withAlpha(C.warning, 0.35)}`, padding: "3px 8px", borderRadius: 999 },
+    publicChip: { marginLeft: "auto", fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", color: C.warning, background: C.warningSoft, border: `1px solid ${withAlpha(C.warning, 0.35)}`, padding: "3px 8px", borderRadius: 999 },
     compactSelect: { display: "block", width: "100%", marginTop: 2, background: C.bg, color: C.ink, border: `1px solid ${withAlpha(C.brand, 0.35)}`, borderRadius: 8, padding: "4px 20px 4px 6px", fontFamily: "'Inter', sans-serif", fontSize: 13.5, fontWeight: 600 },
     // jimfit-flow_14.html restyle (Sept 2026): 16px radius + roomier padding,
     // matching the prototype's uniform boxed-card treatment across every
@@ -25154,12 +25154,12 @@
     // Sept 22 2026, Jimmy: small rounded rectangle instead of a full pill,
     // same colors/labels ("Paid up" / "$X due" / etc) — part of the same
     // flatter cosmetic pass as saveBtn and avatar above.
-    goalChip: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 6, whiteSpace: "nowrap" },
+    goalChip: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 6, whiteSpace: "nowrap" },
     goalChipGood: { color: C.good, background: C.goodSoft },
     goalChipBad: { color: C.critical, background: C.criticalSoft },
     // jimfit-flow_12.html restyle — small streak pill next to "This week",
     // reusing the weeks-in-a-row streak SessionGoalCard already computes.
-    streakBadge: { display: "inline-flex", alignItems: "center", gap: 5, background: C.brandSoft, border: `1px solid ${withAlpha(C.brand, 0.35)}`, color: C.brand, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, padding: "5px 10px", borderRadius: 999, whiteSpace: "nowrap" },
+    streakBadge: { display: "inline-flex", alignItems: "center", gap: 5, background: C.brandSoft, border: `1px solid ${withAlpha(C.brand, 0.35)}`, color: C.brand, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11, padding: "5px 10px", borderRadius: 999, whiteSpace: "nowrap" },
     // jimfit-flow_14.html restyle — bold card-title style shared by every
     // boxed card in the Progress tab's Overview stack (This week / Training
     // calendar / Personal records), matching the prototype's muscles-card-title.
@@ -25172,10 +25172,10 @@
     // Sept 12 2026, Jimmy: "also for the payments" — same brand-tinted card
     // treatment as profileSummary above.
     paymentSummaryCard: { background: `linear-gradient(160deg, ${withAlpha(C.brand, 0.1)}, ${withAlpha(C.brand, 0.02)})`, border: `1px solid ${withAlpha(C.brand, 0.3)}`, borderRadius: 16, padding: "14px 15px" },
-    waterAddBtn: { flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${C.cardBorderStrong}`, background: "transparent", color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
+    waterAddBtn: { flex: 1, padding: "8px 0", borderRadius: 8, border: `1px solid ${C.cardBorderStrong}`, background: "transparent", color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
     dashGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 4 },
     dashTile: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "14px 15px" },
-    dashTileValue: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: C.brand, marginTop: 4 },
+    dashTileValue: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 22, fontWeight: 700, color: C.brand, marginTop: 4 },
     trainerStatCard: { display: "flex", justifyContent: "space-between", alignItems: "center", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "13px 15px" },
     // Sept 11 2026, Jimmy: "Your plan"/"Your program" hero card + "Browse
     // other plans/programs" card shared between DietPanel and ProgramsPanel
@@ -25190,7 +25190,7 @@
     // (kcal + macro tiles + a leaner/bulkier readout + a drag-to-confirm
     // paywall slider) inside the ready-plan browser.
     dietStatTile: { flex: 1, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 6px", textAlign: "center" },
-    dietStatTileLabel: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, letterSpacing: "0.08em", textTransform: "uppercase" },
+    dietStatTileLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, letterSpacing: "0.08em", textTransform: "uppercase" },
     dietStatTileValue: { display: "block", marginTop: 4, fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 700, color: C.ink },
     // Sept 13 2026, Jimmy: "make every diet plan to look like the pic ...
     // and one of them is recommended" — every plan template now renders
@@ -25200,12 +25200,12 @@
     // shape, no highlight tint.
     recCard: { background: `linear-gradient(160deg, ${withAlpha(C.brand, 0.14)}, ${withAlpha(C.brand, 0.02)})`, border: `1px solid ${withAlpha(C.brand, 0.32)}`, borderRadius: 18, padding: "16px 16px 14px" },
     planCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, padding: "16px 16px 14px" },
-    recBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: C.brandSoft, color: C.brand, borderRadius: 20, padding: "5px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.05em" },
+    recBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: C.brandSoft, color: C.brand, borderRadius: 20, padding: "5px 12px", fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.05em" },
     slideUnlockTrack: { position: "relative", marginTop: 14, height: 48, borderRadius: 24, background: withAlpha(C.ink, 0.08), border: `1px solid ${C.cardBorder}`, overflow: "hidden", touchAction: "none", cursor: "pointer", userSelect: "none" },
     slideUnlockFill: { position: "absolute", top: 0, left: 0, bottom: 0, background: C.brandSoft },
     slideUnlockLabel: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 700, color: C.ink, pointerEvents: "none" },
     slideUnlockKnob: { position: "absolute", top: 3, left: 3, width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(150deg, ${C.brand}, ${C.brandDim})`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 3px 10px rgba(0,0,0,0.35)" },
-    currentBadge: { display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 800, color: C.brandInk, background: `linear-gradient(135deg, ${C.brand}, ${C.brandDim})`, padding: "5px 10px", borderRadius: 20, flexShrink: 0, border: "none", whiteSpace: "nowrap" },
+    currentBadge: { display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 800, color: C.brandInk, background: `linear-gradient(135deg, ${C.brand}, ${C.brandDim})`, padding: "5px 10px", borderRadius: 20, flexShrink: 0, border: "none", whiteSpace: "nowrap" },
     ghostPillBtn: { width: "100%", padding: 12, borderRadius: 999, border: "none", background: C.subtleFill, color: C.ink, fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" },
     browseCard: { background: C.card, borderRadius: 18, padding: 17, display: "flex", flexDirection: "column", gap: 12, boxShadow: C.cardShadow },
     browseCardIconWrap: { width: 38, height: 38, borderRadius: 11, background: C.subtleFill, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -25219,13 +25219,13 @@
     browseChipActive: { border: "none", color: C.brandInk, fontWeight: 700, background: `linear-gradient(135deg, ${C.brand}, ${C.brandDim})`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 6px 16px -6px ${withAlpha(C.brand, 0.6)}` },
     tintCtaCard: { background: `linear-gradient(150deg, ${withAlpha(C.brand, 0.14)}, ${withAlpha(C.brand, 0.03)})`, borderRadius: 18, padding: 18, display: "flex", flexDirection: "column", gap: 10, boxShadow: `inset 0 0 0 1px ${withAlpha(C.brand, 0.2)}` },
     planCtaBtn: { width: "100%", padding: 12, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${C.brand}, ${C.brandDim})`, color: C.brandInk, fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 20px -8px ${withAlpha(C.brand, 0.55)}` },
-    planStatusPill: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: "0.03em", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap", flexShrink: 0 },
+    planStatusPill: { fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: "0.03em", padding: "3px 8px", borderRadius: 999, whiteSpace: "nowrap", flexShrink: 0 },
     // Sept 10 2026, Jimmy: "Find a trainer" profile card redesign — a
     // dedicated style (not the shared trainerStatCard, which many simple
     // one-line rows elsewhere still rely on) so this card can carry its own
     // slightly roomier padding/radius without touching anything else.
     trainerProfileCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, padding: "15px 16px" },
-    trainerSectionLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.ink3 },
+    trainerSectionLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.ink3 },
     // Sept 13 2026, Jimmy: "more pro... less cluttery" — replaces the old
     // two-tone trainerChipSpecialty (blue)/trainerChipCert (green) pair with
     // one quiet neutral chip used for specialties; certifications moved to
@@ -25246,10 +25246,10 @@
     // callout instead of a bare paragraph, so the trainer's own words read
     // as distinct from the factual chip rows above it.
     trainerBioCallout: { marginTop: 6, borderLeft: `3px solid ${withAlpha(C.brand, 0.4)}`, background: C.subtleFill, borderRadius: "0 10px 10px 0", padding: "9px 12px" },
-    monthBackBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: 0 },
+    monthBackBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: 0 },
     monthDetailList: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "2px 15px" },
     monthDetailRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: `1px solid ${C.cardBorder}` },
-    profileLabel: { display: "block", fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 },
+    profileLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 },
     profileValue: { fontSize: 13.5, color: C.ink, fontWeight: 600 },
     profileGoalText: { margin: "2px 0 0", fontSize: 13, color: C.ink2, lineHeight: 1.4 },
     medicalNotice: { display: "flex", alignItems: "flex-start", gap: 7, marginTop: 10, padding: "8px 10px", background: C.criticalSoft, border: `1px solid ${withAlpha(C.criticalStrong, 0.35)}`, borderRadius: 8, fontSize: 12, color: C.critical, lineHeight: 1.4 },
@@ -25277,7 +25277,7 @@
     // for one caller's needs).
     assessmentMetricCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 12px" },
     assessmentMetricIcon: { width: 30, height: 30, borderRadius: 9, background: C.brandSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 },
-    assessmentDelta: { display: "flex", alignItems: "center", gap: 2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.ink3 },
+    assessmentDelta: { display: "flex", alignItems: "center", gap: 2, fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.ink3 },
     assessmentRow: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 12px" },
     assessmentRowValues: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 },
     assessmentRowChip: { fontSize: 11.5, color: C.ink2, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "3px 7px" },
@@ -25288,8 +25288,8 @@
     // padding-top:16px put "All members"/"My members" right under/behind a
     // phone's status bar — hard to see and hard to tap. Same top-inset fix
     // as styles.header/clientHeader.
-    backBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 6px" },
-    deleteClientBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: `1px solid ${withAlpha(C.criticalStrong, 0.4)}`, borderRadius: 8, color: C.critical, fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.04em", cursor: "pointer", padding: "7px 12px", margin: "12px 18px 0" },
+    backBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 6px" },
+    deleteClientBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: `1px solid ${withAlpha(C.criticalStrong, 0.4)}`, borderRadius: 8, color: C.critical, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", cursor: "pointer", padding: "7px 12px", margin: "12px 18px 0" },
     clientCard: { display: "flex", justifyContent: "space-between", alignItems: "center", background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: "15px 16px", cursor: "pointer", textAlign: "left" },
     rosterRowFlat: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 2px", cursor: "pointer", textAlign: "left", borderBottom: `1px solid ${C.cardBorder}` },
     // jimfit-flow_12.html restyle — horizontal-scrolling "PR reel" of cards,
@@ -25313,15 +25313,15 @@
     foodCard: { display: "flex", alignItems: "center", gap: 11, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 13, padding: "10px 12px" },
     foodCardIcon: { width: 36, height: 36, borderRadius: 10, background: C.card, border: `1px solid ${C.cardBorder}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
     foodCardName: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12.5, color: C.ink },
-    foodCardMacros: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, marginTop: 3, display: "block" },
-    foodCardTime: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.ink3, flexShrink: 0 },
-    waterBtn: { flex: 1, textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, color: C.brandInk, background: C.brand, border: "none", padding: "9px 4px", borderRadius: 10, cursor: "pointer" },
+    foodCardMacros: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, marginTop: 3, display: "block" },
+    foodCardTime: { fontFamily: "'Inter', sans-serif", fontSize: 9, color: C.ink3, flexShrink: 0 },
+    waterBtn: { flex: 1, textAlign: "center", fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11, color: C.brandInk, background: C.brand, border: "none", padding: "9px 4px", borderRadius: 10, cursor: "pointer" },
     clientCardLeft: { display: "flex", alignItems: "center", gap: 12 },
     // Sept 22 2026, Jimmy: rounded-square instead of a full circle, to
     // match the flatter/less-"AI-generated" look — same brand-tinted fill,
     // same initial letter, used app-wide (roster rows, session cards, etc).
     avatar: { width: 36, height: 36, borderRadius: 10, background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 },
-    rosterVol: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: C.brand },
+    rosterVol: { fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: C.brand },
     // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Members"
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
     // just inline with a leading search icon and a clear (x) button instead
@@ -25329,15 +25329,15 @@
     rosterSearchWrap: { flex: 1, display: "flex", alignItems: "center", gap: 8, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "9px 12px" },
     rosterSearchInput: { flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 13.5 },
     rosterSearchClear: { display: "flex", background: "transparent", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 },
-    rosterCount: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: C.ink3, flexShrink: 0, marginLeft: 10 },
+    rosterCount: { fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.ink3, flexShrink: 0, marginLeft: 10 },
 
     programCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: "16px 16px 18px", marginTop: 16 },
     programHeader: { display: "flex", flexDirection: "column", gap: 2 },
-    dayHead: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.brand, fontWeight: 600 },
+    dayHead: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.brand, fontWeight: 600 },
     programExerciseRow: { background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: "10px 12px" },
 
     exercisePickerPanel: { position: "absolute", left: 0, right: 0, top: "calc(100% + 4px)", zIndex: 40, maxHeight: 320, overflowY: "auto", background: C.panel, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 10, padding: 8, boxShadow: "0 16px 40px rgba(0,0,0,0.45)" },
-    exercisePickerGroupLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: C.ink3, letterSpacing: "0.06em", textTransform: "uppercase", padding: "6px 8px 2px" },
+    exercisePickerGroupLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, color: C.ink3, letterSpacing: "0.06em", textTransform: "uppercase", padding: "6px 8px 2px" },
     exercisePickerOption: { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 13.5, padding: "8px 8px", borderRadius: 7, cursor: "pointer" },
     exercisePickerCustom: { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.cardBorder}`, color: C.brand, fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, padding: "10px 8px 8px", marginTop: 4, cursor: "pointer" },
     workoutFilterMuscles: { fontSize: 11.5, color: C.ink3 },
