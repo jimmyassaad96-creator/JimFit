@@ -36,9 +36,24 @@ export async function installSupabaseFixtures(page) {
   // auth call failing is the same path the app takes in the browser today.
 }
 
+/** Sept 22 2026, Jimmy: the trainer bottom nav was consolidated to
+ *  Members/Stats/Rota/Diet/My Log + a "More" button that opens a sheet with
+ *  Muscles/AI Chat/Profile/My gym. Those four labels aren't in the bottom
+ *  nav directly anymore, so open "More" first when the label isn't already
+ *  on screen â every other caller (client nav, direct trainer tabs) is
+ *  unaffected since its label is already visible and this is a no-op. */
+const TRAINER_MORE_LABELS = ["Muscles", "AI Chat", "Profile", "My gym"];
+
 /** Bottom-nav tabs are plain buttons; the label also appears in page copy, so
- *  take the last match — the nav sits at the end of the tree. */
+ *  take the last match â the nav sits at the end of the tree. */
 export async function openTab(page, label) {
+  if (TRAINER_MORE_LABELS.includes(label)) {
+    const alreadyVisible = await page.getByText(label, { exact: true }).last().isVisible().catch(() => false);
+    if (!alreadyVisible) {
+      await page.getByText("More", { exact: true }).last().click();
+      await page.waitForTimeout(200);
+    }
+  }
   await page.getByText(label, { exact: true }).last().click();
   await page.waitForTimeout(400);
 }
@@ -47,10 +62,10 @@ export async function boot(page, variant) {
   await installSupabaseFixtures(page);
   await page.goto(`/${variant}/`);
   await page.locator("#root").waitFor({ state: "attached" });
-  // The splash paints "Loading…" first, and some gated screens resolve several
-  // seconds later — waiting only for non-empty text catches the splash.
+  // The splash paints "Loadingâ¦" first, and some gated screens resolve several
+  // seconds later â waiting only for non-empty text catches the splash.
   await page.waitForFunction(() => {
     const t = document.getElementById("root").innerText.trim();
-    return t.length > 40 && !/loading…?$/i.test(t);
+    return t.length > 40 && !/loadingâ¦?$/i.test(t);
   }, null, { timeout: 20000 });
 }
