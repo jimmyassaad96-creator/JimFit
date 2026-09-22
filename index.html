@@ -12163,7 +12163,7 @@
             : e("div", { style: { marginTop: 14 } },
                 e("div", { style: styles.dashGrid },
                   e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Collected"), e("span", { style: styles.dashTileValue }, `$${paidTotal.toLocaleString()}`)),
-                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
+                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
                 ),
                 e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 4 } },
                   e("div", { style: styles.rosterSearchWrap },
@@ -12366,7 +12366,7 @@
             : e("div", { style: { marginTop: 14 } },
                 e("div", { style: styles.dashGrid },
                   e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Collected"), e("span", { style: styles.dashTileValue }, `$${paidTotal.toLocaleString()}`)),
-                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
+                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
                 ),
                 e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 4 } },
                   e("div", { style: styles.rosterSearchWrap },
@@ -19399,7 +19399,7 @@
     const [nudgeSent, setNudgeSent] = useState(false);
     function handleNudgeTrainer() {
       if (!trainerId) return;
-      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
+      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
       setNudgeSent(true);
     }
 
@@ -21380,7 +21380,7 @@
     const [nudgeSent, setNudgeSent] = useState(false);
     function handleNudgeTrainer() {
       if (!trainerId) return;
-      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
+      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
       setNudgeSent(true);
     }
 
