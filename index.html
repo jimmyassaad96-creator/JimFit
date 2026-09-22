@@ -25145,7 +25145,10 @@
     // are SessionGoalCard, ThisWeekCard, WeeklyRecapCard).
     goalCard: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 16, padding: "16px 16px 14px", marginTop: 10, marginBottom: 4 },
     goalRow: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-    goalChip: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, whiteSpace: "nowrap" },
+    // Sept 22 2026, Jimmy: small rounded rectangle instead of a full pill,
+    // same colors/labels ("Paid up" / "$X due" / etc) — part of the same
+    // flatter cosmetic pass as saveBtn and avatar above.
+    goalChip: { fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 6, whiteSpace: "nowrap" },
     goalChipGood: { color: C.good, background: C.goodSoft },
     goalChipBad: { color: C.critical, background: C.criticalSoft },
     // jimfit-flow_12.html restyle — small streak pill next to "This week",
@@ -25307,7 +25310,10 @@
     foodCardTime: { fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: C.ink3, flexShrink: 0 },
     waterBtn: { flex: 1, textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 11, color: C.brandInk, background: C.brand, border: "none", padding: "9px 4px", borderRadius: 10, cursor: "pointer" },
     clientCardLeft: { display: "flex", alignItems: "center", gap: 12 },
-    avatar: { width: 36, height: 36, borderRadius: "50%", background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, flexShrink: 0 },
+    // Sept 22 2026, Jimmy: rounded-square instead of a full circle, to
+    // match the flatter/less-"AI-generated" look — same brand-tinted fill,
+    // same initial letter, used app-wide (roster rows, session cards, etc).
+    avatar: { width: 36, height: 36, borderRadius: 10, background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, flexShrink: 0 },
     rosterVol: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: C.brand },
     // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Members"
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
