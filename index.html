@@ -6,15 +6,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>JimFit</title>
 <meta name="theme-color" content="#0B1526" />
-<meta name="description" content="Workout logging, coaching, and client management for JimFit." />
+<meta name="description" content="Workout logging, coaching, and member management for JimFit." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://jimmyassaad96-creator.github.io/JimFit/" />
 <meta property="og:title" content="JimFit" />
-<meta property="og:description" content="Workout logging, coaching, and client management for JimFit." />
+<meta property="og:description" content="Workout logging, coaching, and member management for JimFit." />
 <meta property="og:image" content="https://jimmyassaad96-creator.github.io/JimFit/og-image.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="JimFit" />
-<meta name="twitter:description" content="Workout logging, coaching, and client management for JimFit." />
+<meta name="twitter:description" content="Workout logging, coaching, and member management for JimFit." />
 <meta name="twitter:image" content="https://jimmyassaad96-creator.github.io/JimFit/og-image.png" />
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -3246,7 +3246,7 @@
   // real client id — same "pick from a list" pattern as WorkoutFilterSelect
   // just above, reusing the same styles. Same-name clients get their email
   // appended to the label so they're still tellable apart while picking.
-  function ClientPicker({ value, options, onSelect, placeholder = "Search your clients…", style }) {
+  function ClientPicker({ value, options, onSelect, placeholder = "Search your members…", style }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
     const wrapRef = useRef(null);
@@ -3272,7 +3272,7 @@
       }),
       e("div", { style: styles.selectChevron }, e(Icon, { name: "chevron", size: 14, color: C.ink3 })),
       open && e("div", { style: styles.exercisePickerPanel },
-        filtered.length === 0 && e("div", { style: styles.demoNote }, "No matching client — use “not on the list” below."),
+        filtered.length === 0 && e("div", { style: styles.demoNote }, "No matching member — use “not on the list” below."),
         filtered.map((o) => e("button", {
           key: o.id, type: "button", style: styles.exercisePickerOption,
           onMouseDown: (ev) => ev.preventDefault(), onClick: () => pick(o)
@@ -4229,7 +4229,7 @@
       saveError && e("div", { style: { ...styles.inlineError, marginBottom: 8 } }, saveError),
       !loaded ? e("p", { style: styles.emptyText }, "Loading…")
         : checkIns.length === 0
-        ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage ? "Nothing yet — tap the mic and tell us how you're doing today." : "No check-ins from this client yet.")
+        ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage ? "Nothing yet — tap the mic and tell us how you're doing today." : "No check-ins from this member yet.")
         : e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             checkIns.map((c) => {
               // A detected mood emoji replaces the generic mic icon on that
@@ -4851,7 +4851,7 @@
           entries.length === 0
             ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage
                 ? `Nothing logged ${isToday ? "today" : `on ${dayWord}`} yet — tap "+ Log food" 🍽️ to get started.`
-                : `This client hasn't logged any food ${isToday ? "today" : `on ${dayWord}`}.`)
+                : `This member hasn't logged any food ${isToday ? "today" : `on ${dayWord}`}.`)
             : e("div", { style: styles.foodLogList },
                 entries.map((en) => e("div", { key: en.id, style: styles.foodCard },
                   e("div", { style: styles.foodCardIcon }, e(Icon, { name: "apple", size: 16, color: C.brand })),
@@ -6053,7 +6053,7 @@
       e("p", { style: { ...styles.profileGoalText, marginBottom: 12 } },
         `${items.length} exercise${items.length === 1 ? "" : "s"} used across your programs and logs — `,
         missingCount === 0 ? "every one has a demo." : `${missingCount} still missing a demo.`,
-        missingCount > 0 && " Sorted by how often each one's used, so the ones your clients see most are at the top — you don't need to work through the whole list, just as far down as feels worth it."
+        missingCount > 0 && " Sorted by how often each one's used, so the ones your members see most are at the top — you don't need to work through the whole list, just as far down as feels worth it."
       ),
       e("div", { style: { display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 14 } },
         e("div", { style: { maxWidth: 240, flex: 1, minWidth: 200 } },
@@ -6311,10 +6311,10 @@
     // real back-and-forth is underway.
     const SUGGESTED_PROMPTS = isTrainer
       ? [
-          "Build a 4-week hypertrophy block for a beginner client",
+          "Build a 4-week hypertrophy block for a beginner member",
           "How should I structure a deload week?",
-          "How do I assign a program to a client in JimFit?",
-          "Explain progressive overload to a new client"
+          "How do I assign a program to a member in JimFit?",
+          "Explain progressive overload to a new member"
         ]
       : [
           "Build me a beginner leg day",
@@ -6329,7 +6329,7 @@
     return e("div", { ref: rootRef, style: { display: "flex", flexDirection: "column", height: panelHeight != null ? `${panelHeight}px` : "calc(100dvh - 220px - 66px - env(safe-area-inset-bottom, 0px))" } },
       e("p", { style: { ...styles.demoNote, marginBottom: injuries.length ? 4 : 10 } },
         isTrainer
-          ? "AI-generated — a useful starting point for programming and coaching questions, but always apply your own judgment for a client's injuries, medical conditions, or specific program."
+          ? "AI-generated — a useful starting point for programming and coaching questions, but always apply your own judgment for a member's injuries, medical conditions, or specific program."
           : "AI-generated — helpful for general questions, but always double-check anything about an injury, medical condition, or your specific program with your coach."
       ),
       !isTrainer && injuries.length > 0 && e("p", { style: { ...styles.demoNote, marginBottom: 10, fontStyle: "italic" } },
@@ -6734,7 +6734,7 @@
   // same as a real client managing their own check-ins on their own
   // profile — so this needs to flip to canManage: true, or the check-ins
   // box (built assuming a trainer is always looking at someone else) shows
-  // "No check-ins from this client yet" about the trainer's own workouts.
+  // "No check-ins from this member yet" about the trainer's own workouts.
   function ClientLogPanel({ clientName, clientId, userId = null, entries, setEntries, unit = "kg", isSelfLog = false }) {
     const [titleFilter, setTitleFilter] = useState("All");
     // Defaults to today (not "none") — this screen is for actively logging a
@@ -7693,7 +7693,7 @@
         e("div", { style: { display: "flex", gap: 22, justifyContent: "center", marginTop: 8 } },
           e("button", { type: "button", style: { ...styles.roleCircleBtn, opacity: 0, animation: "bubblePop 0.68s cubic-bezier(.34,1.56,.64,1) 0.18s forwards" }, onClick: () => onPick("client") },
             e("div", { style: { ...styles.roleCircle, ...styles.roleCircleClient } }, e(Icon, { name: "user", size: 26, color: C.clientAccent })),
-            e("span", { style: styles.roleCircleLabel }, "I'm a Client")
+            e("span", { style: styles.roleCircleLabel }, "I'm a Member")
           ),
           e("button", { type: "button", style: { ...styles.roleCircleBtn, opacity: 0, animation: "bubblePop 0.68s cubic-bezier(.34,1.56,.64,1) 0.42s forwards" }, onClick: () => onPick("trainer") },
             e("div", { style: { ...styles.roleCircle, ...styles.roleCircleTrainer } }, e(Icon, { name: "calendar", size: 26, color: C.brand })),
@@ -7959,7 +7959,7 @@
       }, e(Icon, { name: "back", size: 13 }), "Back"),
       e("div", { style: { ...styles.gateCard, position: "relative", zIndex: 1 } },
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
-        mode === "signup" && role === "client" && e("span", { style: { ...styles.gatePillBadge, marginTop: 4, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.14s forwards" } }, "Client account"),
+        mode === "signup" && role === "client" && e("span", { style: { ...styles.gatePillBadge, marginTop: 4, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.14s forwards" } }, "Member account"),
         // Sept 12 2026, Jimmy: "i want to fix the trainer login sign up
         // page like this video" — trainer signup was falling through to the
         // generic "JimFit" title with no pill badge, unlike client signup
@@ -7976,7 +7976,7 @@
             // Reference flow splits this into a short subtitle plus its own
             // banner below (see the trainer gateBanner just under this),
             // instead of one long run-on sentence.
-            : role === "trainer" && mode === "signup" ? "If you're new, it'll wait for approval before you can see any clients."
+            : role === "trainer" && mode === "signup" ? "If you're new, it'll wait for approval before you can see any members."
             : role === "trainer" ? "Log in with your email, or create your account below if you're new."
             : mode === "signup" && role === "client" ? "Log workouts, meals and progress — all in one place."
             : mode === "forgot" ? "Enter your email and we'll send you a reset link."
@@ -8206,7 +8206,7 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Almost there!"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. You'll be able to log in and see your assigned clients as soon as it's approved.`
+          `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. You'll be able to log in and see your assigned members as soon as it's approved.`
         ),
         e("button", { style: { ...styles.saveBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" }, onClick: onLogout }, "Log out")
       )
@@ -8962,7 +8962,7 @@
               // yet a client, just won't have one to jump to.
               session.clientId && onViewClient && e("button", {
                 type: "button", style: styles.demoLinkBtn, onClick: () => onViewClient(session.clientId)
-              }, "View client")
+              }, "View member")
             ),
             e("span", { style: styles.muscleSubText }, metaBits.join(" · "))
           )
@@ -9223,11 +9223,11 @@
 
     async function handleSchedule() {
       if (!manualEntry && !clientId) {
-        setError("Pick a client from the list, or switch to entering details manually.");
+        setError("Pick a member from the list, or switch to entering details manually.");
         return;
       }
       if (!name.trim() || !date) {
-        setError("Add a client name and a date.");
+        setError("Add a member name and a date.");
         return;
       }
       // Sept 18 2026: soft warning, not a hard block — backfilling a session
@@ -9453,7 +9453,7 @@
               e("button", {
                 type: "button", style: { ...styles.demoLinkBtn, marginBottom: 10 },
                 onClick: () => { setManualEntry(true); setClientId(null); setName(""); setEmail(""); }
-              }, "Not a client yet? Enter details manually")
+              }, "Not a member yet? Enter details manually")
             )
           : e(React.Fragment, null,
               e("div", { style: styles.sessionFormRow },
@@ -9468,7 +9468,7 @@
               e("button", {
                 type: "button", style: { ...styles.demoLinkBtn, marginBottom: 10 },
                 onClick: () => { setManualEntry(false); setName(""); setEmail(""); }
-              }, "Pick an existing client instead")
+              }, "Pick an existing member instead")
             ),
         // Sept 18 2026: session cards already showed a phone number when one
         // was on file — this is the field that actually lets one get saved
@@ -9630,7 +9630,7 @@
     // stacked vertically. Same "too much scrolling, pick what you want to
     // see" complaint that led to the Clients tab's By-trainer/By-payment
     // pill switcher a few minutes earlier — same fix here: a
-    // "🧍 Clients" / "🏋️ Trainers" pill splits it into two focused views
+    // "🧍 Members" / "🏋️ Trainers" pill splits it into two focused views
     // instead of one long stack.
     const [dashboardView, setDashboardView] = useState("clients");
     const overall = useMemo(() => computeDashboardStats(entries, payments), [entries, payments]);
@@ -9683,7 +9683,7 @@
     const trainerCards = perTrainer.length === 0
       ? e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No trainers added yet."))
       // Sept 15 2026, Jimmy QA: this used to be one space-between row —
-      // avatar/name/stats block on the left, "$X from clients"/"$Y trainer
+      // avatar/name/stats block on the left, "$X from members"/"$Y trainer
       // fee" right-aligned on the right, both free to wrap. Neither side
       // had a minWidth or nowrap, so on a real trainer with real numbers
       // (clients, sessions, a nonzero fee) both blocks wrapped to 2 lines
@@ -9702,7 +9702,7 @@
             )
           ),
           e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 } },
-            e("span", { style: styles.rosterVol }, `$${t.totalPaid.toLocaleString()}`, e("span", { style: styles.statUnit }, " from clients")),
+            e("span", { style: styles.rosterVol }, `$${t.totalPaid.toLocaleString()}`, e("span", { style: styles.statUnit }, " from members")),
             e("span", { style: { ...styles.muscleSubText, whiteSpace: "nowrap" } }, `$${t.ownPaid.toLocaleString()} trainer fee`)
           )
         )));
@@ -9712,7 +9712,7 @@
         e("button", {
           style: { ...styles.browseChip, ...(dashboardView === "clients" ? styles.browseChipActive : {}) },
           onClick: () => setDashboardView("clients")
-        }, "🧍 Clients"),
+        }, "🧍 Members"),
         e("button", {
           style: { ...styles.browseChip, ...(dashboardView === "trainers" ? styles.browseChipActive : {}) },
           onClick: () => setDashboardView("trainers")
@@ -9937,7 +9937,7 @@
     //
     // Sept 18 2026 retest fix: this originally only checked renewalFor
     // (self-train trial/subscription lapse), which is null for anyone
-    // billed outside the app — fine on the pure "My clients" (trainer-only)
+    // billed outside the app — fine on the pure "My members" (trainer-only)
     // list, but this same component also backs the mixed "Paid —
     // Subscription/Diet/Program" screens where self-train and
     // trainer-billed clients sit side by side. On those, the filter was
@@ -9988,7 +9988,7 @@
         )
       ),
       roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
-        e("p", { style: styles.emptyText }, needsPaymentOnly ? "No clients currently need to pay." : `No clients match "${search.trim()}".`)
+        e("p", { style: styles.emptyText }, needsPaymentOnly ? "No members currently need to pay." : `No members match "${search.trim()}".`)
       ),
       // Sept 11 2026, Jimmy: brand pass, step 6 (phase 3 — decluttering the
       // busiest screens) — a card here can stack up to 5 lines (name, email,
@@ -10043,7 +10043,7 @@
             onClick: (ev) => { ev.stopPropagation(); onClearWorkouts(r.id); },
             "aria-label": "Clear workout history", title: "Clear workout history"
           }, e(Icon, { name: "activity", size: 15 })),
-          onDelete && e("button", { style: styles.deleteBtn, onClick: (ev) => { ev.stopPropagation(); onDelete(r.id); }, "aria-label": "Delete client", title: "Delete client entirely" }, e(Icon, { name: "trash", size: 15 }))
+          onDelete && e("button", { style: styles.deleteBtn, onClick: (ev) => { ev.stopPropagation(); onDelete(r.id); }, "aria-label": "Delete member", title: "Delete member entirely" }, e(Icon, { name: "trash", size: 15 }))
         )
         );
       }))
@@ -10082,8 +10082,8 @@
     }, [rows, search]);
 
     return e("div", null,
-      rows.length > 0 && e(StatTile, { label: "Total collected, all clients", value: Math.round(grandTotal), unit: "", size: "lg" }),
-      rows.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No clients yet.")),
+      rows.length > 0 && e(StatTile, { label: "Total collected, all members", value: Math.round(grandTotal), unit: "", size: "lg" }),
+      rows.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No members yet.")),
       rows.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 12 } },
         e("div", { style: styles.rosterSearchWrap },
           e(Icon, { name: "search", size: 14, color: C.ink3 }),
@@ -10099,7 +10099,7 @@
         e("span", { style: styles.rosterCount }, visibleRows.length, "/", rows.length)
       ),
       rows.length > 0 && visibleRows.length === 0 && e("div", { style: styles.empty },
-        e("p", { style: styles.emptyText }, `No clients match "${search.trim()}".`)
+        e("p", { style: styles.emptyText }, `No members match "${search.trim()}".`)
       ),
       e("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: rows.length > 0 ? 0 : 0 } }, visibleRows.map(({ r, cats, total }) => {
         const balance = balanceFor(r.profile);
@@ -10652,11 +10652,11 @@
       // and which cleanup path — applies.
       const hasLogin = !!(cp && cp.user_id);
       setConfirmDialog({
-        title: "Delete this client?",
+        title: "Delete this member?",
         message: hasLogin
           ? `Delete ${name} entirely? This removes their profile, workout history, payment records, and their login — they won't be able to sign back in. This can't be undone.`
           : `Delete ${name} entirely? This removes their profile, workout history, and payment records, and can't be undone. (They don't have a login account yet, so there's nothing else to remove.)`,
-        confirmLabel: "Delete client",
+        confirmLabel: "Delete member",
         onConfirm: async () => {
           setConfirmDialog(null);
           setAllEntries((prev) => prev.filter((x) => (cp && cp.id ? x.clientId !== cp.id : x.clientName !== name)));
@@ -10698,7 +10698,7 @@
     function handleDeletePayment(payment) {
       setConfirmDialog({
         title: "Delete this payment?",
-        message: `Delete the $${Number(payment.amount || 0).toLocaleString()} payment from ${payment.client_name || "this client"} (${payment.paid_on ? fmtDate(payment.paid_on.slice(0, 10)) : "no date"})? This can't be undone and won't undo their plan/program unlock automatically.`,
+        message: `Delete the $${Number(payment.amount || 0).toLocaleString()} payment from ${payment.client_name || "this member"} (${payment.paid_on ? fmtDate(payment.paid_on.slice(0, 10)) : "no date"})? This can't be undone and won't undo their plan/program unlock automatically.`,
         confirmLabel: "Delete payment",
         onConfirm: async () => {
           setConfirmDialog(null);
@@ -10819,14 +10819,14 @@
       // now, same way the client-reassignment note already is.
       const sessionsNote = " Any sessions already booked with them will show as \"Unassigned\" on the Rota — reassign or remove those separately.";
       return (clientCount > 0
-        ? `Delete ${t.name}? Their ${clientCount} client${clientCount === 1 ? "" : "s"} will become unassigned — you can reassign them anytime.`
+        ? `Delete ${t.name}? Their ${clientCount} member${clientCount === 1 ? "" : "s"} will become unassigned — you can reassign them anytime.`
         : `Delete ${t.name}? This can't be undone.`) + sessionsNote + loginNote;
     }
     async function handleDeleteTrainer(trainerId) {
       if (deletingTrainer) return;
       const t = trainers.find((x) => x.id === trainerId);
       if (!t) return;
-      if (t.email === SELF_TRAIN_EMAIL) { setDeleteTrainerError("\"Self-Training\" is a built-in bucket for clients without a trainer — it can't be deleted."); return; }
+      if (t.email === SELF_TRAIN_EMAIL) { setDeleteTrainerError("\"Self-Training\" is a built-in bucket for members without a trainer — it can't be deleted."); return; }
       setDeleteTrainerError("");
       // Sept 19 2026 inspection fix: this used to close the confirm bar
       // (setConfirmDeleteTrainer(false)) in the same tick as setting
@@ -11072,7 +11072,7 @@
     // Removed outright; real auth is what was actually protecting this the
     // whole time.
     if (!sb) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Supabase isn't configured yet — add your project URL and key at the top of the file."));
-    if (loading) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading clients…"));
+    if (loading) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading members…"));
 
     if (selectedClient) {
       const client = roster.find((r) => r.id === selectedClient);
@@ -11080,10 +11080,10 @@
       const clientProfile = client.profile;
       return e("div", null,
         e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-          e("button", { style: styles.backBtn, onClick: goBackToRoster }, e(Icon, { name: "back", size: 16 }), "All clients"),
+          e("button", { style: styles.backBtn, onClick: goBackToRoster }, e(Icon, { name: "back", size: 16 }), "All members"),
           e("div", { style: { display: "flex", gap: 8 } },
             e("button", { style: styles.waterAddBtn, onClick: () => handleClearWorkouts(client.id) }, e(Icon, { name: "trash", size: 13 }), "Clear workouts"),
-            e("button", { style: styles.deleteClientBtn, onClick: () => handleDeleteClient(client.id) }, e(Icon, { name: "trash", size: 13 }), "Delete client")
+            e("button", { style: styles.deleteClientBtn, onClick: () => handleDeleteClient(client.id) }, e(Icon, { name: "trash", size: 13 }), "Delete member")
           )
         ),
         // Sept 15 2026, Jimmy: "i dont want to see it here i want it on the
@@ -11169,7 +11169,7 @@
                       })
                     )
                   )
-                : e("div", { style: styles.setupNotice }, e(Icon, { name: "alert", size: 14, color: C.ink3 }), "This client hasn't filled in their profile questionnaire yet — a trainer can be assigned once they do.")
+                : e("div", { style: styles.setupNotice }, e(Icon, { name: "alert", size: 14, color: C.ink3 }), "This member hasn't filled in their profile questionnaire yet — a trainer can be assigned once they do.")
             )
           : detailTab === "log"
           ? e(ClientLogPanel, { clientName: client.name, clientId: clientProfile ? clientProfile.id : null, userId: clientProfile ? clientProfile.user_id : null, entries: client.entries, setEntries: makeClientEntriesSetter(setAllEntries, clientProfile ? clientProfile.id : null, client.name), unit: "kg" })
@@ -11193,7 +11193,7 @@
               e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Your program")),
               e(ClientProgramCard, { clientName: client.name, clientId: clientProfile ? clientProfile.id : null, userId: clientProfile ? clientProfile.user_id : null, canAssign: true, isSelfTrain: clientIsSelfTrain, onAssignmentChange: () => setProgramVersion((v) => v + 1) }),
               clientIsSelfTrain && e(ProgramPaymentCard, { clientProfile, refreshKey: programVersion, onIncrementTotalDue: handleIncrementTotalDue }),
-              e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Write your own program for this client")),
+              e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Write your own program for this member")),
               e(ClientCustomProgramCard, { clientName: client.name, clientId: clientProfile ? clientProfile.id : null, userId: clientProfile ? clientProfile.user_id : null, canManage: true })
             )
           : detailTab === "payments"
@@ -11246,7 +11246,7 @@
             onClick: () => { setDetailTab(s.value); setMenuOpen(false); }
           }))
         }),
-        // Sept 14 2026 fix: "Clear workouts" and "Delete client" (both just
+        // Sept 14 2026 fix: "Clear workouts" and "Delete member" (both just
         // above) call setConfirmDialog, but this early-return branch (the
         // client's own detail page) never rendered the ConfirmDialog modal —
         // that only lived in the OTHER return path below, for the roster
@@ -11261,10 +11261,10 @@
 
     const headerLabel = coachTab === "sessions" ? "Rota"
       : coachTab === "dashboard" ? "Dashboard"
-      : coachTab === "myClients" ? "My clients"
+      : coachTab === "myClients" ? "My members"
       : coachTab === "gyms" ? "Gyms"
       : coachTab === "trainerBilling" ? "Trainer billing"
-      : coachTab === "clientBilling" ? "Client billing"
+      : coachTab === "clientBilling" ? "Member billing"
       : coachTab === "exercises" ? "Exercise Library"
       : coachTab === "aiChat" ? "AI Chat"
       : coachTab === "requests" ? "Trainer requests"
@@ -11272,7 +11272,7 @@
       : coachTab === "programRequests" ? "Program requests"
       : coachTab === "dietTemplates" ? "Diet plan templates"
       : coachTab === "trainers" ? (selectedTrainerId ? (selectedTrainer ? selectedTrainer.name : "Trainer") : "Trainers")
-      : "Clients";
+      : "Members";
 
     // Sept 14 2026, Jimmy: "i want to see the tabs above on hamburger menu
     // tab only" — the always-visible Clients/Dashboard/Rota/Trainers pill
@@ -11353,7 +11353,7 @@
         : coachTab === "myClients"
         ? e(ClientRosterList, {
             roster: myRoster, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts,
-            emptyText: "No clients assigned to you (Owner) yet — open a client's page and set Trainer to \"Owner\"."
+            emptyText: "No members assigned to you (Owner) yet — open a member's page and set Trainer to \"Owner\"."
           })
         : coachTab === "trainers"
         ? (selectedTrainerId
@@ -11363,7 +11363,7 @@
                   selectedTrainer
                     ? e(React.Fragment, null,
                         selectedTrainer.email === SELF_TRAIN_EMAIL && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 10 } },
-                          "This is a built-in bucket, not a real trainer — clients who join with this code have no personal trainer, just app access and their own billing."
+                          "This is a built-in bucket, not a real trainer — members who join with this code have no personal trainer, just app access and their own billing."
                         ),
                         isBirthdayToday(selectedTrainer.birthday) && e(BirthdayBadge, { style: { marginBottom: 10 } }),
                         selectedTrainer.email === SELF_TRAIN_EMAIL
@@ -11378,7 +11378,7 @@
                               trainerFieldError && e("p", { style: { ...styles.inlineError, display: "block", marginTop: 4 } }, trainerFieldError),
                               e(EditableStat, { label: "Birthday", value: selectedTrainer.birthday, type: "date", block: true, onCommit: (v) => handleUpdateTrainerField(selectedTrainer.id, "birthday", v) }),
                               e("div", { style: { ...styles.sectionHead, marginTop: 18, marginBottom: 4 } }, e("span", { style: styles.sectionTitle }, "Coaching profile")),
-                              e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 6 } }, "Shown to clients on \"Find a trainer\" — trainers can fill this in themselves too."),
+                              e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 6 } }, "Shown to members on \"Find a trainer\" — trainers can fill this in themselves too."),
                               e(EditableStat, { label: "Years of experience", value: selectedTrainer.years_experience, type: "number", block: true, placeholder: "Set", onCommit: (v) => handleUpdateTrainerField(selectedTrainer.id, "years_experience", v) }),
                               e(EditableStat, { label: "Specialties", value: selectedTrainer.specialties, type: "text", block: true, placeholder: "e.g. Weight loss, powerlifting", onCommit: (v) => handleUpdateTrainerField(selectedTrainer.id, "specialties", v) }),
                               e(EditableStat, { label: "Certifications", value: selectedTrainer.certifications, type: "text", block: true, placeholder: "e.g. NASM-CPT, ISSA", onCommit: (v) => handleUpdateTrainerField(selectedTrainer.id, "certifications", v) }),
@@ -11399,7 +11399,7 @@
                           e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
                             e("span", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, letterSpacing: 1.5, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, selectedTrainer.invite_code || "—")
                           ),
-                          e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, "Clients enter this code when they sign up to land directly with this trainer.")
+                          e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, "Members enter this code when they sign up to land directly with this trainer.")
                         ),
                         selectedTrainer.email !== SELF_TRAIN_EMAIL && (
                           confirmDeleteTrainer
@@ -11418,7 +11418,7 @@
                 ),
                 e(ClientRosterList, {
                   roster: trainerRoster, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts,
-                  emptyText: "No clients assigned to this trainer yet."
+                  emptyText: "No members assigned to this trainer yet."
                 })
               )
             : e(React.Fragment, null,
@@ -11521,7 +11521,7 @@
                       ),
                       addTrainerError && e("div", { style: { ...styles.errorBanner, marginBottom: 10 } }, e(Icon, { name: "x", size: 13, color: C.critical }), addTrainerError),
                       e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 10 } },
-                        "This adds them to the roster and gives them their own invite code for clients. They set their own password — have them open JimFit, pick \"I'm a Trainer,\" then \"Create your account\" with this same email."
+                        "This adds them to the roster and gives them their own invite code for members. They set their own password — have them open JimFit, pick \"I'm a Trainer,\" then \"Create your account\" with this same email."
                       ),
                       e("div", { style: { display: "flex", gap: 8 } },
                         e("button", { style: { ...styles.saveBtn, marginTop: 0, ...(addingTrainer ? styles.btnDisabled : {}) }, disabled: addingTrainer, onClick: handleAddTrainer }, addingTrainer ? "Adding…" : "Add trainer"),
@@ -11619,7 +11619,7 @@
                 })()
               ))
         : e(React.Fragment, null,
-            roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No clients have logged anything yet.")),
+            roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No members have logged anything yet.")),
             roster.length > 0 && e(React.Fragment, null,
               e("div", { style: { ...styles.chipScrollRow, marginBottom: 18 } },
                 [
@@ -11651,7 +11651,7 @@
                           ),
                           e(ClientRosterList, {
                             roster: trainerAssignedClients, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts, trainerNameFor,
-                            emptyText: "No clients with a trainer yet."
+                            emptyText: "No members with a trainer yet."
                           })
                         )
                       : e(React.Fragment, null,
@@ -11661,7 +11661,7 @@
                           ),
                           e(ClientRosterList, {
                             roster: selfTrainClients, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts, trainerNameFor,
-                            emptyText: "No self-training clients yet."
+                            emptyText: "No self-training members yet."
                           })
                         )
                   )
@@ -11679,7 +11679,7 @@
                     ),
                     e(ClientRosterList, {
                       roster: subscriptionPaidClients, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts, trainerNameFor,
-                      emptyText: "No clients have paid for a subscription yet."
+                      emptyText: "No members have paid for a subscription yet."
                     }),
                     e("div", { style: { ...styles.sectionHead, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24 } },
                       e("span", { style: styles.sectionTitle }, "🥗 Paid — Diet plan"),
@@ -11687,7 +11687,7 @@
                     ),
                     e(ClientRosterList, {
                       roster: dietPaidClients, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts, trainerNameFor,
-                      emptyText: "No clients have paid for a diet plan yet."
+                      emptyText: "No members have paid for a diet plan yet."
                     }),
                     e("div", { style: { ...styles.sectionHead, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24 } },
                       e("span", { style: styles.sectionTitle }, "🏋️ Paid — Program"),
@@ -11695,7 +11695,7 @@
                     ),
                     e(ClientRosterList, {
                       roster: programPaidClients, balanceFor, categoriesFor, renewalFor, onSelect: setSelectedClient, onDelete: handleDeleteClient, onClearWorkouts: handleClearWorkouts, trainerNameFor,
-                      emptyText: "No clients have paid for a program yet."
+                      emptyText: "No members have paid for a program yet."
                     })
                   )
             )
@@ -11721,16 +11721,16 @@
           {
             label: "Overview",
             items: [
-              { label: "Clients", active: coachTab === "clients", onClick: () => { setCoachTab("clients"); setMenuOpen(false); } },
+              { label: "Members", active: coachTab === "clients", onClick: () => { setCoachTab("clients"); setMenuOpen(false); } },
               { label: "Dashboard", active: coachTab === "dashboard", onClick: () => { setCoachTab("dashboard"); setMenuOpen(false); } },
               { label: "Rota", active: coachTab === "sessions", onClick: () => { setCoachTab("sessions"); setMenuOpen(false); } }
             ]
           },
           {
-            label: "Trainers & clients",
+            label: "Trainers & members",
             items: [
               { label: pendingTrainers.length > 0 ? `Trainers (${pendingTrainers.length})` : "Trainers", active: coachTab === "trainers", onClick: () => { setCoachTab("trainers"); setSelectedTrainerId(null); setMenuOpen(false); } },
-              { label: "My clients", active: coachTab === "myClients", onClick: () => { setCoachTab("myClients"); setMenuOpen(false); } }
+              { label: "My members", active: coachTab === "myClients", onClick: () => { setCoachTab("myClients"); setMenuOpen(false); } }
             ]
           },
           {
@@ -11758,7 +11758,7 @@
               // including Jimmy's own — no gym-level exemption.
               { label: "Gyms", active: coachTab === "gyms", onClick: () => { setCoachTab("gyms"); setMenuOpen(false); } },
               { label: "Trainer billing", active: coachTab === "trainerBilling", onClick: () => { setCoachTab("trainerBilling"); setMenuOpen(false); } },
-              { label: "Client billing", active: coachTab === "clientBilling", onClick: () => { setCoachTab("clientBilling"); setMenuOpen(false); } }
+              { label: "Member billing", active: coachTab === "clientBilling", onClick: () => { setCoachTab("clientBilling"); setMenuOpen(false); } }
             ]
           },
           {
@@ -12163,7 +12163,7 @@
             : e("div", { style: { marginTop: 14 } },
                 e("div", { style: styles.dashGrid },
                   e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Collected"), e("span", { style: styles.dashTileValue }, `$${paidTotal.toLocaleString()}`)),
-                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
+                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
                 ),
                 e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 4 } },
                   e("div", { style: styles.rosterSearchWrap },
@@ -12366,7 +12366,7 @@
             : e("div", { style: { marginTop: 14 } },
                 e("div", { style: styles.dashGrid },
                   e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Collected"), e("span", { style: styles.dashTileValue }, `$${paidTotal.toLocaleString()}`)),
-                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
+                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))                  e("div", { style: styles.dashTile }, e("span", { style: styles.profileLabel }, "Members"), e("span", { style: styles.dashTileValue }, String(paidPayments.length)))
                 ),
                 e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 4 } },
                   e("div", { style: styles.rosterSearchWrap },
@@ -12544,7 +12544,7 @@
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
       gyms.length > 0 && e(StatTile, { label: "Estimated monthly cut, all gyms", value: Math.round(totalMonthlyCut), unit: "", size: "lg" }),
       gyms.length > 0 && frozenCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, `Excludes ${frozenCount} frozen gym${frozenCount === 1 ? "" : "s"} — not counted as revenue until unfrozen.`),
-      gyms.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Standard rate is $${B2B_FLAT_RATE_MONTHLY}/month per gym, unlimited clients — each gym's rate below can be adjusted individually if you negotiate a different one.`),
+      gyms.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Standard rate is $${B2B_FLAT_RATE_MONTHLY}/month per gym, unlimited members — each gym's rate below can be adjusted individually if you negotiate a different one.`),
       // Sept 18 2026, Jimmy: a QA pass flagged this as confusing ("looks like
       // double billing") — clarified to spell out these are two DIFFERENT
       // revenue streams from two different customers, on purpose, not a
@@ -12565,9 +12565,9 @@
             ),
             e("span", { style: { ...styles.goalChip, ...(g.is_frozen ? styles.goalChipBad : styles.goalChipGood) } }, g.is_frozen ? "Frozen" : "Active")
           ),
-          e("div", { style: styles.muscleSubText }, `${trainerCounts[g.id] || 0} trainer${(trainerCounts[g.id] || 0) === 1 ? "" : "s"} · ${stats.count} client${stats.count === 1 ? "" : "s"} (unlimited) · code ${g.invite_code || "—"}`),
+          e("div", { style: styles.muscleSubText }, `${trainerCounts[g.id] || 0} trainer${(trainerCounts[g.id] || 0) === 1 ? "" : "s"} · ${stats.count} member${stats.count === 1 ? "" : "s"} (unlimited) · code ${g.invite_code || "—"}`),
           e("div", { style: styles.profileSummaryGrid },
-            e(EditableStat, { label: "Flat rate ($/mo, unlimited clients)", value: g.flat_rate_monthly, suffix: "$", onCommit: (v) => updateGymField(g.id, "flat_rate_monthly", v != null ? v : 0) }),
+            e(EditableStat, { label: "Flat rate ($/mo, unlimited members)", value: g.flat_rate_monthly, suffix: "$", onCommit: (v) => updateGymField(g.id, "flat_rate_monthly", v != null ? v : 0) }),
             e("div", null,
               e("span", { style: styles.profileLabel }, "Est. monthly cut"),
               e("p", { style: styles.profileValue }, `$${Math.round(cut).toLocaleString()}`)
@@ -12784,7 +12784,7 @@
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
       trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: Math.round(totalMonthly), unit: "", size: "lg" }),
       trainersList.length > 0 && frozenTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, `Excludes ${frozenTrainerCount} frozen trainer${frozenTrainerCount === 1 ? "" : "s"} — not counted as revenue until unfrozen.`),
-      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Standard rate is $${B2B_FLAT_RATE_MONTHLY}/month per trainer, unlimited clients — every trainer on the platform pays this, including your own. Adjust a rate below if you negotiate a different one.`),
+      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Standard rate is $${B2B_FLAT_RATE_MONTHLY}/month per trainer, unlimited members — every trainer on the platform pays this, including your own. Adjust a rate below if you negotiate a different one.`),
       // Sept 18 2026, Jimmy: same clarification added to GymsBillingPanel —
       // spelling out these are two intentionally separate revenue streams so
       // this doesn't read as a double-billing bug.
@@ -12818,7 +12818,7 @@
             ),
             e("span", { style: { ...styles.goalChip, ...(t.is_frozen ? styles.goalChipBad : styles.goalChipGood) } }, t.is_frozen ? "Frozen" : "Active")
           ),
-          e("div", { style: styles.muscleSubText }, `${clientCount} client${clientCount === 1 ? "" : "s"} (unlimited)${t.gym_id ? " · in a gym" : ""}`),
+          e("div", { style: styles.muscleSubText }, `${clientCount} member${clientCount === 1 ? "" : "s"} (unlimited)${t.gym_id ? " · in a gym" : ""}`),
           t.gym_id && e("p", { style: { ...styles.profileGoalText, fontSize: 11, marginTop: 2, marginBottom: 6 } }, "This trainer is also under a gym — if they can't log in despite showing Active here, check whether their gym is frozen on the Gyms screen."),
           // Sept 6 2026, Jimmy: "no phone number for trainer! i need this for
           // trainers" — every trainer was added with just name + email, no
@@ -16252,7 +16252,7 @@
                   }
                 },
                   e(Icon, { name: "lock", size: 11, color: tint }),
-                  unlocked ? "Unlocked" : "Locked \u2014 client can't see this yet"
+                  unlocked ? "Unlocked" : "Locked \u2014 member can't see this yet"
                 );
               })()
             ),
@@ -16279,7 +16279,7 @@
                             )
                           ))
                         )
-                      : e("p", { style: { ...styles.emptyText, marginTop: 10 } }, "No diet plan set up for this client yet \u2014 request one below.")
+                      : e("p", { style: { ...styles.emptyText, marginTop: 10 } }, "No diet plan set up for this member yet \u2014 request one below.")
                     )
                 )
               : showTemplatePicker
@@ -16347,8 +16347,8 @@
                 : e("p", { style: { ...styles.profileGoalText, cursor: "pointer", marginTop: 6 }, onClick: () => setEditingMealPlan(true) }, (plan && plan.mealPlan) || "Tap to add general notes")
             ),
             e("div", { style: { marginTop: 18 } },
-              e("span", { style: styles.progressCardTitle }, selfLog ? "⚠️ Allergies / notes" : "⚠️ Allergies / notes for this client"),
-              e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 2, marginBottom: 6 } }, selfLog ? "Your own notes \u2014 swaps, allergies, anything you want on file." : "Shown to the client alongside their plan \u2014 use it for swaps, allergies, anything specific to them."),
+              e("span", { style: styles.progressCardTitle }, selfLog ? "⚠️ Allergies / notes" : "⚠️ Allergies / notes for this member"),
+              e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 2, marginBottom: 6 } }, selfLog ? "Your own notes \u2014 swaps, allergies, anything you want on file." : "Shown to the member alongside their plan \u2014 use it for swaps, allergies, anything specific to them."),
               editingDietaryNotes
                 ? e(React.Fragment, null,
                     e("textarea", {
@@ -17096,7 +17096,7 @@
     return e("div", { style: { padding: "0 18px 24px" } },
       e("div", { style: { ...styles.profileSummary, marginBottom: 20 } },
         e("div", { style: { fontSize: 13, color: C.ink3, marginBottom: 4 } }, gym.name),
-        e("div", { style: { fontSize: 12, color: C.ink3, marginBottom: 10 } }, "Share your invite code with clients — they enter it when they sign up so they land with you directly."),
+        e("div", { style: { fontSize: 12, color: C.ink3, marginBottom: 10 } }, "Share your invite code with members — they enter it when they sign up so they land with you directly."),
         e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
           e("span", { style: { fontFamily: "monospace", fontSize: 20, fontWeight: 700, letterSpacing: 2, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, trainer.invite_code || "—"),
           trainer.invite_code && e("button", { style: styles.switchModeBtn, onClick: copyCode }, copied ? "Copied!" : "Copy")
@@ -17118,12 +17118,12 @@
             e("span", { style: { ...styles.profileValue, display: "block" } }, `$${Number(gym.flat_rate_monthly) || 0}/mo`)
           ),
           e("div", null,
-            e("span", { style: styles.profileLabel }, "Clients included"),
+            e("span", { style: styles.profileLabel }, "Members included"),
             e("span", { style: { ...styles.profileValue, display: "block" } }, "Unlimited")
           )
         ),
         gym.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, gym.billing_note),
-        gym.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your gym is frozen — trainers and clients can't log in until this is resolved. Contact JimFit to reactivate.")
+        gym.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your gym is frozen — trainers and members can't log in until this is resolved. Contact JimFit to reactivate.")
       ),
       e("div", { style: styles.sectionHead },
         e("span", { style: styles.sectionTitle }, "Your trainers")
@@ -17142,7 +17142,7 @@
             ),
             addTrainerError && e("div", { style: { ...styles.errorBanner, marginBottom: 10 } }, e(Icon, { name: "x", size: 13, color: C.critical }), addTrainerError),
             e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 10 } },
-              "This adds them to your gym's roster with their own invite code for clients. They set their own password — have them open JimFit, pick \"I'm a Trainer,\" then \"Create your account\" with this same email."
+              "This adds them to your gym's roster with their own invite code for members. They set their own password — have them open JimFit, pick \"I'm a Trainer,\" then \"Create your account\" with this same email."
             ),
             e("div", { style: { display: "flex", gap: 8 } },
               e("button", { style: { ...styles.saveBtn, marginTop: 0, ...(addingTrainer ? styles.btnDisabled : {}) }, disabled: addingTrainer, onClick: handleAddTrainer }, addingTrainer ? "Adding…" : "Add trainer"),
@@ -17158,9 +17158,9 @@
               e("span", { style: styles.muscleSubText }, t.email)
             )
           ))),
-      e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Your clients")),
+      e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Your members")),
       gymClients.length === 0
-        ? e("p", { style: styles.emptyText }, "No clients have signed up with your invite code yet.")
+        ? e("p", { style: styles.emptyText }, "No members have signed up with your invite code yet.")
         : e("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, gymClients.map((c) => e("div", { key: c.id, style: styles.clientCard },
             e("div", { style: { display: "flex", flexDirection: "column" } },
               e("span", { style: styles.exerciseName }, c.client_name)
@@ -17418,7 +17418,7 @@
         // instead of two stats plus an oddly detached third.
         e("div", { style: styles.profileSummaryGrid },
           e("div", null, e("span", { style: styles.profileLabel }, "Monthly rate"), e("span", { style: { ...styles.profileValue, display: "block" } }, `$${Number(trainer.rate_monthly) || B2B_FLAT_RATE_MONTHLY}/mo`)),
-          e("div", null, e("span", { style: styles.profileLabel }, "Clients included"), e("span", { style: { ...styles.profileValue, display: "block" } }, "Unlimited")),
+          e("div", null, e("span", { style: styles.profileLabel }, "Members included"), e("span", { style: { ...styles.profileValue, display: "block" } }, "Unlimited")),
           // Set by the manager (Trainers list → "Next payment due") —
           // purely informational, not tied to an actual in-app charge. Red +
           // "Overdue" once the date's in the past so it reads the same way
@@ -17531,12 +17531,12 @@
       })(),
       e("div", { style: { ...styles.sectionHead, marginTop: 22 } }, e("span", { style: { ...styles.sectionTitle, fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5 } }, "Coaching profile")),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 10 } },
-        "Clients with no trainer see this when they're picking one to request — fill it in so they know who they'd be training with."
+        "Members with no trainer see this when they're picking one to request — fill it in so they know who they'd be training with."
       ),
       e("div", { style: styles.profileCardFlat },
         e("div", { style: styles.profileSectionHeaderRow },
           e("span", { style: styles.profileSectionIconBadge }, e(Icon, { name: "trophy", size: 13, color: C.brand, strokeWidth: 2.5 })),
-          e("span", { style: styles.profileSectionHeaderText }, "Shown to clients"),
+          e("span", { style: styles.profileSectionHeaderText }, "Shown to members"),
           e("span", { style: styles.publicChip }, "PUBLIC")
         ),
         e(EditableStat, { label: "Years of experience", value: coaching.years_experience, type: "number", block: true, placeholder: "Set", onCommit: (v) => handleCoachingField("years_experience", v) }),
@@ -17553,10 +17553,10 @@
       e("div", { style: { ...styles.sectionHead, marginTop: 22 } }, e("span", { style: { ...styles.sectionTitle, fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5 } }, "Notifications")),
       e(InfoSectionCard, { icon: "bell", color: C.brand, title: "Push notifications" },
         pushStatus === "unsupported" && e("p", { style: styles.profileGoalText }, "Notifications aren't supported in this browser — try opening JimFit from your phone's home screen icon instead of a browser tab."),
-        pushStatus === "granted" && e("p", { style: styles.profileGoalText }, "On — you'll get a notification for new clients, client check-ins, and program/diet plan requests, even with the app closed."),
+        pushStatus === "granted" && e("p", { style: styles.profileGoalText }, "On — you'll get a notification for new members, member check-ins, and program/diet plan requests, even with the app closed."),
         pushStatus === "denied" && e("p", { style: styles.profileGoalText }, "Notifications are blocked for JimFit in your phone/browser settings. Turn them back on there, then reopen the app."),
         (pushStatus === "promptable" || pushStatus === "dismissed" || (pushStatus && pushStatus.indexOf("error") === 0) || pushStatus === "working") && e(React.Fragment, null,
-          e("p", { style: { ...styles.profileGoalText, marginBottom: 12 } }, "Get notified the moment a client is assigned to you, checks in, or requests a program or diet plan — even when the app is closed."),
+          e("p", { style: { ...styles.profileGoalText, marginBottom: 12 } }, "Get notified the moment a member is assigned to you, checks in, or requests a program or diet plan — even when the app is closed."),
           pushStatus && pushStatus.indexOf("error") === 0 && e("p", { style: { ...styles.inlineError, display: "block", marginBottom: 10 } }, "Something went wrong turning that on: " + pushStatus.slice(6)),
           e("button", {
             style: { ...styles.sendReminderBtn, ...(pushStatus === "working" ? styles.btnDisabled : {}) },
@@ -17578,10 +17578,10 @@
                 "Permanently deletes your login and your trainer profile. This can't be undone."
               ),
               rosterCount > 0 && e("p", { style: { ...styles.inlineError, display: "block", marginBottom: 10 } },
-                `You still have ${rosterCount} client${rosterCount === 1 ? "" : "s"} assigned to you — reassign or remove them first, then come back here.`
+                `You still have ${rosterCount} member${rosterCount === 1 ? "" : "s"} assigned to you — reassign or remove them first, then come back here.`
               ),
               rosterCountError && e("p", { style: { ...styles.inlineError, display: "block", marginBottom: 10 } },
-                "Couldn't check whether you still have clients assigned — try reopening this screen before deleting."
+                "Couldn't check whether you still have members assigned — try reopening this screen before deleting."
               ),
               deleteAccountError && e("p", { style: { ...styles.inlineError, display: "block", marginBottom: 10 } }, deleteAccountError),
               e("button", {
@@ -17682,7 +17682,7 @@
         // gym owner get notified right when the request comes in, instead of
         // only showing up next time either of them happens to check the
         // Requests list.
-        const who = clientName ? `${clientName} requested` : "A client requested";
+        const who = clientName ? `${clientName} requested` : "A member requested";
         notifyTrainer(trainerId, `${who} you as their trainer.`);
         notifyOwner(`${who} a trainer.`, { viaTrainerId: trainerId });
       } else {
@@ -18380,7 +18380,7 @@
       }
     }
 
-    if (loading) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading your clients…"));
+    if (loading) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading your members…"));
 
     if (selectedClient) {
       const client = roster.find((r) => r.id === selectedClient);
@@ -18388,7 +18388,7 @@
       const clientProfile = client.profile;
       return e("div", { style: styles.app },
         e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px 0" } },
-          e("button", { style: styles.backBtn, onClick: goBackToRoster }, e(Icon, { name: "back", size: 16 }), "My clients")
+          e("button", { style: styles.backBtn, onClick: goBackToRoster }, e(Icon, { name: "back", size: 16 }), "My members")
         ),
         e("div", { style: { padding: "2px 18px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" } },
           e("span", { style: styles.gateTitleSmall }, client.name),
@@ -18448,7 +18448,7 @@
                       e(ClientInjuriesPanel, { userId: clientProfile.user_id, clientName: client.name, canManage: true, legacyProfile: clientProfile, onUpdateLegacy: (field, v) => handleUpdateProfileField(client.id, field, v) })
                     )
                   )
-                : e("div", { style: styles.setupNotice }, e(Icon, { name: "alert", size: 14, color: C.ink3 }), "This client hasn't filled in their profile questionnaire yet.")
+                : e("div", { style: styles.setupNotice }, e(Icon, { name: "alert", size: 14, color: C.ink3 }), "This member hasn't filled in their profile questionnaire yet.")
             )
           : detailTab === "log"
           ? e(ClientLogPanel, { clientName: client.name, clientId: clientProfile ? clientProfile.id : null, userId: clientProfile ? clientProfile.user_id : null, entries: client.entries, setEntries: makeClientEntriesSetter(setAllEntries, clientProfile ? clientProfile.id : null, client.name), unit: "kg" })
@@ -18479,7 +18479,7 @@
               // other detail tab (Payments, Your program in CoachView, etc.)
               // opens with one, so a bare "+ Write a new program" button on
               // an otherwise-empty screen read as unfinished.
-              e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Write your own program for this client")),
+              e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Write your own program for this member")),
               e(ClientCustomProgramCard, {
                 clientName: client.name, clientId: clientProfile ? clientProfile.id : null, userId: clientProfile ? clientProfile.user_id : null, canManage: true,
                 onProgramChange: (val) => { if (clientProfile) setClientPrograms((prev) => ({ ...prev, [clientProfile.id]: val })); },
@@ -18559,7 +18559,7 @@
       : trainerTab === "mygym" ? "My gym"
       : trainerTab === "aiChat" ? "AI Chat"
       : trainerTab === "myprofile" ? "My Profile"
-      : (trainer.name ? `${trainer.name}'s clients` : "My clients");
+      : (trainer.name ? `${trainer.name}'s members` : "My members");
 
     return e("div", { style: styles.app },
       e("header", { style: { ...styles.header, flexDirection: "column", alignItems: "stretch", gap: 10 } },
@@ -18630,7 +18630,7 @@
           }
         }, "🎉 Happy Birthday, ", trainer.name || "there", "! Have a great one."),
         // Shown on whatever tab a trainer lands on right after signing up
-        // (the roster/"My clients" tab is the default) until they fill in
+        // (the roster/"My members" tab is the default) until they fill in
         // last name, birthday, gender, weight, and height on My Profile —
         // Sept 6 2026, Jimmy: "...complete your profile when u enter press
         // profile...and also i want his bmr calculated automatically."
@@ -18759,8 +18759,8 @@
           : e(React.Fragment, null,
               roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText },
                 trainer.invite_code
-                  ? `No clients yet — share your code (${trainer.invite_code}) with them, or ask your manager to assign some.`
-                  : "No clients assigned to you yet — ask your manager to assign some."
+                  ? `No members yet — share your code (${trainer.invite_code}) with them, or ask your manager to assign some.`
+                  : "No members assigned to you yet — ask your manager to assign some."
               )),
               // Sept 13 2026, Jimmy: search + a lighter roster card. The
               // count next to "Search" gives orientation at a glance instead
@@ -18793,7 +18793,7 @@
                 )
               ),
               roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
-                e("p", { style: styles.emptyText }, needsPaymentOnly ? "No clients currently owe you money." : `No clients match "${clientSearch.trim()}".`)
+                e("p", { style: styles.emptyText }, needsPaymentOnly ? "No members currently owe you money." : `No members match "${clientSearch.trim()}".`)
               ),
               e("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, visibleRoster.map((r) => {
                 const risk = clientRiskLabel(r.lastDate);
@@ -18856,7 +18856,7 @@
       // stay in use elsewhere in this file — the client-detail sub-screen
       // above still opens its own SideMenu for Log/Muscles/Progress/etc.)
       e("nav", { style: styles.bottomNav }, [
-        { id: "clients", icon: "users", label: "Clients" },
+        { id: "clients", icon: "users", label: "Members" },
         // Sept 13 2026: was "Dashboard" — the one label out of 7-8 that
         // didn't fit navBtnLabel's width and clipped to "Dashbo…" on both
         // the owner and regular-trainer nav (found testing the app end to
@@ -19399,7 +19399,7 @@
     const [nudgeSent, setNudgeSent] = useState(false);
     function handleNudgeTrainer() {
       if (!trainerId) return;
-      notifyTrainer(trainerId, `${clientName || "Your client"} is waiting on a program to be assigned.`);
+      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
       setNudgeSent(true);
     }
 
@@ -19941,7 +19941,7 @@
   // on the same split (e.g. Push/Pull/Legs) was retyping the same days/
   // exercises every time. `copyFromOptions` (optional, [{clientId,
   // clientName, title}]) lists this trainer's OTHER clients who already
-  // have a program, for a "Copy from another client" alternative to
+  // have a program, for a "Copy from another member" alternative to
   // "Write a new program" — see handleCopyFromClient below. Empty/omitted
   // is fully backward compatible (button just doesn't render), so the
   // manager's own call site (CoachView, which doesn't pass this — Jimmy's
@@ -19954,7 +19954,7 @@
     const [error, setError] = useState("");
 
     const [creating, setCreating] = useState(false);
-    // "Copy from another client" — picking a source client's most recent
+    // "Copy from another member" — picking a source client's most recent
     // program and cloning it (title/description + every week/day/exercise
     // row) into a brand-new program for THIS client. See
     // handleCopyFromClient below.
@@ -20132,7 +20132,7 @@
       setCopying(true);
       const { data: srcProgRows, error: progErr } = await sb.from("client_custom_programs").select("*").eq("client_id", sourceClientId).order("created_at", { ascending: false }).limit(1);
       if (progErr || !srcProgRows || !srcProgRows[0]) {
-        setError(`Couldn't load that client's program. Try again.${progErr && progErr.message ? ` (${progErr.message})` : ""}`);
+        setError(`Couldn't load that member's program. Try again.${progErr && progErr.message ? ` (${progErr.message})` : ""}`);
         setCopying(false);
         return;
       }
@@ -20579,7 +20579,7 @@
                   copyFromOptions.length > 0 && e("button", {
                     style: { ...styles.coachTabBtn, padding: "11px 20px", fontSize: 13 },
                     onClick: () => { setCopyOpen(true); setCopySourceId(copyFromOptions[0].clientId); setError(""); }
-                  }, e(Icon, { name: "copy", size: 14 }), "Copy from another client")
+                  }, e(Icon, { name: "copy", size: 14 }), "Copy from another member")
                 )
               : e("div", { style: styles.empty }, e(ProgramsEmptyArt, {}), e("p", { style: styles.emptyText }, "No custom program written for you yet.")))
       );
@@ -21013,7 +21013,7 @@
           )
         : confirmingRevoke
         ? e("div", { style: { ...styles.deleteConfirmBar, flexDirection: "column", alignItems: "stretch", gap: 8, marginTop: 10 } },
-            e("span", { style: styles.deleteConfirmText }, "Lock this client out of Log, Diet, and any picked program right now — even if their free trial hasn't ended yet?"),
+            e("span", { style: styles.deleteConfirmText }, "Lock this member out of Log, Diet, and any picked program right now — even if their free trial hasn't ended yet?"),
             e("div", { style: { display: "flex", gap: 8 } },
               e("button", { style: { ...styles.confirmCancelBtn, flex: 1 }, onClick: () => setConfirmingRevoke(false), disabled: revoking }, "Cancel"),
               e("button", { style: { ...styles.confirmDangerBtn, flex: 1, ...(revoking ? styles.btnDisabled : {}) }, disabled: revoking, onClick: handleRevoke }, revoking ? "…" : "Revoke access")
@@ -21112,7 +21112,7 @@
     if (!assignment) {
       return e("div", { style: { ...styles.sessionForm, marginTop: 20 } },
         e("span", { style: styles.profileLabel }, "Program payment"),
-        e("p", { style: { ...styles.emptyText, marginTop: 6 } }, "This client hasn't picked a program from the library yet — nothing to charge for until they do.")
+        e("p", { style: { ...styles.emptyText, marginTop: 6 } }, "This member hasn't picked a program from the library yet — nothing to charge for until they do.")
       );
     }
 
@@ -21137,7 +21137,7 @@
       paid
         ? (confirmRevoke
             ? e("div", { style: { ...styles.deleteConfirmBar, flexDirection: "column", alignItems: "stretch", gap: 8, marginTop: 10 } },
-                e("span", { style: styles.deleteConfirmText }, "Turn off this client's access? They'll stop seeing this program's exercises until you mark it paid again — it stays picked, it just re-locks."),
+                e("span", { style: styles.deleteConfirmText }, "Turn off this member's access? They'll stop seeing this program's exercises until you mark it paid again — it stays picked, it just re-locks."),
                 e("div", { style: { display: "flex", gap: 8 } },
                   e("button", { style: { ...styles.confirmCancelBtn, flex: 1 }, onClick: () => setConfirmRevoke(false) }, "Cancel"),
                   e("button", { style: { ...styles.confirmDangerBtn, flex: 1 }, onClick: handleRevoke }, "Turn off")
@@ -21200,7 +21200,7 @@
   }
 
   function ProgramsPanel({ canManage = false, canAssign = null, canBrowse = true, clientName = null, clientId = null, userId = null, userEmail = null, isSelfTrain = false, gatePayment = false, appAccessOk = true, paidAccessOk = true, trainerId = null }) {
-    // canAssign controls the "assign a program to yourself/this client" button
+    // canAssign controls the "assign a program to yourself/this member" button
     // on the ClientProgramCard below — separate from canManage, which is full
     // CRUD on the shared library (create/rename/delete programs, edit days and
     // exercises). Falls back to canManage when not passed explicitly, so
@@ -21380,7 +21380,7 @@
     const [nudgeSent, setNudgeSent] = useState(false);
     function handleNudgeTrainer() {
       if (!trainerId) return;
-      notifyTrainer(trainerId, `${clientName || "Your client"} is waiting on a program to be assigned.`);
+      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);      notifyTrainer(trainerId, `${clientName || "Your member"} is waiting on a program to be assigned.`);
       setNudgeSent(true);
     }
 
@@ -22474,7 +22474,7 @@
     return e("div", null,
       e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Ready diet plans")),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginBottom: 14 } },
-        "Build once here, then clients can browse and buy a ready plan by goal instead of waiting on a custom one."
+        "Build once here, then members can browse and buy a ready plan by goal instead of waiting on a custom one."
       ),
       e(Segmented, { options: DIET_GOALS, value: goal, onChange: setGoal }),
       error && e("div", { style: { ...styles.errorBanner, margin: "12px 0 0" } }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
@@ -22548,10 +22548,10 @@
         confirmDeleteTemplateId === t.id && e("div", { style: { ...styles.deleteConfirmBar, flexDirection: "column", alignItems: "stretch", gap: 8, marginTop: 10 } },
           e("span", { style: styles.deleteConfirmText },
             deleteImpactCount == null
-              ? "Checking whether any clients are on this plan…"
+              ? "Checking whether any members are on this plan…"
               : deleteImpactCount > 0
-              ? `${deleteImpactCount} client${deleteImpactCount === 1 ? " is" : "s are"} actively on this plan — deleting it blanks their diet plan back to "no plan assigned" with no warning to them. Retire it instead to hide it from new picks without touching anyone already on it, or delete anyway.`
-              : "Delete this whole ready diet plan, including every meal and food item in it? No clients are currently on it."
+              ? `${deleteImpactCount} member${deleteImpactCount === 1 ? " is" : "s are"} actively on this plan — deleting it blanks their diet plan back to "no plan assigned" with no warning to them. Retire it instead to hide it from new picks without touching anyone already on it, or delete anyway.`
+              : "Delete this whole ready diet plan, including every meal and food item in it? No members are currently on it."
           ),
           e("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
             e("button", { type: "button", style: styles.setConfirmCancelBtn, onClick: () => setConfirmDeleteTemplateId(null) }, "Cancel"),
@@ -23797,7 +23797,7 @@
             // trainer)" clearly, so this badge no longer repeats it; Owner
             // and regular Client still show here since neither is said
             // anywhere else on this row.
-            !isSelfTrainClient && e("span", { style: styles.accountIdRole }, `· ${isManager ? "Owner" : "Client"}`),
+            !isSelfTrainClient && e("span", { style: styles.accountIdRole }, `· ${isManager ? "Owner" : "Member"}`),
             e("span", { style: { display: "flex", transform: "rotate(-90deg)" } }, e(Icon, { name: "chevron", size: 13, color: C.ink3 }))
           )
         ),
@@ -24855,7 +24855,7 @@
     coachTabStrip: { display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 },
     coachTabBtn: { flex: "0 0 auto", display: "flex", alignItems: "center", gap: 5, background: "transparent", color: C.ink3, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: "8px 14px", fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
     coachTabBtnActive: { color: C.brand, borderColor: C.brand, background: C.brandSoft },
-    // Sept 11 2026, Jimmy: brand pass, step 3 — this is the "☰ Clients"
+    // Sept 11 2026, Jimmy: brand pass, step 3 — this is the "☰ Members"
     // menu on the Owner page (and every other hamburger menu in the app,
     // including a client detail page's own sub-menu — all share this one
     // SideMenu component). It was still the flat, same-weight, no-accent
@@ -25124,7 +25124,7 @@
     // (client info, assessments, etc.) and nothing there was asked to change.
     profileCardFlat: { background: C.card, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 16, padding: "14px 15px" },
     // Sept 13 2026, Jimmy (jimfit-trainer-profile.html mockup): a small
-    // "PUBLIC" chip next to "Shown to clients" — a plain-language flag that
+    // "PUBLIC" chip next to "Shown to members" — a plain-language flag that
     // this specific card (unlike the rest of the profile screen) is visible
     // to clients browsing for a trainer, reusing the existing warning/amber
     // token rather than a new color.
@@ -25268,7 +25268,7 @@
     // Sept 14 2026 fix, Jimmy: "the my clients tab is annoying and cant be
     // reachable" — this is the very first thing rendered on a client's own
     // detail page (no styles.header above it here), so its fixed
-    // padding-top:16px put "All clients"/"My clients" right under/behind a
+    // padding-top:16px put "All members"/"My members" right under/behind a
     // phone's status bar — hard to see and hard to tap. Same top-inset fix
     // as styles.header/clientHeader.
     backBtn: { display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: C.ink2, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.04em", cursor: "pointer", padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 6px" },
@@ -25301,7 +25301,7 @@
     clientCardLeft: { display: "flex", alignItems: "center", gap: 12 },
     avatar: { width: 36, height: 36, borderRadius: "50%", background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 14, flexShrink: 0 },
     rosterVol: { fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: C.brand },
-    // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Clients"
+    // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Members"
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
     // just inline with a leading search icon and a clear (x) button instead
     // of the usual boxed label+input.
