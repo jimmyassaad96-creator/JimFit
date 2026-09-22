@@ -5,13 +5,13 @@ import { boot, openTab } from "../harness/fixtures.js";
 test.beforeEach(async ({ page }) => boot(page, "trainer"));
 
 test("an approved trainer lands on their own roster, not a client dashboard", async ({ page }) => {
-  await expect(page.getByText("Demo Trainer's clients")).toBeVisible();
-  await expect(page.getByText("No clients assigned to you yet — ask your manager to assign some.")).toBeVisible();
+  await expect(page.getByText("Demo Trainer's members")).toBeVisible();
+  await expect(page.getByText("No members assigned to you yet — ask your manager to assign some.")).toBeVisible();
   await expect(page.getByText("· Trainer")).toBeVisible();
 });
 
 test("bottom navigation exposes all eight trainer tabs", async ({ page }) => {
-  for (const tab of ["Clients", "Stats", "Rota", "Diet", "My Log", "Muscles", "AI Chat", "Profile"]) {
+  for (const tab of ["Members", "Stats", "Rota", "Diet", "My Log", "Muscles", "AI Chat", "Profile"]) {
     await expect(page.getByText(tab, { exact: true }).last()).toBeVisible();
   }
 });
@@ -34,7 +34,7 @@ test("stats tab reports sessions and collections", async ({ page }) => {
 
 test("rota allows booking a session for someone not yet a client", async ({ page }) => {
   await openTab(page, "Rota");
-  await expect(page.getByText("Not a client yet? Enter details manually")).toBeVisible();
+  await expect(page.getByText("Not a member yet? Enter details manually")).toBeVisible();
   await expect(page.getByText("Schedule session", { exact: true }).first()).toBeVisible();
 });
 
@@ -48,7 +48,7 @@ test("profile tab states the trainer's own billing terms", async ({ page }) => {
   await openTab(page, "Profile");
   await expect(page.getByText("My billing")).toBeVisible();
   await expect(page.getByText("$24.99/mo")).toBeVisible();
-  await expect(page.getByText(/^clients included$/i).first()).toBeVisible();
+  await expect(page.getByText(/^members included$/i).first()).toBeVisible();
   await expect(page.getByText("Unlimited", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("+961 71107437")).toBeVisible();
 });
