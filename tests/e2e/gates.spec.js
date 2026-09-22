@@ -15,7 +15,7 @@ test("get started leads to the two public roles only", async ({ page }) => {
   await boot(page, "gates");
   await page.getByRole("button", { name: "Get started" }).click();
   await expect(page.getByText("How are you logging in?")).toBeVisible();
-  await expect(page.getByRole("button", { name: "I'm a Client" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I'm a Member" })).toBeVisible();
   await expect(page.getByRole("button", { name: "I'm a Trainer" })).toBeVisible();
   // Gym-owner signup is invite-only, reached only via ?newgym=1
   await expect(page.getByRole("button", { name: /gym/i })).toHaveCount(0);
