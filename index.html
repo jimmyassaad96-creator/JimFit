@@ -23222,10 +23222,19 @@
     }, [profile && profile.client_name]);
 
     const [myTrainerName, setMyTrainerName] = useState(null);
+    // Sept 23 2026, Jimmy: "members who already assigned to trainers can see
+    // their phone numbers directly" — the client's own assigned trainer's
+    // phone now loads alongside the name (same query, no extra round trip)
+    // and renders as a tap-to-call link below the trainer pill. Clients
+    // still browsing/switching (FindTrainerPanel) never see this — that
+    // screen only ever fetches name/photo/bio via browsable_trainer_profiles,
+    // no phone column involved.
+    const [myTrainerPhone, setMyTrainerPhone] = useState(null);
     useEffect(() => {
-      if (!sb || !profile || !profile.trainer_id) { setMyTrainerName(null); return; }
-      sb.from("trainers").select("name").eq("id", profile.trainer_id).maybeSingle().then(({ data, error: err }) => {
+      if (!sb || !profile || !profile.trainer_id) { setMyTrainerName(null); setMyTrainerPhone(null); return; }
+      sb.from("trainers").select("name, phone").eq("id", profile.trainer_id).maybeSingle().then(({ data, error: err }) => {
         setMyTrainerName(!err && data ? data.name : null);
+        setMyTrainerPhone(!err && data ? data.phone : null);
       });
     }, [profile && profile.trainer_id]);
 
@@ -23922,7 +23931,7 @@
           )
         ),
         e("div", { style: styles.clientHeaderInfoRow },
-          e("div", null,
+          e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 } },
             // Sept 12 2026, Jimmy: "the place where self training no trainer
             // to be more clear... more branded" — the self-train case now
             // gets the bolder solid-fill pill (same family as browseChipActive)
@@ -23956,7 +23965,15 @@
               myTrainerName === SELF_TRAIN_NAME ? e(Icon, { name: "sparkle", size: 11, color: C.brandInk }) : e(Icon, { name: "check", size: 11, color: C.brand }),
               myTrainerName,
               !isManager && e(Icon, { name: "chevron", size: 11, color: myTrainerName === SELF_TRAIN_NAME ? C.brandInk : C.brand })
-            )
+            ),
+            !isManager && myTrainerName && myTrainerName !== SELF_TRAIN_NAME && myTrainerPhone && e("a", {
+              href: `tel:${myTrainerPhone.replace(/\s+/g, "")}`,
+              title: "Call your trainer",
+              style: {
+                display: "flex", alignItems: "center", gap: 4, color: C.ink2,
+                fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600, textDecoration: "none"
+              }
+            }, "\uD83D\uDCDE ", myTrainerPhone)
           )
           // Sept 13 2026, Jimmy: "the volume 7 day above log out i dont
           // want to be shown there anymore" — dropped the "7-day volume"
