@@ -9556,15 +9556,23 @@
   // ---- dashboard (totals for trainers + manager) ----
 
   function DashboardStatGrid({ stats }) {
+    // Sept 23 2026, Jimmy: redesign pass, Stats page — dashTileValue forced
+    // every tile to brand blue regardless of what it showed, so a plain
+    // session count read with the same weight as an actual dollar figure.
+    // Money tiles keep the brand color; count tiles fall back to plain ink,
+    // matching the redesign mockup's convention. Colored inline here rather
+    // than touching dashTileValue itself — that shared style backs 7 other
+    // tiles elsewhere in the app (Monthly breakdown, trainer overview,
+    // payment panels) that should keep their current look.
     const tiles = [
-      { label: "Sessions today", value: String(stats.sessionsToday) },
-      { label: "Sessions this month", value: String(stats.sessionsMonth) },
-      { label: "Collected this month", value: `$${stats.monthPaid.toLocaleString()}` },
-      { label: "Collected all-time", value: `$${stats.totalPaid.toLocaleString()}` }
+      { label: "Sessions today", value: String(stats.sessionsToday), money: false },
+      { label: "Sessions this month", value: String(stats.sessionsMonth), money: false },
+      { label: "Collected this month", value: `$${stats.monthPaid.toLocaleString()}`, money: true },
+      { label: "Collected all-time", value: `$${stats.totalPaid.toLocaleString()}`, money: true }
     ];
     return e("div", { style: styles.dashGrid }, tiles.map((t) => e("div", { key: t.label, style: styles.dashTile },
       e("span", { style: styles.profileLabel }, t.label),
-      e("span", { style: styles.dashTileValue }, t.value)
+      e("span", { style: { ...styles.dashTileValue, ...(t.money ? {} : { color: C.ink }) } }, t.value)
     )));
   }
 
@@ -10144,7 +10152,10 @@
           ),
           e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 } },
             e("span", { style: styles.rosterVol }, `$${total.toLocaleString()}`, e("span", { style: styles.statUnit }, " paid")),
-            balance != null && e("span", { style: { ...styles.goalChip, ...(balance <= 0 ? styles.goalChipGood : styles.goalChipBad) } }, balance <= 0 ? "Paid up" : `$${balance.toLocaleString()} due`)
+            // Sept 23 2026, Jimmy: redesign pass, Payments page — same
+            // calmer stacked-text treatment as the Members screen (PR #20)
+            // instead of the loud goalChip pill, reusing rosterBalanceText.
+            balance != null && e("span", { style: { ...styles.rosterBalanceText, color: balance <= 0 ? C.good : C.critical } }, balance <= 0 ? "Paid up" : `$${balance.toLocaleString()} due`)
           )
         );
       }))
