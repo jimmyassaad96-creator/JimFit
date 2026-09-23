@@ -4761,7 +4761,7 @@
                   strokeDasharray: `${(ringFrac * ringCirc).toFixed(2)} ${ringCirc.toFixed(2)}`,
                   transform: `rotate(-90 ${ringCx} ${ringCy})`, style: { transition: "stroke-dasharray 0.4s ease, stroke 0.3s ease" }
                 }),
-                e("text", { x: ringCx, y: ringCy - 1, textAnchor: "middle", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15, fill: C.ink }, remaining != null ? Math.abs(remaining).toLocaleString() : "—"),
+                e("text", { x: ringCx, y: ringCy - 1, textAnchor: "middle", fontFamily: "'Space Grotesk', sans-serif", fontWeight: remaining != null ? 700 : 500, fontStyle: remaining != null ? "normal" : "italic", fontSize: 15, fill: remaining != null ? C.ink : C.ink3 }, remaining != null ? Math.abs(remaining).toLocaleString() : "—"),
                 e("text", { x: ringCx, y: ringCy + 12, textAnchor: "middle", fontFamily: "'Inter', sans-serif", fontSize: 6.5, fill: C.ink3 }, remaining == null ? "NO BMR YET" : over ? "KCAL OVER" : "KCAL LEFT")
               ),
               e("div", { style: { flex: 1, minWidth: 0 } },
@@ -4798,7 +4798,7 @@
                 e("button", { style: styles.energyPillBtn, disabled: stepsSaving, onClick: saveSteps }, stepsSaving ? "…" : "Save")
               )
             : e(React.Fragment, null,
-                e("span", { style: { ...styles.profileValue, fontSize: 15 } }, steps != null ? steps.toLocaleString() : "—"),
+                e("span", { style: { ...styles.profileValue, fontSize: 15, ...(steps == null ? { fontWeight: 500, fontStyle: "italic", color: C.ink3 } : {}) } }, steps != null ? steps.toLocaleString() : "—"),
                 canManage && e("button", {
                   style: styles.energyPillBtn,
                   onClick: () => { setStepsDraft(steps != null ? String(steps) : ""); setStepsError(""); setEditingSteps(true); }
@@ -11406,7 +11406,7 @@
                         e("div", { style: { margin: "10px 0" } },
                           e("div", { style: styles.formLabel }, "Invite code"),
                           e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-                            e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: 1.5, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, selectedTrainer.invite_code || "—")
+                            e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: selectedTrainer.invite_code ? 700 : 500, fontStyle: selectedTrainer.invite_code ? "normal" : "italic", letterSpacing: 1.5, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8, color: selectedTrainer.invite_code ? undefined : C.ink3 } }, selectedTrainer.invite_code || "—")
                           ),
                           e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, "Members enter this code when they sign up to land directly with this trainer.")
                         ),
@@ -14236,7 +14236,7 @@
                         e("span", { style: { ...styles.profileValue, ...(due == null ? { fontWeight: 500, fontStyle: "italic", color: C.ink3 } : {}) } }, due != null ? `$${due.toLocaleString()}` : "Set amount"),
                         e(Icon, { name: "edit", size: 12, color: C.ink3 })
                       ))
-                : e("span", { style: styles.profileValue }, due != null ? `$${due.toLocaleString()}` : "—")
+                : e("span", { style: { ...styles.profileValue, ...(due == null ? { fontWeight: 500, fontStyle: "italic", color: C.ink3 } : {}) } }, due != null ? `$${due.toLocaleString()}` : "—")
             )
           ),
           e("div", { style: { ...styles.assessmentMetricCard, display: "flex", alignItems: "center", gap: 10 } },
@@ -14380,7 +14380,7 @@
               e("span", { style: { ...styles.profileValue, fontSize: 16, ...(value == null ? { fontWeight: 500, fontStyle: "italic", color: C.ink3 } : {}) } }, value != null ? `${value}${suffix}` : "Set"),
               e(Icon, { name: "edit", size: 12, color: C.ink3 })
             )
-          : e("span", { style: { ...styles.profileValue, fontSize: 16 } }, value != null ? `${value}${suffix}` : "—")
+          : e("span", { style: { ...styles.profileValue, fontSize: 16, ...(value == null ? { fontWeight: 500, fontStyle: "italic", color: C.ink3 } : {}) } }, value != null ? `${value}${suffix}` : "—")
       )
     );
   }
@@ -14474,7 +14474,7 @@
       e("div", null,
         e("span", { style: styles.profileLabel }, label),
         e("span", { style: { ...styles.profileValue, display: "block" } },
-          actual != null ? `${actual}${suffix}` : "—",
+          actual != null ? `${actual}${suffix}` : e("span", { style: { fontWeight: 500, fontStyle: "italic", color: C.ink3 } }, "—"),
           target != null ? e("span", { style: { color: C.ink3, fontWeight: 500 } }, ` / ${target}${suffix}`) : null
         )
       ),
@@ -16112,7 +16112,7 @@
           // goal doesn't blow out this tile's height next to Trains/wk
           // and BMR. Full text is unchanged/untruncated everywhere else
           // it's shown (e.g. the "Update my info" editor).
-          e("span", { style: { ...styles.dietStatTileValue, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" } }, (profile && profile.goal) || "—")
+          e("span", { style: { ...styles.dietStatTileValue, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", ...((profile && profile.goal) ? {} : { fontWeight: 500, fontStyle: "italic", color: C.ink3 }) } }, (profile && profile.goal) || "—")
         ),
         e("div", { style: styles.dietStatTile },
           e("span", { style: styles.dietStatTileLabel }, "📅 Trains/wk"),
@@ -16120,7 +16120,7 @@
         ),
         e("div", { style: styles.dietStatTile },
           e("span", { style: styles.dietStatTileLabel }, "🔥 BMR"),
-          e("span", { style: styles.dietStatTileValue }, latestAssessment && latestAssessment.bmr != null ? latestAssessment.bmr : "—")
+          e("span", { style: { ...styles.dietStatTileValue, ...((latestAssessment && latestAssessment.bmr != null) ? {} : { fontWeight: 500, fontStyle: "italic", color: C.ink3 }) } }, latestAssessment && latestAssessment.bmr != null ? latestAssessment.bmr : "—")
         )
       ),
       // Sept 6 2026, Jimmy: "he can pay once and see all the targets no! i
@@ -17107,7 +17107,7 @@
         e("div", { style: { fontSize: 13, color: C.ink3, marginBottom: 4 } }, gym.name),
         e("div", { style: { fontSize: 12, color: C.ink3, marginBottom: 10 } }, "Share your invite code with members — they enter it when they sign up so they land with you directly."),
         e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-          e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: 2, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8 } }, trainer.invite_code || "—"),
+          e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: trainer.invite_code ? 700 : 500, fontStyle: trainer.invite_code ? "normal" : "italic", letterSpacing: 2, padding: "6px 12px", background: withAlpha(C.brand, 0.1), borderRadius: 8, color: trainer.invite_code ? undefined : C.ink3 } }, trainer.invite_code || "—"),
           trainer.invite_code && e("button", { style: styles.switchModeBtn, onClick: copyCode }, copied ? "Copied!" : "Copy")
         )
       ),
@@ -17477,7 +17477,7 @@
         // profileSummary styling everywhere else, just organized so related
         // fields read as a group instead of a long scroll of single fields.
         e("div", { style: styles.profileSummaryGrid },
-          e("div", { style: { gridColumn: "1 / -1" } }, e("span", { style: styles.profileLabel }, "Email"), e("p", { style: styles.profileValue }, trainer.email || "—")),
+          e("div", { style: { gridColumn: "1 / -1" } }, e("span", { style: styles.profileLabel }, "Email"), e("p", { style: { ...styles.profileValue, ...(trainer.email ? {} : { fontWeight: 500, fontStyle: "italic", color: C.ink3 }) } }, trainer.email || "—")),
           e(EditableStat, { label: "Name", value: personalFields.name, type: "text", placeholder: "Set", onCommit: (v) => handlePersonalField("name", v) }),
           e(EditableStat, { label: "Last name", value: personalFields.last_name, type: "text", placeholder: "Set", onCommit: (v) => handlePersonalField("last_name", v) }),
           e(EditableStat, { label: "Phone", value: personalFields.phone, type: "tel", placeholder: "Set", onCommit: (v) => handlePersonalField("phone", v) }),
