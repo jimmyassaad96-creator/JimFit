@@ -24927,7 +24927,15 @@
     sheet: { background: C.panel, borderTop: `1px solid ${C.cardBorderStrong}`, borderRadius: "18px 18px 0 0", padding: "20px 20px 26px", width: "100%", maxWidth: 480, maxHeight: "88vh", overflowY: "auto", boxShadow: "0 -12px 40px rgba(0,0,0,0.5)" },
     sheetHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 },
     sheetTitle: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: "0.04em", color: C.ink },
-    closeBtn: { background: "transparent", border: "none", color: C.ink3, cursor: "pointer" },
+    // Sept 23 2026, Jimmy: "the x on my phone is hard to reach and the
+    // menu hard to see" — this was a bare 18px icon with no padding at all
+    // (well under the ~34px minimum tap target every other close control
+    // in the app uses, e.g. the photo-zoom close button below) and no
+    // background, so on a dark panel it read as decoration, not a button.
+    // Same fix pattern as ThemeToggle's Sept 12 comment above: give it a
+    // real hit area and a visible boundary. Shared by every sheet header
+    // (side menu, privacy policy, exercise sheets), so this fixes all of them.
+    closeBtn: { display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: "50%", border: `1px solid ${C.cardBorderStrong}`, background: withAlpha(C.ink, 0.06), color: C.ink2, cursor: "pointer", flexShrink: 0 },
 
     // Sept 13 2026, Jimmy: "its not clear the hamburger where is written log
     // how we can make this more easy on the eye and easy to use" — this is
@@ -24971,11 +24979,14 @@
     // brings it in line with the rest of the app without restructuring it
     // into a different kind of navigation.
     sideMenuOverlay: { position: "fixed", inset: 0, background: C.scrim, display: "flex", alignItems: "stretch", justifyContent: "flex-start", zIndex: 60 },
-    sideMenuPanel: { background: C.panel, borderRight: `1px solid ${C.cardBorderStrong}`, borderTopRightRadius: 18, borderBottomRightRadius: 18, width: "78%", maxWidth: 280, height: "100%", padding: "20px 14px", overflowY: "auto", boxShadow: "12px 0 40px rgba(0,0,0,0.5)" },
+    sideMenuPanel: { background: C.panel, borderRight: `1px solid ${C.cardBorderStrong}`, borderTopRightRadius: 18, borderBottomRightRadius: 18, width: "78%", maxWidth: 280, height: "100%", padding: "max(20px, env(safe-area-inset-top)) 14px 20px", overflowY: "auto", boxShadow: "12px 0 40px rgba(0,0,0,0.5)" },
     sideMenuList: { display: "flex", flexDirection: "column", gap: 3 },
-    sideMenuItem: { textAlign: "left", background: "transparent", border: "none", borderLeft: "3px solid transparent", color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 14.5, padding: "12px 10px 12px 12px", borderRadius: 8, cursor: "pointer" },
+    // Sept 23 2026, Jimmy: "the menu hard to see" — items were C.ink2 and
+    // group labels C.ink3 (the app's dimmest tier, otherwise reserved for
+    // empty-state placeholders). Bumped both up a tier for real legibility.
+    sideMenuItem: { textAlign: "left", background: "transparent", border: "none", borderLeft: "3px solid transparent", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 15, padding: "12px 10px 12px 12px", borderRadius: 8, cursor: "pointer" },
     sideMenuItemActive: { background: C.brandSoft, borderLeftColor: C.brand, color: C.brand, fontWeight: 600 },
-    sideMenuGroupLabel: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 10px 4px" },
+    sideMenuGroupLabel: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, color: C.ink2, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 10px 4px" },
 
     confirmCancelBtn: { flex: 1, background: "transparent", border: `1.5px solid ${C.cardBorderStrong}`, borderRadius: 999, padding: "13px", color: C.ink, fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: "0.03em", cursor: "pointer" },
     confirmDangerBtn: { flex: 1, background: C.criticalStrong, border: "none", borderRadius: 999, padding: "13px", color: "#fff", fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13.5, letterSpacing: "0.03em", cursor: "pointer" },
