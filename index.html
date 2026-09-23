@@ -17947,6 +17947,12 @@
     // it at a glance instead of opening every client one by one.
     const [clientPrograms, setClientPrograms] = useState({});
     const [selectedClient, setSelectedClient] = useState(null);
+    // Sept 23 2026, Jimmy: "can WE do an option the trainer can unassign a
+    // client from his side? and the client end up unassigned?" — instant,
+    // no manager approval (his call), but the owner/manager gets notified
+    // (via notifyOwner) whenever it happens. See handleUnassignClient below.
+    const [confirmUnassignClient, setConfirmUnassignClient] = useState(false);
+    const [unassigningClient, setUnassigningClient] = useState(false);
     const [titleFilter, setTitleFilter] = useState("All");
     const [dateFilter, setDateFilter] = useState("none");
     // Sept 9 2026, Jimmy: was a fixed "Last 7 days" vs "All time" toggle —
@@ -18376,6 +18382,33 @@
       return Number(cp.total_due) - paid;
     }
 
+    // Sept 23 2026: lets a trainer unassign one of their own clients,
+    // instant/unilateral (unlike a brand-new match, which is deliberately
+    // routed through the manager — see trainer_requests). Goes through a
+    // narrow SECURITY DEFINER RPC (trainer_unassign_client) rather than a
+    // plain client_profiles .update(), same "verify ownership server-side"
+    // discipline as client_update_program_item_weight/submit_self_body_info
+    // — the app can't be trusted to only ever send this for a trainer's own
+    // client, the database has to check.
+    async function handleUnassignClient(id) {
+      const cp = resolveClientById(id);
+      if (!cp) return;
+      setUnassigningClient(true);
+      if (sb) {
+        const { error } = await sb.rpc("trainer_unassign_client", { p_client_id: cp.id });
+        if (error) {
+          setUnassigningClient(false);
+          alert("Couldn't unassign this member — try again.");
+          return;
+        }
+      }
+      setProfiles((prev) => prev.filter((p) => p.id !== cp.id));
+      notifyOwner(`${cp.client_name} was unassigned by ${trainer.name}.`, { viaTrainerId: trainer.id });
+      setUnassigningClient(false);
+      setConfirmUnassignClient(false);
+      setSelectedClient(null);
+    }
+
     function goBackToRoster() {
       setSelectedClient(null);
       if (sb) {
@@ -18455,6 +18488,19 @@
                     ),
                     e(InfoSectionCard, { icon: "alert", color: C.critical, title: "Health" },
                       e(ClientInjuriesPanel, { userId: clientProfile.user_id, clientName: client.name, canManage: true, legacyProfile: clientProfile, onUpdateLegacy: (field, v) => handleUpdateProfileField(client.id, field, v) })
+                    ),
+                    // Sept 23 2026, Jimmy: trainers can unassign one of their
+                    // own members themselves — instant, no manager approval
+                    // needed (mirrors the manager's own "Unassigned" dropdown
+                    // option in CoachView). Jimmy still gets notified either way.
+                    e(InfoSectionCard, { icon: "x", color: C.critical, title: "Danger zone" },
+                      e("p", { style: { ...styles.profileGoalText, marginBottom: 10 } },
+                        `Unassigns ${client.name} from you. They'll show up as unassigned until you or a manager assigns them to a trainer again.`
+                      ),
+                      e("button", {
+                        style: styles.confirmDangerBtn,
+                        onClick: () => setConfirmUnassignClient(true)
+                      }, "Unassign this member")
                     )
                   )
                 : e("div", { style: styles.setupNotice }, e(Icon, { name: "alert", size: 14, color: C.ink3 }), "This member hasn't filled in their profile questionnaire yet.")
@@ -18544,6 +18590,14 @@
             label: s.label, active: detailTab === s.value,
             onClick: () => { setDetailTab(s.value); setMenuOpen(false); }
           }))
+        }),
+        confirmUnassignClient && e(ConfirmDialog, {
+          title: "Unassign this member?",
+          message: `${client.name} will no longer be assigned to you. They'll need you or a manager to assign them to a trainer again.`,
+          confirmLabel: "Unassign",
+          busy: unassigningClient,
+          onCancel: () => { if (!unassigningClient) setConfirmUnassignClient(false); },
+          onConfirm: () => handleUnassignClient(client.id)
         })
       );
     }
