@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => boot(page, "client-locked"));
 test("an expired trial locks the app and states the price", async ({ page }) => {
   await expect(page.getByText("Your free trial has ended")).toBeVisible();
   await expect(
-    page.getByText("$10/month keeps this unlocked — logging workouts, tracking food, and seeing calories burned vs. eaten.")
+    page.getByText("Your $10/month membership includes workout logging, nutrition tracking, and a full view of calories burned versus consumed.")
   ).toBeVisible();
 });
 
