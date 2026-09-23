@@ -16698,7 +16698,7 @@
                         // clarity fix as ClientProgramCard's purchaseLocked
                         // notice, applied here too since it's the exact same
                         // monthly app subscription (not the diet plan itself).
-                        purchaseLocked && e("p", { style: { ...styles.emptyText, fontSize: 12, marginBottom: 10 } }, `Diet plans are a one-time $${DIET_PLAN_PRICE} — never a monthly charge. To actually use a plan once you switch, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active. Feel free to browse and switch below in the meantime.`),
+                        purchaseLocked && e("p", { style: { ...styles.emptyText, fontSize: 12, marginBottom: 10 } }, `Diet plans are a one-time purchase. To switch plans, an active $${SELF_TRAIN_MONTHLY_PRICE}/month membership is required — you're welcome to browse in the meantime.`),
                         // Sept 14 2026, Jimmy: same "make the $30 clear"
                         // pass as the first-pick browser below — also
                         // fixes this line silently missing its "$" before
@@ -16718,9 +16718,9 @@
                 ? e("div", { style: { ...styles.setupNotice, marginTop: 14, flexDirection: "column", alignItems: "flex-start", gap: 6 } },
                     e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
                       e(Icon, { name: "lock", size: 14, color: C.ink3 }),
-                      e("span", { style: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.02em", color: C.ink } }, "Full Diet Plan")
+                      e("span", { style: { fontFamily: "'Manrope', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.02em", color: C.ink } }, "Full Diet Plan")
                     ),
-                    e("p", { style: { margin: 0 } }, `A complete, personalized meal plan from your coach, plus the instant plan generator. ($${DIET_PLAN_PRICE})`),
+                    e("p", { style: { margin: 0 } }, `A complete, personalized meal plan created by our professional dietitians, plus the instant plan generator — a one-time $${DIET_PLAN_PRICE} payment to JimFit.`),
                     e("p", { style: { margin: 0, color: C.good, fontWeight: 600, fontSize: 12.5 } },
                       assignedTemplate
                         ? `\u2713 Requested "${assignedTemplate.name}"`
@@ -16745,12 +16745,12 @@
                     purchaseLocked && e("div", { style: { ...styles.setupNotice, marginBottom: 14, flexDirection: "column", alignItems: "flex-start", gap: 6 } },
                       e("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
                         e(Icon, { name: "lock", size: 14, color: C.ink3 }),
-                        e("span", { style: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.02em", color: C.ink } }, "Pay to unlock diet plans")
+                        e("span", { style: { fontFamily: "'Manrope', sans-serif", fontWeight: 600, fontSize: 13, letterSpacing: "0.02em", color: C.ink } }, "Unlock your diet plan")
                       ),
                       // Sept 13 2026, Jimmy: same "$10 is a subscription,
                       // not the program/plan" clarity fix as
                       // ClientProgramCard above.
-                      e("p", { style: { margin: 0 } }, `Diet plans are a one-time $${DIET_PLAN_PRICE} — never a monthly charge. To actually use a plan once you request it, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active. Feel free to browse and request one below in the meantime.`),
+                      e("p", { style: { margin: 0 } }, `Diet plans are a one-time purchase. To activate one once requested, an active $${SELF_TRAIN_MONTHLY_PRICE}/month membership is required — you're welcome to browse and request a plan in the meantime.`),
                       // Same app-access claim as the Log tab / Programs
                       // subscriptionLocked view — it's the same monthly
                       // payment, so marking it sent on any of them clears
@@ -19872,7 +19872,7 @@
                   // without this the $10 read as if it were the program's
                   // price. Spelled out as the recurring monthly app
                   // subscription, separate from the program itself.
-                  ? `Good news — programs are a one-time $${PROGRAM_PRICE}, never a monthly charge. To pick one, your $${SELF_TRAIN_MONTHLY_PRICE}/month app subscription just needs to be active first, even during your free trial. Pay below and you're all set.`
+                  ? `Programs are a one-time purchase. To select one, an active $${SELF_TRAIN_MONTHLY_PRICE}/month membership is required, including during your free trial. Please complete payment below to continue.`
                   : gatePayment ? `No program picked yet — browse below, choose one, then unlock it with a one-time $${PROGRAM_PRICE} payment (no monthly charge).` : "No program assigned yet.")
               : (isSelfTrain ? "No program assigned yet — pay to unlock the program library." : "No program assigned yet — ask your trainer.")
           ),
@@ -19883,7 +19883,7 @@
           !canAssign && !isSelfTrain && trainerId && (!nudgeSent
             ? e("button", { type: "button", style: { ...styles.demoLinkBtn, padding: "0" }, onClick: handleNudgeTrainer }, "Nudge my trainer →")
             : nudgeSent && e("p", { style: { ...styles.emptyText, fontSize: 11.5, color: C.good } }, "Nudge sent — your trainer's been notified.")),
-          purchaseLocked && e(WhishPayBox, { amount: SELF_TRAIN_MONTHLY_PRICE, note: "which is your monthly app subscription, then wait for JimFit to confirm — programs unlock once you're paid up" })
+          purchaseLocked && e(WhishPayBox, { amount: SELF_TRAIN_MONTHLY_PRICE, note: "your monthly membership — we'll confirm it and unlock programs shortly after" })
           ),
       // "Assign a program" reads like manager/trainer language when it's a
       // self-training client picking one for themselves — same button and
@@ -21013,11 +21013,11 @@
       e("div", { style: { ...styles.setupNotice, flexDirection: "column", alignItems: "flex-start", gap: 8, padding: 16 } },
         e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
           e(Icon, { name: "lock", size: 16, color: C.ink3 }),
-          e("span", { style: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 15, letterSpacing: "0.02em", color: C.ink } },
+          e("span", { style: { fontFamily: "'Manrope', sans-serif", fontWeight: 600, fontSize: 15, letterSpacing: "0.02em", color: C.ink } },
             trialEnded ? "Your free trial has ended" : "Payment due to keep using the app"
           )
         ),
-        e("p", { style: { margin: 0 } }, `$${SELF_TRAIN_MONTHLY_PRICE}/month keeps this unlocked — logging workouts, tracking food, and seeing calories burned vs. eaten.`),
+        e("p", { style: { margin: 0 } }, `Your $${SELF_TRAIN_MONTHLY_PRICE}/month membership includes workout logging, nutrition tracking, and a full view of calories burned versus consumed.`),
         e("div", { style: { display: "flex", flexDirection: "column", gap: 3, margin: "4px 0" } },
           e("p", { style: { margin: 0, fontSize: 12.5, color: C.ink2 } }, "Instead of separate apps for lifting and food tracking, it's all in one place — plus a weekly muscle-balance view and AI Chat for when there's no coach to ask."),
         ),
@@ -21932,7 +21932,10 @@
       (canBrowse || hasAssignedProgram) && e(React.Fragment, null,
         e("div", { ref: yourProgramAnchorRef, style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, "Your program")),
         e(ClientProgramCard, { ref: yourProgramCardRef, clientName, clientId, userId, userEmail, canAssign: assignAllowed, isSelfTrain, gatePayment, appAccessOk, paidAccessOk, trainerId, onAssignmentChange: (a) => setPickedProgramId(a ? a.program_id : null) }),
-        canBrowse && e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Browse all programs"))
+        canBrowse && e(React.Fragment, null,
+          e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Browse all programs")),
+          e("p", { style: { ...styles.emptyText, fontSize: 12, marginTop: 4 } }, "Every program is designed by our certified trainers — never AI-generated.")
+        )
       ),
       // Sept 15 2026, Jimmy QA: the other branch of this condition (above)
       // is the only thing this tab ever rendered — a client with a real
