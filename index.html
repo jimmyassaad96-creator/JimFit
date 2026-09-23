@@ -21934,7 +21934,7 @@
         e(ClientProgramCard, { ref: yourProgramCardRef, clientName, clientId, userId, userEmail, canAssign: assignAllowed, isSelfTrain, gatePayment, appAccessOk, paidAccessOk, trainerId, onAssignmentChange: (a) => setPickedProgramId(a ? a.program_id : null) }),
         canBrowse && e(React.Fragment, null,
           e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Browse all programs")),
-          e("p", { style: { ...styles.emptyText, fontSize: 12, marginTop: 4 } }, "Every program is designed by our certified trainers — never AI-generated.")
+          e("p", { style: { ...styles.emptyText, fontSize: 12, marginTop: 10, marginBottom: 12 } }, "Every program is designed by our certified trainers — never AI-generated.")
         )
       ),
       // Sept 15 2026, Jimmy QA: the other branch of this condition (above)
