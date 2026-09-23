@@ -8473,6 +8473,13 @@
     const [hasMedical, setHasMedical] = useState("");
     const [medicalDetails, setMedicalDetails] = useState("");
     const [goal, setGoal] = useState("");
+    // Sept 23 2026, Jimmy: "select more than one ... not only one target" — goal
+    // chips used to be single-select. They're now toggleable so a client can
+    // pick several (e.g. "Build muscle" + "Feel better"); `goal` still holds
+    // any extra free-typed text, and the two are joined at save time into the
+    // same comma-separated goal string dietGoalKeyFromText() already reads
+    // (see its own comment — it was written to tolerate exactly this).
+    const [selectedGoalChips, setSelectedGoalChips] = useState([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [savedProfile, setSavedProfile] = useState(null); // set once handleSave/handleSkip succeed — shows "You're all set!" before onDone
@@ -8542,8 +8549,9 @@
 
     async function handleSave() {
       setError("");
-      if (!age || !height || !weight || !goal.trim()) {
-        setError("Fill in your age, height, weight, and goal.");
+      const goalText = [...selectedGoalChips, goal.trim()].filter(Boolean).join(", ");
+      if (!age || !height || !weight || !goalText) {
+        setError("Fill in your age, height, weight, and at least one goal.");
         return;
       }
       // Catches an obvious typo (an extra digit, cm/kg swapped, etc.) right
@@ -8597,7 +8605,7 @@
         days_per_week: Number(daysPerWeek),
         has_medical_condition: hasMedical === "yes",
         medical_details: hasMedical === "yes" ? (medicalDetails.trim() || null) : null,
-        goal: goal.trim(),
+        goal: goalText,
         // A self-serve client with no trainer starts a 14-day free trial of
         // the paid app-access tier right now, at signup — a client who came
         // in through any trainer's code never gets this field set at all,
@@ -8651,7 +8659,7 @@
         // always fine-tune later from this same "Daily targets" card, same
         // as any other target on it.
         const activityMult = (ACTIVITY_LEVELS.find((lvl) => lvl.key === defaultActivityKey(Number(daysPerWeek))) || ACTIVITY_LEVELS[0]).mult;
-        const dietGoalMult = DIET_GOAL_CAL_MULT[dietGoalKeyFromText(goal)];
+        const dietGoalMult = DIET_GOAL_CAL_MULT[dietGoalKeyFromText(goalText)];
         const targetCalories = Math.round(bmr * activityMult * dietGoalMult);
         const targets = macroTargetsFromCalories(targetCalories, Number(weight), gender, null);
         sb.from("diet_plans").upsert([{
@@ -8902,22 +8910,23 @@
         )
       ),
       stepName === "goal" && e(React.Fragment, null,
-        e("h1", { style: styles.wizardQuestion }, "What's your main goal?"),
+        e("h1", { style: styles.wizardQuestion }, "What are your goals?"),
+        e("p", { style: styles.wizardSub }, "Pick as many as apply"),
         e("div", { style: styles.chipRow },
           GOAL_CHIPS.map((g) =>
             e("button", {
               key: g, type: "button",
-              style: { ...styles.chipBtn, ...(goal === g ? styles.chipBtnActive : {}) },
-              onClick: () => setGoal(g)
+              style: { ...styles.chipBtn, ...(selectedGoalChips.includes(g) ? styles.chipBtnActive : {}) },
+              onClick: () => setSelectedGoalChips((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g])
             }, g)
           )
         ),
         e("input", {
-          style: { ...styles.wizardTextInput, marginTop: 10 }, placeholder: "Or type your own",
-          value: GOAL_CHIPS.includes(goal) ? "" : goal,
+          style: { ...styles.wizardTextInput, marginTop: 10 }, placeholder: "Add another goal (optional)",
+          value: goal,
           onChange: (ev) => setGoal(ev.target.value)
         }),
-        e("div", { style: { marginTop: 12 } }, e(VoiceMicButton, { title: "Say your main goal", onTranscribed: (text) => setGoal((prev) => (prev && !GOAL_CHIPS.includes(prev) ? `${prev} ${text}` : text)) })),
+        e("div", { style: { marginTop: 12 } }, e(VoiceMicButton, { title: "Say another goal", onTranscribed: (text) => setGoal((prev) => (prev ? `${prev} ${text}` : text)) })),
         error && e("span", { style: { ...styles.inlineError, marginTop: 10 } }, error),
         e("button", {
           style: { ...styles.wizardActionBtn, ...(saving ? styles.btnDisabled : {}) }, disabled: saving, onClick: handleSave
