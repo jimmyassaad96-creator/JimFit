@@ -2763,9 +2763,20 @@
   // sparklines already depend on its exact `.weight` shape.
   function trendGeometry(values, w, h, pad) {
     const min = Math.min(...values), max = Math.max(...values);
-    const range = max - min || 1;
+    const range = max - min;
     const n = values.length;
     const stepX = n > 1 ? (w - 2 * pad) / (n - 1) : 0;
+    // Sept 23 2026, Jimmy: "the trend graph looks empty/flat" — when every
+    // logged value is identical (or there's only one), the old `range || 1`
+    // fallback anchored the whole line to the BOTTOM edge of the chart
+    // (norm value 0 always mapped to y = h - pad), leaving most of the box
+    // looking blank instead of showing a flat line where you'd expect one:
+    // vertically centered. Only the true-flat case changes; any real
+    // variance still maps min->bottom, max->top exactly as before.
+    if (range === 0) {
+      const midY = pad + (h - 2 * pad) / 2;
+      return values.map((v, i) => [pad + i * stepX, midY]);
+    }
     return values.map((v, i) => [pad + i * stepX, pad + (h - 2 * pad) * (1 - (v - min) / range)]);
   }
   function Sparkline({ points, color, width = 236, height = 40 }) {
@@ -13210,6 +13221,7 @@
     const first = pts[0], last = pts[pts.length - 1];
     const delta = Math.round((last.value - first.value) * 10) / 10;
     const dir = Math.abs(delta) < 0.05 ? "flat" : delta > 0 ? "up" : "down";
+    const uid = React.useId().replace(/[:]/g, "");
     return e("div", null,
       available.length > 1 && e("div", { style: { ...styles.chipScrollRow, marginBottom: 10 } },
         available.map((m) => e("button", {
@@ -13218,18 +13230,41 @@
           onClick: () => setMetricKey(m.key)
         }, `${m.emoji} ${m.label}`))
       ),
+      // Sept 23 2026, Jimmy: "make the trend look more pro" — was a flat
+      // semi-transparent fill with no depth/reference lines, and (see
+      // trendGeometry's own comment) a perfectly flat reading used to pin
+      // itself to the bottom edge and look like an empty box. Added a real
+      // top-to-bottom gradient fill (same technique as LogEmptyArt's glow),
+      // two faint reference gridlines so there's always visual structure
+      // even with just two points, and slightly bigger dots.
       e("svg", { width: "100%", height, viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", style: { display: "block" } },
-        e("polygon", { points: areaPts, fill: withAlpha(C.brand, 0.12), stroke: "none" }),
+        e("defs", null,
+          e("linearGradient", { id: `trend-${uid}`, x1: "0%", y1: "0%", x2: "0%", y2: "100%" },
+            e("stop", { offset: "0%", stopColor: C.brand, stopOpacity: 0.28 }),
+            e("stop", { offset: "100%", stopColor: C.brand, stopOpacity: 0 })
+          )
+        ),
+        e("line", { x1: pad, y1: pad + (height - 2 * pad) * 0.25, x2: width - pad, y2: pad + (height - 2 * pad) * 0.25, stroke: C.cardBorder, strokeWidth: 1, strokeDasharray: "2 3" }),
+        e("line", { x1: pad, y1: pad + (height - 2 * pad) * 0.75, x2: width - pad, y2: pad + (height - 2 * pad) * 0.75, stroke: C.cardBorder, strokeWidth: 1, strokeDasharray: "2 3" }),
+        e("polygon", { points: areaPts, fill: `url(#trend-${uid})`, stroke: "none" }),
         e("polyline", { points: linePts, fill: "none", stroke: C.brand, strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }),
-        coords.map((c, i) => e("circle", { key: i, cx: c[0], cy: c[1], r: i === coords.length - 1 ? 4 : 2.5, fill: i === coords.length - 1 ? C.brand : C.card, stroke: C.brand, strokeWidth: i === coords.length - 1 ? 0 : 1.5 }))
+        coords.map((c, i) => e("circle", { key: i, cx: c[0], cy: c[1], r: i === coords.length - 1 ? 4.5 : 3.5, fill: i === coords.length - 1 ? C.brand : C.card, stroke: C.brand, strokeWidth: i === coords.length - 1 ? 0 : 1.5 }))
       ),
-      e("div", { style: { display: "flex", justifyContent: "space-between", marginTop: 6 } },
+      e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 } },
         e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif" } }, `${fmtDateMed(first.date)} · ${first.value}${metric.unit}`),
-        e("span", { style: { fontSize: 10.5, fontFamily: "'Inter', sans-serif", fontWeight: 700, color: dir === "up" ? C.good : dir === "down" ? C.critical : C.ink3 } },
+        e("span", {
+          style: {
+            fontSize: 10.5, fontFamily: "'Inter', sans-serif", fontWeight: 700,
+            color: dir === "up" ? C.good : dir === "down" ? C.critical : C.ink3,
+            background: dir === "up" ? C.goodSoft : dir === "down" ? C.criticalSoft : C.subtleFill,
+            padding: "2px 8px", borderRadius: 20
+          }
+        },
           dir === "flat" ? "flat" : `${delta > 0 ? "+" : ""}${delta}${metric.unit}`
         ),
         e("span", { style: { fontSize: 10.5, color: C.ink3, fontFamily: "'Inter', sans-serif" } }, `${fmtDateMed(last.date)} · ${last.value}${metric.unit}`)
-      )
+      ),
+      pts.length === 2 && e("p", { style: { fontSize: 10.5, color: C.ink3, fontStyle: "italic", marginTop: 6, marginBottom: 0 } }, "Log a few more readings to fill out the trend.")
     );
   }
 
