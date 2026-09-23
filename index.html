@@ -10051,13 +10051,15 @@
           )
         ),
         e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-          (() => {
-            const balance = balanceFor(r.profile);
-            if (balance == null) return null;
-            const paidUp = balance <= 0;
-            return e("span", { style: { ...styles.goalChip, ...(paidUp ? styles.goalChipGood : styles.goalChipBad) } }, paidUp ? "Paid up" : `$${balance.toLocaleString()} due`);
-          })(),
-          e("span", { style: styles.rosterVol }, r.vol7.toLocaleString(), e("span", { style: styles.statUnit }, " vol/7d")),
+          e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 } },
+            e("span", { style: styles.rosterVol }, r.vol7.toLocaleString(), e("span", { style: styles.statUnit }, " vol/7d")),
+            (() => {
+              const balance = balanceFor(r.profile);
+              if (balance == null) return null;
+              const paidUp = balance <= 0;
+              return e("span", { style: { ...styles.rosterBalanceText, color: paidUp ? C.good : C.critical } }, paidUp ? "Paid up" : `$${balance.toLocaleString()} due`);
+            })()
+          ),
           onClearWorkouts && e("button", {
             style: { ...styles.deleteBtn, color: C.ink3 },
             onClick: (ev) => { ev.stopPropagation(); onClearWorkouts(r.id); },
@@ -18933,13 +18935,13 @@
                       }, prog ? `📋 ${prog.title}` : "No program written yet")
                     )
                   ),
-                  e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-                    balance != null && e("span", { style: { ...styles.goalChip, ...(paidUp ? styles.goalChipGood : styles.goalChipBad) } }, paidUp ? "Paid up" : `$${balance.toLocaleString()} due`),
+                  e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 } },
                     // A flat "0 vol/7d" on every inactive client was just
                     // noise duplicating the "never logged"/"inactive" text
                     // to its left — only show it once there's an actual
                     // number behind it.
-                    r.vol7 > 0 && e("span", { style: styles.rosterVol }, r.vol7.toLocaleString(), e("span", { style: styles.statUnit }, " vol/7d"))
+                    r.vol7 > 0 && e("span", { style: styles.rosterVol }, r.vol7.toLocaleString(), e("span", { style: styles.statUnit }, " vol/7d")),
+                    balance != null && e("span", { style: { ...styles.rosterBalanceText, color: paidUp ? C.good : C.critical } }, paidUp ? "Paid up" : `$${balance.toLocaleString()} due`)
                   )
                 );
               }))
@@ -25431,6 +25433,16 @@
     // same initial letter, used app-wide (roster rows, session cards, etc).
     avatar: { width: 36, height: 36, borderRadius: 10, background: C.brandSoft, color: C.brand, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 },
     rosterVol: { fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 700, color: C.brand },
+    // Sept 23 2026, Jimmy: "let's do the design we tried yesterday, page by
+    // page" — starting with the Members screen. The paid/due indicator on
+    // each member row was a loud all-caps colored pill (same styles.goalChip
+    // used ~20 other places app-wide for renewal/risk/program badges) sitting
+    // right next to a big bold volume number — busy for what's really just a
+    // secondary status line. Redesign mockup (yesterday's canvas) shows it as
+    // small plain colored text stacked under the number instead. New style
+    // instead of reusing goalChip, so this doesn't ripple into every other
+    // badge in the app that still wants the pill treatment.
+    rosterBalanceText: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600 },
     // Sept 13 2026, Jimmy: client-roster search (TrainerView's "Members"
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
     // just inline with a leading search icon and a clear (x) button instead
