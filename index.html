@@ -4906,6 +4906,14 @@
   // look an exercise name up once, and a trainer/manager can paste their own link to override.
   const exerciseGifMemCache = {};
 
+  // Sept 24 2026, screen-by-screen review (minor item): caches the
+  // computed exercise list (items + usage counts, pulled from
+  // program_exercises + workout_entries) for the rest of this page
+  // session — see ExerciseLibraryPanel below. Same idea as
+  // exerciseGifMemCache above, one level up: that caches each exercise's
+  // demo link, this caches which exercises exist at all.
+  let exerciseLibraryListPromise = null;
+
   function exerciseGifKey(name) {
     return (name || "").trim().toLowerCase();
   }
@@ -6086,26 +6094,38 @@
       if (!sb) { setLoading(false); return; }
       let cancelled = false;
       (async () => {
-        const [progRes, entryRes] = await Promise.all([
-          sb.from("program_exercises").select("exercise"),
-          sb.from("workout_entries").select("exercise")
-        ]);
-        // Count how many times each exercise shows up across programs + logged
-        // workouts — a proxy for how many clients actually see it — so the list
-        // can be sorted highest-impact-first. Filling in the demo for something
-        // used 40 times matters a lot more than something used once.
-        const seen = new Map();
-        const counts = new Map();
-        [...(progRes.data || []), ...(entryRes.data || [])].forEach((r) => {
-          const raw = ((r && r.exercise) || "").trim();
-          if (!raw) return;
-          const key = exerciseGifKey(raw);
-          counts.set(key, (counts.get(key) || 0) + 1);
-          if (!seen.has(key)) seen.set(key, raw);
-        });
-        const list = [...seen.entries()]
-          .map(([key, name]) => ({ key, name, count: counts.get(key) || 0 }))
-          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+        // Sept 24 2026, screen-by-screen review (minor item): the list of
+        // exercises + usage counts only changes when someone logs a new
+        // exercise or edits a program — it doesn't need recomputing from
+        // scratch on every visit to this screen. Cache it for the rest of
+        // the page session (exerciseLibraryListPromise, declared next to
+        // exerciseGifMemCache above); a real failure clears the cache so
+        // the next visit retries instead of staying stuck.
+        if (!exerciseLibraryListPromise) {
+          exerciseLibraryListPromise = (async () => {
+            const [progRes, entryRes] = await Promise.all([
+              sb.from("program_exercises").select("exercise"),
+              sb.from("workout_entries").select("exercise")
+            ]);
+            // Count how many times each exercise shows up across programs + logged
+            // workouts — a proxy for how many clients actually see it — so the list
+            // can be sorted highest-impact-first. Filling in the demo for something
+            // used 40 times matters a lot more than something used once.
+            const seen = new Map();
+            const counts = new Map();
+            [...(progRes.data || []), ...(entryRes.data || [])].forEach((r) => {
+              const raw = ((r && r.exercise) || "").trim();
+              if (!raw) return;
+              const key = exerciseGifKey(raw);
+              counts.set(key, (counts.get(key) || 0) + 1);
+              if (!seen.has(key)) seen.set(key, raw);
+            });
+            return [...seen.entries()]
+              .map(([key, name]) => ({ key, name, count: counts.get(key) || 0 }))
+              .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+          })().catch((err) => { exerciseLibraryListPromise = null; throw err; });
+        }
+        const list = await exerciseLibraryListPromise;
         if (cancelled) return;
         setItems(list);
         const found = await Promise.all(list.map(async (item) => [item.key, await fetchExerciseGif(item.name)]));
@@ -9611,10 +9631,20 @@
           e("input", { style: styles.input, type: "date", value: date, onChange: (ev) => { setDate(ev.target.value); setPastDateConfirmed(false); setConflictConfirmed(false); } }),
           e("input", { style: styles.input, type: "time", value: time, onChange: (ev) => { setTime(ev.target.value); setConflictConfirmed(false); } })
         ),
-        canPickTrainer && e("select", {
-          value: formTrainerId, onChange: (ev) => { setFormTrainerId(ev.target.value); setConflictConfirmed(false); },
-          style: { ...styles.input, marginBottom: 10 }
-        }, [e("option", { key: "", value: "" }, "Unassigned"), ...trainers.map((t) => e("option", { key: t.id, value: t.id }, t.name))]),
+        // Sept 24 2026, screen-by-screen review (minor item): this
+        // trainer-assignment field rendered as a plain bordered box with
+        // no chevron, so it wasn't obvious it was a picker rather than a
+        // label. Same chevron treatment the app's own Select component
+        // already uses elsewhere (styles.selectChevron), applied directly
+        // on this raw <select> since it needs to keep styles.input's
+        // border/background to match the rest of the form around it.
+        canPickTrainer && e("div", { style: { position: "relative", marginBottom: 10 } },
+          e("select", {
+            value: formTrainerId, onChange: (ev) => { setFormTrainerId(ev.target.value); setConflictConfirmed(false); },
+            style: { ...styles.input, paddingRight: 30 }
+          }, [e("option", { key: "", value: "" }, "Unassigned"), ...trainers.map((t) => e("option", { key: t.id, value: t.id }, t.name))]),
+          e("div", { style: styles.selectChevron }, e(Icon, { name: "chevron", size: 14, color: C.ink3 }))
+        ),
         e("div", { style: { display: "flex", gap: 8, marginBottom: 12 } },
           e("input", { style: { ...styles.inputEllipsis, flex: 1 }, placeholder: "Note (optional) — e.g. \"Upper body day\"", value: note, onChange: (ev) => setNote(ev.target.value) }),
           e(VoiceMicButton, { title: "Say a note for this session", onTranscribed: setNote })
