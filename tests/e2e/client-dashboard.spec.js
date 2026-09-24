@@ -15,7 +15,7 @@ test("today card shows the three stat tiles", async ({ page }) => {
 
 test("greets the client by name with an empty-log message", async ({ page }) => {
   await expect(
-    page.getByText("Hello, Demo Client — ready when you are, nothing logged yet today")
+    page.getByText("Hi Demo Client, ready to log today's first move?")
   ).toBeVisible();
 });
 
@@ -40,7 +40,7 @@ test("self-train trial banner states the price and remaining days", async ({ pag
 
 test("check-in panel invites a voice note", async ({ page }) => {
   await expect(page.getByText("Check-ins")).toBeVisible();
-  await expect(page.getByText("Nothing yet — tap the mic and tell us how you're doing today.")).toBeVisible();
+  await expect(page.getByText("No check-ins yet. Tap the mic and tell us how you're doing today!")).toBeVisible();
 });
 
 test("muscles tab renders the rolling-7-day balance view", async ({ page }) => {

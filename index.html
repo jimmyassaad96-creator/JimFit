@@ -4246,7 +4246,7 @@
       saveError && e("div", { style: { ...styles.inlineError, marginBottom: 8 } }, saveError),
       !loaded ? e("p", { style: styles.emptyText }, "Loading…")
         : checkIns.length === 0
-        ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage ? "Nothing yet — tap the mic and tell us how you're doing today." : "No check-ins from this member yet.")
+        ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage ? "No check-ins yet. Tap the mic and tell us how you're doing today!" : "No check-ins from this member yet.")
         : e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             checkIns.map((c) => {
               // A detected mood emoji replaces the generic mic icon on that
@@ -24239,7 +24239,7 @@
             // "Nice work today, {name}" version once something's logged. A
             // brand-new client landing here right after signup now gets
             // greeted by name from the very first screen they see.
-            e("div", { style: styles.todayCardGreeting }, todayEntries.length > 0 ? `Nice work today, ${clientName}` : `Hello, ${clientName} — ready when you are, nothing logged yet today`),
+            e("div", { style: styles.todayCardGreeting }, todayEntries.length > 0 ? `Nice work today, ${clientName}` : `Hi ${clientName}, ready to log today's first move?`),
             e("div", { style: styles.todayCardStats },
               todayTiles.map((t) => e("button", {
                 key: t.key, type: "button",
