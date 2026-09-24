@@ -4323,6 +4323,146 @@
     });
   }
 
+  // Sept 24 2026, Jimmy: "we can try to add it? and if it didnt work as i
+  // want we can take it back as it is now?" — a client standing at an
+  // unfamiliar gym machine (most often someone self-training, with no
+  // trainer next to them) can snap a photo instead of guessing. v1 scope,
+  // per Jimmy's call: AI-generated guidance only, no attempt yet to match
+  // against the real Exercise Library — same "AI Chat" trust pattern used
+  // everywhere else in the app (confidence shown honestly, always tells the
+  // client to confirm with their trainer). Fully self-contained (own sheet,
+  // own state, one new button) so it's a clean lift-out if it doesn't work
+  // out — nothing else in the app depends on it.
+  function MachineScanSheet({ onUseAsExercise }) {
+    const [open, setOpen] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [result, setResult] = useState(null);
+    const [scanError, setScanError] = useState("");
+    const [preview, setPreview] = useState(null);
+    const fileInputRef = useRef(null);
+
+    function reset() {
+      setResult(null);
+      setScanError("");
+      setPreview(null);
+    }
+    function closeSheet() {
+      setOpen(false);
+      reset();
+    }
+
+    async function handlePhoto(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = ""; // let the same photo be re-picked later if needed
+      if (!file || !sb) return;
+      reset();
+      setAnalyzing(true);
+      try {
+        const resized = await resizeImageFile(file);
+        setPreview(URL.createObjectURL(resized));
+        const base64 = await blobToBase64(resized);
+        const { data, error: err } = await sb.functions.invoke("machine-scan", { body: { image: base64, mimeType: resized.type || "image/jpeg" } });
+        setAnalyzing(false);
+        if (err || !data || data.error) {
+          setScanError("Couldn't analyze that photo — try again.");
+          return;
+        }
+        if (data.notAMachine) {
+          setScanError("That doesn't look like gym equipment — try a clearer photo of the machine itself.");
+          return;
+        }
+        setResult(data);
+      } catch (e) {
+        setAnalyzing(false);
+        setScanError("Couldn't analyze that photo — try again.");
+      }
+    }
+
+    return e(React.Fragment, null,
+      e("button", {
+        type: "button", onClick: () => setOpen(true),
+        style: {
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 48, flexShrink: 0, borderRadius: 14,
+          background: C.brandSoft, border: `1.5px solid ${C.brand}`, color: C.brand, cursor: "pointer"
+        },
+        title: "Scan a machine"
+      }, e(Icon, { name: "camera", size: 17 })),
+      open && e("div", { style: styles.overlay, onClick: closeSheet },
+        e("div", { style: styles.sheet, onClick: (ev) => ev.stopPropagation() },
+          e("div", { style: styles.sheetHeader },
+            e("span", { style: styles.exSheetTitle }, "Scan a machine"),
+            e("button", { style: styles.closeBtn, onClick: closeSheet }, e(Icon, { name: "x", size: 18 }))
+          ),
+          !result && e("div", null,
+            e("p", { style: { fontSize: 13, color: C.ink2, lineHeight: 1.5, marginBottom: 14 } },
+              "Not sure how to use something? Snap a photo of the machine and get quick setup + form guidance."
+            ),
+            e("input", {
+              type: "file", accept: "image/*", capture: "environment", ref: fileInputRef,
+              style: { display: "none" }, onChange: handlePhoto
+            }),
+            e("button", {
+              type: "button", disabled: analyzing,
+              onClick: () => fileInputRef.current && fileInputRef.current.click(),
+              style: { ...styles.clientNewExerciseBtn, opacity: analyzing ? 0.7 : 1, cursor: analyzing ? "default" : "pointer" }
+            }, e(Icon, { name: "camera", size: 15, strokeWidth: 3 }), analyzing ? "Identifying…" : "Take a photo"),
+            preview && analyzing && e("div", { style: { display: "flex", justifyContent: "center", marginTop: 14 } },
+              e("img", { src: preview, style: { width: 120, height: 120, objectFit: "cover", borderRadius: 14, border: `1px solid ${C.cardBorder}` } })
+            ),
+            scanError && e("div", { style: { ...styles.inlineError, marginTop: 10 } }, scanError)
+          ),
+          result && e("div", null,
+            e("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 } },
+              preview && e("img", { src: preview, style: { width: 56, height: 56, objectFit: "cover", borderRadius: 12, border: `1px solid ${C.cardBorder}`, flexShrink: 0 } }),
+              e("div", null,
+                e("div", { style: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 15.5, color: C.ink, marginBottom: 5 } }, result.name),
+                e("span", {
+                  style: {
+                    display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700,
+                    padding: "3px 9px", borderRadius: 20,
+                    color: result.confidence === "high" ? C.good : C.warning,
+                    background: result.confidence === "high" ? C.goodSoft : C.warningSoft
+                  }
+                }, result.confidence === "high" ? "High confidence match" : "Best guess — double-check")
+              )
+            ),
+            Array.isArray(result.muscles) && result.muscles.length > 0 && e("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 } },
+              result.muscles.map((m, i) => e("span", {
+                key: i,
+                style: { fontSize: 11, fontWeight: 700, color: C.brand, background: C.brandSoft, border: `1px solid ${withAlpha(C.brand, 0.3)}`, padding: "4px 10px", borderRadius: 20 }
+              }, m))
+            ),
+            Array.isArray(result.steps) && result.steps.length > 0 && e("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 } },
+              result.steps.map((s, i) => e("div", { key: i, style: { display: "flex", gap: 10, fontSize: 13, color: C.ink, lineHeight: 1.5 } },
+                e("span", { style: { flexShrink: 0, width: 20, height: 20, borderRadius: 7, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, color: C.ink3, fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 } }, i + 1),
+                e("span", null, s)
+              ))
+            ),
+            result.safetyTip && e("div", { style: { display: "flex", gap: 9, background: C.warningSoft, border: `1px solid ${withAlpha(C.warning, 0.35)}`, borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: C.ink2, lineHeight: 1.5, marginBottom: 14 } },
+              e(Icon, { name: "alert", size: 15, color: C.warning }),
+              e("span", null, result.safetyTip)
+            ),
+            e("p", { style: { ...styles.demoNote, marginBottom: 14 } },
+              "AI-generated — a helpful starting point, but always confirm form with your trainer, especially with an injury or unfamiliar equipment."
+            ),
+            e("div", { style: { display: "flex", gap: 10 } },
+              e("button", {
+                type: "button", onClick: reset,
+                style: { flex: 1, padding: "12px", borderRadius: 12, border: `1.5px solid ${C.cardBorderStrong}`, background: "transparent", color: C.ink2, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 13, cursor: "pointer" }
+              }, "Scan another"),
+              e("button", {
+                type: "button",
+                onClick: () => { closeSheet(); if (onUseAsExercise) onUseAsExercise(result.name); },
+                style: { ...styles.clientNewExerciseBtn, flex: 1 }
+              }, "Log this exercise")
+            )
+          )
+        )
+      )
+    );
+  }
+
   function FoodPicker({ onAdd }) {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
@@ -24286,8 +24426,9 @@
         // primary action instead of a small right-aligned link. Own scoped style
         // (clientNewExerciseBtn) rather than editing the shared newBtn used by
         // "Write a new program" / "Add a week" / etc. elsewhere in the app.
-        e("div", { style: { padding: "16px 18px 0" } },
-          e("button", { style: styles.clientNewExerciseBtn, onClick: openNewExercise }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New exercise")
+        e("div", { style: { padding: "16px 18px 0", display: "flex", gap: 10 } },
+          e("button", { style: { ...styles.clientNewExerciseBtn, flex: 1 }, onClick: openNewExercise }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New exercise"),
+          e(MachineScanSheet, { onUseAsExercise: (name) => { openNewExercise(); setExercise(name); } })
         ),
         error && e("div", { style: styles.errorBanner }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
         !loaded ? e("div", { style: styles.empty }, "Loading your log…") : e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo, newExerciseLabel: "New exercise" })
