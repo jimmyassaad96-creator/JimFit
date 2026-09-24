@@ -48,7 +48,7 @@ test("cancel closes the picker", async ({ page }) => {
 test("steps for the day start unlogged with a warning", async ({ page }) => {
   await expect(page.getByText(/steps today/i).first()).toBeVisible();
   await expect(
-    page.getByText("Not logged yet today — your calorie-burn numbers above are reading low without it.")
+    page.getByText("Not logged yet today. Your calorie-burn numbers above are reading low without it.")
   ).toBeVisible();
 });
 
