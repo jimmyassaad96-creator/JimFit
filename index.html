@@ -5716,7 +5716,7 @@
       e("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 } },
         e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
           e("span", { style: { ...styles.sectionTitle, fontFamily: "'Space Grotesk', sans-serif" } }, "Muscle balance"),
-          e("span", { style: styles.sectionSub }, "Rolling 7 days — drag to spin, tap a muscle for details.")
+          e("span", { style: styles.sectionSub }, "Rolling 7 days. Drag to spin, tap a muscle for details.")
         ),
         weekEntries.length > 0 && e("div", { style: styles.muscleViewToggle },
           e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "front" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => settleView(0) }, "Front"),
