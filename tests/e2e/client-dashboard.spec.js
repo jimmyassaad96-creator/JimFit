@@ -46,7 +46,7 @@ test("check-in panel invites a voice note", async ({ page }) => {
 test("muscles tab renders the rolling-7-day balance view", async ({ page }) => {
   await openTab(page, "Muscles");
   await expect(page.getByText("Muscle balance")).toBeVisible();
-  await expect(page.getByText("Rolling 7 days — drag to spin, tap a muscle for details.")).toBeVisible();
+  await expect(page.getByText("Rolling 7 days. Drag to spin, tap a muscle for details.")).toBeVisible();
   for (const legend of ["Trained", "Assisted", "Not trained"]) {
     await expect(page.getByText(legend, { exact: true })).toBeVisible();
   }

@@ -4828,7 +4828,7 @@
         // day with no hint why. A one-line nudge, today-only (a past day
         // with no steps logged is just history, not something to chase).
         isToday && steps == null && e("p", { style: { ...styles.emptyText, fontSize: 11, color: C.warning, marginTop: -4, marginBottom: 10 } },
-          "Not logged yet today — your calorie-burn numbers above are reading low without it."
+          "Not logged yet today. Your calorie-burn numbers above are reading low without it."
         ),
         stepsError && e("p", { style: { ...styles.inlineError, marginBottom: 10 } }, stepsError)
       ),
@@ -5716,7 +5716,7 @@
       e("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 } },
         e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
           e("span", { style: { ...styles.sectionTitle, fontFamily: "'Space Grotesk', sans-serif" } }, "Muscle balance"),
-          e("span", { style: styles.sectionSub }, "Rolling 7 days — drag to spin, tap a muscle for details.")
+          e("span", { style: styles.sectionSub }, "Rolling 7 days. Drag to spin, tap a muscle for details.")
         ),
         weekEntries.length > 0 && e("div", { style: styles.muscleViewToggle },
           e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "front" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => settleView(0) }, "Front"),
@@ -17143,7 +17143,7 @@
           // hint line (same treatment as the food log's empty state right
           // above it), no illustration above it like DietEmptyArt was
           // rendering here.
-          ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, "No past days yet — once you log food or water, your history shows up here 📅")
+          ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, "No past days yet. Once you log food or water, your history shows up here 📅")
           : e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, logs.map((l) => {
             // trainerLocked: same leak as the "Today" section above — a
             // Hit/Missed chip or a delta tag next to a logged day still
