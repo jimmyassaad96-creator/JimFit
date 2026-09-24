@@ -5590,6 +5590,59 @@
     // Same regions/data/tap-for-status behavior either way — just one view
     // visible instead of two.
     const [bodyView, setBodyView] = useState("front");
+    // Sept 24 2026, Jimmy: keep the exact same muscles/tap behavior, but
+    // replace the binary Front/Back toggle with a real drag-to-spin 360.
+    // NOTE: do NOT use setPointerCapture here — capturing the pointer on
+    // an ancestor redirects the click event's target to the capturing
+    // element per the Pointer Events spec, so a tap on a muscle shape
+    // (a descendant) never reaches its onClick. Track the drag with
+    // window-level listeners instead, which leaves click targeting alone.
+    const flipCardRef = useRef(null);
+    const angleRef = useRef(0);
+    const dragRef = useRef({ dragging: false, startX: 0, startAngle: 0 });
+    function normalizeAngle(a) {
+      a = a % 360;
+      if (a > 180) a -= 360;
+      if (a <= -180) a += 360;
+      return a;
+    }
+    function applyAngle(withTransition) {
+      const node = flipCardRef.current;
+      if (!node) return;
+      node.style.transition = withTransition ? "transform 0.45s cubic-bezier(0.4,0.2,0.2,1)" : "none";
+      node.style.transform = `rotateY(${angleRef.current}deg)`;
+    }
+    function settleView(targetAngle) {
+      angleRef.current = targetAngle;
+      applyAngle(true);
+      setBodyView(Math.abs(normalizeAngle(targetAngle)) >= 90 ? "back" : "front");
+    }
+    function handleFlipPointerDown(ev) {
+      dragRef.current = { dragging: true, startX: ev.clientX, startAngle: angleRef.current };
+      applyAngle(false);
+    }
+    useEffect(() => {
+      function onMove(ev) {
+        const d = dragRef.current;
+        if (!d.dragging) return;
+        angleRef.current = d.startAngle + (ev.clientX - d.startX) * 0.6;
+        applyAngle(false);
+      }
+      function onUp() {
+        const d = dragRef.current;
+        if (!d.dragging) return;
+        d.dragging = false;
+        settleView(Math.round(normalizeAngle(angleRef.current) / 180) * 180);
+      }
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      return () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+    }, []);
     useEffect(() => {
       let cancelled = false;
       if (!weekEntries.length) { setStatus({ primarySet: new Set(), secondarySet: new Set() }); return; }
@@ -5619,19 +5672,32 @@
           e("span", { style: styles.sectionSub }, "Rolling 7 days — tap any muscle for details.")
         ),
         weekEntries.length > 0 && e("div", { style: styles.muscleViewToggle },
-          e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "front" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => setBodyView("front") }, "Front"),
-          e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "back" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => setBodyView("back") }, "Back")
+          e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "front" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => settleView(0) }, "Front"),
+          e("button", { type: "button", style: { ...styles.muscleViewToggleBtn, ...(bodyView === "back" ? styles.muscleViewToggleBtnActive : {}) }, onClick: () => settleView(180) }, "Back")
         )
       ),
       !weekEntries.length
         ? e("p", { style: { ...styles.emptyText, margin: 0 } }, "Nothing logged in the last 7 days yet.")
         : e(React.Fragment, null,
             e("div", { style: { display: "flex", justifyContent: "center" } },
-              e(MuscleDiagramView, {
-                regions: bodyView === "front" ? MUSCLE_DIAGRAM_REGIONS.front : MUSCLE_DIAGRAM_REGIONS.back,
-                primaryKey: status.primarySet, secondarySet: status.secondarySet, selectedKey, onSelect: selectRegion,
-                width: 150, height: 328
-              })
+              e("div", { style: styles.muscleFlipBox, onPointerDown: handleFlipPointerDown },
+                e("div", { ref: flipCardRef, style: styles.muscleFlipCard },
+                  e("div", { style: { ...styles.muscleFace, pointerEvents: bodyView === "front" ? "auto" : "none" } },
+                    e(MuscleDiagramView, {
+                      regions: MUSCLE_DIAGRAM_REGIONS.front,
+                      primaryKey: status.primarySet, secondarySet: status.secondarySet, selectedKey, onSelect: selectRegion,
+                      width: 150, height: 328
+                    })
+                  ),
+                  e("div", { style: { ...styles.muscleFace, ...styles.muscleFaceBack, pointerEvents: bodyView === "back" ? "auto" : "none" } },
+                    e(MuscleDiagramView, {
+                      regions: MUSCLE_DIAGRAM_REGIONS.back,
+                      primaryKey: status.primarySet, secondarySet: status.secondarySet, selectedKey, onSelect: selectRegion,
+                      width: 150, height: 328
+                    })
+                  )
+                )
+              )
             ),
             // Compact legend, chart-style — three swatches instead of naming
             // every muscle in a chip.
@@ -24915,6 +24981,15 @@
     muscleViewToggle: { display: "flex", background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 999, padding: 2, flexShrink: 0 },
     muscleViewToggleBtn: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, padding: "6px 12px", borderRadius: 999, color: C.ink3, background: "transparent", border: "none", cursor: "pointer" },
     muscleViewToggleBtnActive: { background: C.brand, color: C.brandInk },
+    // Sept 24 2026: drag-to-spin 360 flip card. perspective on the box,
+    // preserve-3d on the card, two flat faces with backfaceVisibility
+    // hidden (the back face pre-rotated 180deg) — dragging just sets
+    // rotateY continuously on the card, so the correct face shows itself
+    // automatically without any extra front/back branching logic.
+    muscleFlipBox: { position: "relative", width: 150, height: 328, perspective: 1400, touchAction: "pan-y", cursor: "grab" },
+    muscleFlipCard: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, transformStyle: "preserve-3d" },
+    muscleFace: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backfaceVisibility: "hidden", display: "flex", alignItems: "center", justifyContent: "center" },
+    muscleFaceBack: { transform: "rotateY(180deg)" },
     muscleDetailCard: { marginTop: 10, background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, transition: "opacity 0.2s ease" },
     muscleDetailCardHidden: { opacity: 0, pointerEvents: "none" },
     muscleDetailName: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 12.5, color: C.ink },
