@@ -4841,7 +4841,7 @@
       // and ordered by, just not shown before.
       e("div", { style: styles.card },
         e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
-          e("span", { style: styles.progressCardTitle }, isToday ? "🍽️ Today's food log" : `🍽️ Food log — ${dayWord}`),
+          e("span", { style: styles.progressCardTitle }, isToday ? "🍴 Today's food log" : `🍴 Food log — ${dayWord}`),
           // Sept 12 2026, Jimmy: "log food to be more clear" — same visible
           // blue pill as the Energy balance card's Steps controls, instead of
           // a barely-there ghost button.
@@ -4867,7 +4867,7 @@
           showPicker && e(FoodPicker, { onAdd: addEntry }),
           entries.length === 0
             ? e("p", { style: { ...styles.emptyText, fontStyle: "italic", fontSize: 13 } }, canManage
-                ? `Nothing logged ${isToday ? "today" : `on ${dayWord}`} yet — tap "+ Log food" 🍽️ to get started.`
+                ? `Nothing logged ${isToday ? "today" : `on ${dayWord}`} yet — tap "+ Log food" 🍴 to get started.`
                 : `This member hasn't logged any food ${isToday ? "today" : `on ${dayWord}`}.`)
             : e("div", { style: styles.foodLogList },
                 entries.map((en) => e("div", { key: en.id, style: styles.foodCard },
@@ -11360,7 +11360,7 @@
               // self-view Diet tab.
               e("div", { style: { ...styles.chipScrollRow, marginBottom: 16 } },
                 [
-                  { id: "log", label: "🍽️ Food log" },
+                  { id: "log", label: "🍴 Food log" },
                   { id: "plan", label: "🎯 Diet plan" }
                 ].map((s) => e("button", {
                   key: s.id,
@@ -16631,7 +16631,7 @@
                         )
                       )
                 ),
-                e("span", { style: styles.progressCardTitle, ref: mealPlanRef }, "🍽️ Meal plan"),
+                e("span", { style: styles.progressCardTitle, ref: mealPlanRef }, "🍴 Meal plan"),
                 (assignedTemplate ? resolvedMealGroups() : mealGroups()).length > 0
                   ? (assignedTemplate ? resolvedMealGroups() : mealGroups()).map((meal) => e("div", { key: meal.label, style: { marginTop: 14 } },
                       e(MealGroupHeader, { label: meal.label }),
@@ -18720,7 +18720,7 @@
               // Diet tab (see its matching comment).
               e("div", { style: { ...styles.chipScrollRow, marginBottom: 16 } },
                 [
-                  { id: "log", label: "🍽️ Food log" },
+                  { id: "log", label: "🍴 Food log" },
                   { id: "plan", label: "🎯 Diet plan" }
                 ].map((s) => e("button", {
                   key: s.id,
@@ -22729,9 +22729,17 @@
           : e("button", { style: styles.newBtn, onClick: () => { setNewTemplateOpen(true); setEditingTemplateId(null); setTemplateForm(BLANK_DIET_TEMPLATE_FORM); setError(""); } }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New ready plan")
       ),
       templates.length === 0 && e("div", { style: styles.empty }, e(ProgramsEmptyArt, {}), e("p", { style: styles.emptyText }, canManage ? "No ready plans yet for this goal — create one above." : "No ready plans yet for this goal.")),
-      templates.map((t) => {
+      // Sept 24 2026, screen-by-screen review finding #3: a retired
+      // ("[DO NOT USE] ...") template sat mixed into this list with
+      // nothing but its own name warning you off it — easy to miss on a
+      // skim. isRetiredTemplate() already hides these from every
+      // client-facing list (see its own comment above); this just makes
+      // that same retired state visible here too — sorted to the bottom,
+      // dimmed, badged. Pure render order/styling, no data touched.
+      [...templates].sort((a, b) => (isRetiredTemplate(a) ? 1 : 0) - (isRetiredTemplate(b) ? 1 : 0)).map((t) => {
         const expanded = expandedTemplateIds.has(t.id) || editingTemplateId === t.id;
-        return e("div", { key: t.id, style: styles.programCard },
+        const retired = isRetiredTemplate(t);
+        return e("div", { key: t.id, style: { ...styles.programCard, ...(retired ? { opacity: 0.55 } : {}) } },
         editingTemplateId === t.id
           ? e("div", { style: { ...styles.sessionForm, marginTop: 0, marginBottom: 0 } },
               e("input", { style: styles.input, placeholder: "Plan name", value: templateForm.name, onChange: (ev) => setTemplateForm({ ...templateForm, name: ev.target.value }) }),
@@ -22755,8 +22763,9 @@
                 // Sept 12 2026, Jimmy: same collapse-to-just-the-name pattern
                 // as the Programs browse cards — description, macros, and the
                 // full meal-by-meal breakdown all now wait behind this arrow.
-                e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                e("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
                   e("span", { style: { ...styles.sectionTitle, minWidth: 0, wordBreak: "break-word" } }, t.name),
+                  retired && e("span", { style: { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase", padding: "3px 7px", borderRadius: 999, background: withAlpha(C.critical, 0.14), color: C.critical, flexShrink: 0 } }, "Retired"),
                   e("button", {
                     style: { ...styles.expandToggleBtn, ...(expanded ? styles.expandToggleBtnOpen : {}) },
                     onClick: () => toggleTemplateExpanded(t.id),
@@ -25167,7 +25176,13 @@
     // horizontally-scrollable strip (same pattern as a category rail in a
     // polished fitness app) keeps every option one tap/swipe away without
     // the wall of chips dominating the sheet.
-    chipScrollRow: { display: "flex", flexWrap: "nowrap", gap: 6, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, marginBottom: -4, scrollSnapType: "x proximity", WebkitOverflowScrolling: "touch" },
+    // Sept 24 2026, screen-by-screen review finding #1: this scrollable
+    // chip row had nothing showing there was more content off-screen —
+    // the Log tab's workout-title picker was the one flagged directly,
+    // but this same style backs every chip row in the app, so the fade
+    // mask here fixes the pattern everywhere at once. Same fade idiom
+    // already used on browseChipStrip below, just applied here too.
+    chipScrollRow: { display: "flex", flexWrap: "nowrap", gap: 6, overflowX: "auto", overflowY: "hidden", paddingBottom: 4, marginBottom: -4, scrollSnapType: "x proximity", WebkitOverflowScrolling: "touch", WebkitMaskImage: "linear-gradient(to right, black calc(100% - 24px), transparent 100%)", maskImage: "linear-gradient(to right, black calc(100% - 24px), transparent 100%)" },
     input: { width: "100%", background: C.bg, border: `1px solid ${C.cardBorderStrong}`, borderRadius: 12, padding: "11px 12px", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 14 },
     // Sept 14 2026, Jimmy (app walkthrough): a long placeholder in a
     // narrow <input> — e.g. AI Chat's "Ask about training, nutrition, or
@@ -25556,7 +25571,10 @@
     // jimfit-flow_12.html restyle — horizontal-scrolling "PR reel" of cards,
     // replacing PersonalRecordsPanel's vertical list. Same computePersonalRecords
     // data, just laid out like the prototype's .pr-card row.
-    prReel: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6, scrollSnapType: "x proximity" },
+    // Sept 24 2026, screen-by-screen review finding #1 (second occurrence,
+    // same fix as chipScrollRow above) — Personal records row on Progress
+    // → Overview scrolled sideways with nothing showing there was more.
+    prReel: { display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6, scrollSnapType: "x proximity", WebkitMaskImage: "linear-gradient(to right, black calc(100% - 24px), transparent 100%)", maskImage: "linear-gradient(to right, black calc(100% - 24px), transparent 100%)" },
     // jimfit-flow_14.html restyle — pr-card now nests inside the boxed
     // goalCard wrapper, so its own fill is the subtler tone (matching the
     // prototype's rgba(255,255,255,.03) pr-card on top of its muscles-card).
