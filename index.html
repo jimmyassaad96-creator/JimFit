@@ -394,7 +394,16 @@
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") return perm === "denied" ? "denied" : "dismissed";
-      const reg = await navigator.serviceWorker.ready;
+      // Sept 26 2026, round-8 audit finding: if the service worker never
+      // finishes registering/activating (a network hiccup, a stale/broken
+      // sw.js, anything), navigator.serviceWorker.ready never resolves —
+      // this used to hang the "Enabling…" button forever with no error and
+      // no way to retry. A 10s timeout turns that into a real, visible
+      // failure (caught below, same as any other error) instead.
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Service worker isn't responding — try reloading the app.")), 10000))
+      ]);
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         sub = await reg.pushManager.subscribe({
@@ -1787,6 +1796,34 @@
   // actually enforced it. Real enforcement point is ProfileGate.commitBirthday
   // below, the one place a real birthday is collected.
   const MIN_SIGNUP_AGE = 18;
+
+  // Sept 26 2026, round-8 audit finding: age and birthday are two separate,
+  // independently-editable fields in 8 different places post-signup — a
+  // client's own "My info", a trainer's/manager's edit of a client, and a
+  // trainer's own "My Profile" (edited by themselves or by a manager) — and
+  // none of them re-checked the 18+ policy the signup wizard enforces, or
+  // kept the two fields in sync with each other. A manager could set a
+  // client's birthday to one implying they're 12, or set their age to 15
+  // directly, and it would just silently save. Every one of those edit
+  // handlers calls this first. Birthday is treated as the source of truth
+  // (same call the signup wizard itself settled on, Sept 19 2026): a valid
+  // birthday edit also returns the recomputed age so the two never disagree.
+  function checkAgeOrBirthdayEdit(field, value) {
+    if (field === "birthday") {
+      if (!value) return { ok: true, extra: {} }; // clearing it on purpose is allowed
+      const realAge = ageFromBirthday(value);
+      if (realAge == null || realAge < 0) return { ok: false, message: "Enter a valid birthday." };
+      if (realAge < MIN_SIGNUP_AGE) return { ok: false, message: `JimFit is for ages ${MIN_SIGNUP_AGE}+ only — that birthday isn't allowed.` };
+      return { ok: true, extra: { age: realAge } };
+    }
+    if (field === "age") {
+      if (value != null && value !== "" && Number(value) < MIN_SIGNUP_AGE) {
+        return { ok: false, message: `JimFit is for ages ${MIN_SIGNUP_AGE}+ only — can't set age below that.` };
+      }
+      return { ok: true, extra: {} };
+    }
+    return { ok: true, extra: {} };
+  }
 
   // Same idea, for the other fields a trainer can manually type into an
   // assessment — closes the same class of typo bug from a different entry
@@ -8750,6 +8787,14 @@
     const [height, setHeight] = useState("170");
     const [weight, setWeight] = useState("70");
     const [daysPerWeek, setDaysPerWeek] = useState("3");
+    // Sept 26 2026, round-8 audit finding: daysPerWeek starts pre-filled at
+    // "3" for the stepper UI, but that's a placeholder, not a real answer —
+    // "Skip for now" used to save it straight to the database as if the
+    // client had actually picked 3 days/week, even when they skipped out
+    // before ever reaching that step. It silently skews the BMR/calorie-
+    // target math since activity level is derived from it. This tracks
+    // whether the "days" step chip was actually tapped.
+    const [daysPerWeekTouched, setDaysPerWeekTouched] = useState(false);
     const [hasMedical, setHasMedical] = useState("");
     const [medicalDetails, setMedicalDetails] = useState("");
     const [goal, setGoal] = useState("");
@@ -8822,9 +8867,31 @@
     }
 
     function commitPhone() {
-      if (!phoneDigits.trim()) { setError("Enter your phone number."); return false; }
-      setPhone(`+961${phoneDigits.trim()}`);
+      const digits = phoneDigits.trim();
+      if (!digits) { setError("Enter your phone number."); return false; }
+      // Sept 26 2026, round-8 audit finding: this only checked the field
+      // wasn't empty — a single stray digit would pass and save as a "phone
+      // number" no trainer could ever actually reach. The input already
+      // strips non-digits as you type, so this just checks a realistic
+      // length: Lebanese mobile numbers are 7-8 digits after the +961
+      // country code shown as the fixed prefix above.
+      if (digits.length < 7 || digits.length > 8) {
+        setError("Enter a valid phone number (7-8 digits after +961).");
+        return false;
+      }
+      setPhone(`+961${digits}`);
       return true;
+    }
+
+    // Sept 26 2026: shared by handleSave and handleSkip so a medical flag
+    // can never be written to the database without real details behind it —
+    // the "Next" button on the medical step now requires this too, but this
+    // is the safety net for the "Skip for now" escape hatch, which can fire
+    // from a step before or after "medical" has been answered.
+    function medicalFieldsForSave() {
+      const details = medicalDetails.trim();
+      if (hasMedical !== "yes" || !details) return { has_medical_condition: false, medical_details: null };
+      return { has_medical_condition: true, medical_details: details };
     }
 
     async function handleSave() {
@@ -8883,8 +8950,7 @@
         height_cm: Number(height),
         weight_kg: Number(weight),
         days_per_week: Number(daysPerWeek),
-        has_medical_condition: hasMedical === "yes",
-        medical_details: hasMedical === "yes" ? (medicalDetails.trim() || null) : null,
+        ...medicalFieldsForSave(),
         goal: goalText,
         // A self-serve client with no trainer starts a 14-day free trial of
         // the paid app-access tier right now, at signup — a client who came
@@ -8979,9 +9045,27 @@
         if (selfRow) trainerId = selfRow.id;
         landedSelfTrain = true;
       }
-      // Bare-minimum profile row — everything can be filled in later from the
-      // client's detail page. This just unblocks getting into the app (and
-      // being assignable to a trainer) without answering every question now.
+      // Sept 26 2026, round-8 audit finding: this used to hardcode age,
+      // height/weight, days/week, and medical info to null/false regardless
+      // of what was already typed into the CURRENT step before "Skip for
+      // now" was tapped — not just the steps still ahead. A client could
+      // fill in height/weight, or flag + describe a real medical condition,
+      // then hit Skip instead of that step's own Next, and lose it all.
+      // "Skip for now" only ever shows from the heightWeight step onward
+      // (canSkip above), so age/birthday/gender/phone are always already
+      // committed by then — the fields below now carry forward whatever's
+      // actually sitting in the form instead of discarding it, while still
+      // leaving genuinely-unreached fields (e.g. days/week never tapped) as
+      // null rather than saving a placeholder default as if it were real.
+      const heightOk = inRange(Number(height), HEIGHT_CM_RANGE);
+      const weightOk = inRange(Number(weight), WEIGHT_KG_RANGE);
+      const heightAnswered = (step > 4 || bodyConfirmed || heightTouched) && heightOk;
+      const weightAnswered = (step > 4 || bodyConfirmed || weightTouched) && weightOk;
+      const ageOk = age && inRange(Number(age), AGE_RANGE);
+      // Bare-minimum fields (name/phone/birthday) are always filled in; the
+      // rest carries forward real answers and only nulls out what was
+      // genuinely never reached, so everything can still be filled in later
+      // from the client's detail page either way.
       const payload = {
         user_id: userId,
         client_name: clientName,
@@ -8989,16 +9073,15 @@
         client_email: userEmail || null,
         gym_id: gymId,
         trainer_id: trainerId,
-        age: null,
+        age: ageOk ? Number(age) : null,
         birthday: birthday || null,
         gender,
         phone: phone.trim(),
-        height_cm: null,
-        weight_kg: null,
-        days_per_week: Number(daysPerWeek),
-        has_medical_condition: false,
-        medical_details: null,
-        goal: null,
+        height_cm: heightAnswered ? Number(height) : null,
+        weight_kg: weightAnswered ? Number(weight) : null,
+        days_per_week: daysPerWeekTouched ? Number(daysPerWeek) : null,
+        ...medicalFieldsForSave(),
+        goal: [...selectedGoalChips, goal.trim()].filter(Boolean).join(", ") || null,
         trial_ends_at: landedSelfTrain ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() : null
       };
       const { data, error: err } = await sb.from("client_profiles").insert([payload]).select();
@@ -9163,7 +9246,7 @@
             e("button", {
               key: n, type: "button",
               style: { ...styles.dayChip, ...(daysPerWeek === n ? styles.dayChipActive : {}) },
-              onClick: () => { setDaysPerWeek(n); goNext(); }
+              onClick: () => { setDaysPerWeek(n); setDaysPerWeekTouched(true); goNext(); }
             }, n)
           )
         )
@@ -9186,7 +9269,21 @@
             value: medicalDetails, onChange: (ev) => setMedicalDetails(ev.target.value)
           }),
           e("div", { style: { marginTop: 10 } }, e(VoiceMicButton, { title: "Say your medical conditions or injuries", onTranscribed: (text) => setMedicalDetails((prev) => (prev ? `${prev} ${text}` : text)) })),
-          e("button", { style: styles.wizardActionBtn, onClick: goNext }, "Next")
+          // Sept 26 2026, round-8 audit finding: tapping "Yes" then Next with
+          // this box still empty used to be allowed — the client's row would
+          // save has_medical_condition:true with medical_details:null, and
+          // that combination is invisible everywhere a trainer would look
+          // (ClientInjuriesPanel's legacy callout only shows when BOTH are
+          // set) — so a real flagged condition could silently vanish with no
+          // trainer ever seeing it. Now it can't be left blank.
+          error && e("span", { style: { ...styles.inlineError, marginTop: 10 } }, error),
+          e("button", {
+            style: styles.wizardActionBtn,
+            onClick: () => {
+              if (!medicalDetails.trim()) { setError("Briefly describe it so your coach knows what to watch for."); return; }
+              goNext();
+            }
+          }, "Next")
         )
       ),
       stepName === "goal" && e(React.Fragment, null,
@@ -11085,6 +11182,13 @@
         if (sb) await sb.from("trainers").update({ email: normalized }).eq("id", trainerId);
         return;
       }
+      // Sept 26 2026: a trainer only ever stores a birthday, not a raw age —
+      // see checkAgeOrBirthdayEdit; blocks a manager from setting a
+      // trainer's birthday to one implying they're under 18.
+      if (field === "birthday") {
+        const ageCheck = checkAgeOrBirthdayEdit(field, value);
+        if (!ageCheck.ok) { setTrainerFieldError(ageCheck.message); return; }
+      }
       setTrainers((prev) => prev.map((t) => (t.id === trainerId ? { ...t, [field]: value } : t)));
       if (sb) await sb.from("trainers").update({ [field]: value }).eq("id", trainerId);
     }
@@ -11336,22 +11440,28 @@
     async function handleUpdateProfileField(id, field, value) {
       const cp = resolveClientById(id);
       if (!cp) return;
-      const prevValue = cp[field];
-      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, [field]: value } : p)));
+      // Sept 26 2026: see checkAgeOrBirthdayEdit — hard-blocks an under-18
+      // birthday/age here too, and keeps age in sync when birthday changes.
+      const ageCheck = checkAgeOrBirthdayEdit(field, value);
+      if (!ageCheck.ok) { alert(ageCheck.message); return; }
+      const patch = { [field]: value, ...ageCheck.extra };
+      const prevValues = {};
+      for (const k of Object.keys(patch)) prevValues[k] = cp[k];
+      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, ...patch } : p)));
       if (sb) {
-        const { error: err } = await sb.from("client_profiles").update({ [field]: value }).eq("id", cp.id);
+        const { error: err } = await sb.from("client_profiles").update(patch).eq("id", cp.id);
         // Sept 8 2026: revert on a failed save instead of leaving the
         // unsaved value showing — same fix as the trainer/client weight and
         // My Profile edit paths, applied here for consistency.
         if (err) {
-          setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, [field]: prevValue } : p)));
+          setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, ...prevValues } : p)));
           return;
         }
       }
       // Keep BMR/macro targets fresh when a manager edits a client's body
       // stats on her behalf too, not just when she edits them herself.
       if (["weight_kg", "height_cm", "age", "gender", "days_per_week", "goal"].includes(field)) {
-        const updated = { ...cp, [field]: value };
+        const updated = { ...cp, ...patch };
         recalcBmrAndTargets(updated.user_id, updated.client_name, {
           weight: updated.weight_kg, height: updated.height_cm, age: updated.age,
           gender: updated.gender, daysPerWeek: updated.days_per_week, goal: updated.goal
@@ -17646,6 +17756,10 @@
 
     async function handleCommit(value) {
       setNotice("");
+      // Sept 26 2026: see checkAgeOrBirthdayEdit — a trainer editing their
+      // own birthday gets the same 18+ hard block as everywhere else.
+      const ageCheck = checkAgeOrBirthdayEdit("birthday", value);
+      if (!ageCheck.ok) { setNotice(ageCheck.message); return; }
       const prevBirthday = birthday;
       onSaved(value);
       if (sb) {
@@ -18672,22 +18786,28 @@
     async function handleUpdateProfileField(id, field, value) {
       const cp = resolveClientById(id);
       if (!cp) return;
-      const prevValue = cp[field];
-      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, [field]: value } : p)));
+      // Sept 26 2026: see checkAgeOrBirthdayEdit — hard-blocks an under-18
+      // birthday/age here too, and keeps age in sync when birthday changes.
+      const ageCheck = checkAgeOrBirthdayEdit(field, value);
+      if (!ageCheck.ok) { alert(ageCheck.message); return; }
+      const patch = { [field]: value, ...ageCheck.extra };
+      const prevValues = {};
+      for (const k of Object.keys(patch)) prevValues[k] = cp[k];
+      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, ...patch } : p)));
       if (sb) {
-        const { error: err } = await sb.from("client_profiles").update({ [field]: value }).eq("id", cp.id);
+        const { error: err } = await sb.from("client_profiles").update(patch).eq("id", cp.id);
         // Sept 8 2026: revert on a failed save instead of leaving the
         // unsaved value showing — same fix as the trainer/client weight and
         // My Profile edit paths, applied here for consistency.
         if (err) {
-          setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, [field]: prevValue } : p)));
+          setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, ...prevValues } : p)));
           return;
         }
       }
       // Keep BMR/macro targets fresh when a trainer edits a client's body
       // stats on her behalf too, not just when she edits them herself.
       if (["weight_kg", "height_cm", "age", "gender", "days_per_week", "goal"].includes(field)) {
-        const updated = { ...cp, [field]: value };
+        const updated = { ...cp, ...patch };
         recalcBmrAndTargets(updated.user_id, updated.client_name, {
           weight: updated.weight_kg, height: updated.height_cm, age: updated.age,
           gender: updated.gender, daysPerWeek: updated.days_per_week, goal: updated.goal
@@ -23589,9 +23709,15 @@
     // via handleUpdateProfileField, just scoped to this client's own row.
     async function handleUpdateMyProfileField(field, value) {
       if (!sb || !profile) return;
-      const { error: err } = await sb.from("client_profiles").update({ [field]: value }).eq("id", profile.id);
+      // Sept 26 2026: see checkAgeOrBirthdayEdit — a client editing their
+      // own age/birthday gets the same 18+ hard block and birthday/age
+      // sync as every other edit point.
+      const ageCheck = checkAgeOrBirthdayEdit(field, value);
+      if (!ageCheck.ok) { alert(ageCheck.message); return; }
+      const patch = { [field]: value, ...ageCheck.extra };
+      const { error: err } = await sb.from("client_profiles").update(patch).eq("id", profile.id);
       if (!err) {
-        const updated = { ...profile, [field]: value };
+        const updated = { ...profile, ...patch };
         setProfile(updated);
         // Editing a body-metric field later (not just at signup) should
         // refresh BMR/macro targets too — otherwise they go stale the
