@@ -1379,12 +1379,12 @@
     return age;
   }
 
-  // Pricing + Whish Money payment details, locked Aug 30 2026 — shown on the
-  // self-train paywall and used as suggested amounts on the manual "mark as
-  // paid" controls. Change these three lines if pricing or payment details
-  // ever change; nothing else needs touching.
-  const WHISH_NAME = "JimFit";
-  const WHISH_NUMBER = "+961 71107437";
+  // Pricing, locked Aug 30 2026 — shown on the self-train paywall and used
+  // as suggested amounts on the manual "mark as paid" controls. Change these
+  // lines if pricing changes; nothing else needs touching.
+  // (WHISH_NAME / WHISH_NUMBER lived here until Sept 28 2026. The
+  // store-compliance pass stopped rendering them anywhere, so they were
+  // dead; the contact number now lives in SUPPORT_WHATSAPP near the top.)
   const SELF_TRAIN_MONTHLY_PRICE = 10;
   const PROGRAM_PRICE = 35;
   const DIET_PLAN_PRICE = 30;
@@ -20283,7 +20283,7 @@
                   // without this the $10 read as if it were the program's
                   // price. Spelled out as the recurring monthly app
                   // subscription, separate from the program itself.
-                  ? `Programs are a one-time purchase. To select one, an active $${SELF_TRAIN_MONTHLY_PRICE}/month membership is required, including during your free trial. Please complete payment below to continue.`
+                  ? `Programs are a one-time purchase. To select one, an active $${SELF_TRAIN_MONTHLY_PRICE}/month membership is required, including during your free trial. Contact us to arrange payment and we'll unlock it.`
                   : gatePayment ? `No program picked yet — browse below, choose one, then unlock it with a one-time $${PROGRAM_PRICE} payment (no monthly charge).` : "No program assigned yet.")
               : (isSelfTrain ? "No program assigned yet — pay to unlock the program library." : "No program assigned yet — ask your trainer.")
           ),
@@ -21384,7 +21384,6 @@
     // same underlying payment_claims data/flow as before, just no in-app
     // purchase instructions surfaced alongside it.
     return e("div", { style: { width: "100%", marginTop: 4 } },
-      e("div", { style: styles.stepperTitle }, "Payment pending"),
       e(WhishPayBox, {}),
       e("button", {
         style: { ...styles.saveBtn, marginTop: 10, width: "100%", ...((isFresh || submitting || !loaded) ? styles.btnDisabled : {}) },
