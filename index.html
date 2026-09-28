@@ -329,6 +329,17 @@
     const subject = encodeURIComponent(`JimFit support${fromName ? ` — ${fromName}` : ""}`);
     window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}`;
   }
+  // Sept 28 2026, Jimmy: the store-compliance pass stripped the Whish
+  // number out of the payment boxes, which left copy like "message JimFit
+  // to confirm" with no way to actually do it. The number comes back here
+  // instead — as a plain contact channel in the header next to Support,
+  // available on every screen, and deliberately NOT inside any payment
+  // surface. A support contact isn't a purchasing mechanism; the same
+  // digits sitting next to an amount and a "send payment" instruction were.
+  const SUPPORT_WHATSAPP = "+961 71107437";
+  function openSupportWhatsApp() {
+    window.open(`https://wa.me/${SUPPORT_WHATSAPP.replace(/[^0-9]/g, "")}`, "_blank", "noopener");
+  }
   const sb = SUPABASE_URL.startsWith("http") ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
   window.sb = sb; // exposed for debugging from the browser console
 
@@ -17894,7 +17905,7 @@
             : null
         ),
         !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Your first payment date hasn't been confirmed yet — pay below, then message JimFit to confirm."),
-        e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Message JimFit to confirm your payment — it renews monthly." })),
+        e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Tap WhatsApp at the top to confirm your payment — it renews monthly." })),
         trainer.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, trainer.billing_note),
         trainer.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your account is frozen — contact JimFit to reactivate.")
       ),
@@ -19089,6 +19100,7 @@
           ),
           e("div", { style: styles.headerRight },
             e("button", { style: styles.supportBtn, onClick: () => openSupportEmail(trainer.name), title: "Email support" }, e(Icon, { name: "mail", size: 14 }), "Support"),
+            e("button", { style: styles.supportBtn, onClick: openSupportWhatsApp, title: `WhatsApp ${SUPPORT_WHATSAPP}` }, e(Icon, { name: "chat", size: 14 }), "WhatsApp"),
             // Sept 17 2026, Jimmy: "its hard for the client to see the
             // logout button, put it also down the support and moon" —
             // Log out moved out of the header entirely a moment ago (now
@@ -20282,7 +20294,7 @@
           !canAssign && !isSelfTrain && trainerId && (!nudgeSent
             ? e("button", { type: "button", style: { ...styles.demoLinkBtn, padding: "0" }, onClick: handleNudgeTrainer }, "Nudge my trainer →")
             : nudgeSent && e("p", { style: { ...styles.emptyText, fontSize: 11.5, color: C.good } }, "Nudge sent — your trainer's been notified.")),
-          purchaseLocked && e(WhishPayBox, { note: "Contact JimFit about your monthly membership — we'll confirm it and unlock programs shortly after." })
+          purchaseLocked && e(WhishPayBox, { note: "Tap WhatsApp at the top about your monthly membership — we'll confirm it and unlock programs shortly after." })
           ),
       // "Assign a program" reads like manager/trainer language when it's a
       // self-training client picking one for themselves — same button and
@@ -21296,7 +21308,7 @@
   function WhishPayBox({ amount = null, note = "" }) {
     return e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
       e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Payment pending"),
-      e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Contact your trainer or JimFit to arrange payment.")
+      e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Tap WhatsApp at the top to arrange payment.")
     );
   }
 
@@ -21392,7 +21404,7 @@
       e("p", { style: { ...styles.stepperHintLine, ...(isFresh ? { color: C.warning } : {}) } },
         isFresh
           ? `Sent ${fmtDateTimeMed(claim.submitted_at)} — usually confirmed within a day.`
-          : "Arrange payment with your trainer or JimFit, then mark it as sent."
+          : "Tap WhatsApp at the top to arrange payment, then mark it as sent."
       ),
       isFresh && e("p", { style: { ...styles.stepperHintLine, marginTop: 4, color: C.ink3, fontSize: 11 } }, approvedCopy || "We'll notify you the moment it's approved.")
     );
@@ -24289,6 +24301,7 @@
           // trainer/manager header already uses for this exact button
           // (styles.supportBtn) instead of inventing a new look.
           e("button", { style: styles.supportBtn, onClick: () => openSupportEmail(clientName), title: "Email support" }, e(Icon, { name: "mail", size: 14 }), "Support"),
+          e("button", { style: styles.supportBtn, onClick: openSupportWhatsApp, title: `WhatsApp ${SUPPORT_WHATSAPP}` }, e(Icon, { name: "chat", size: 14 }), "WhatsApp"),
           // Sept 17 2026, Jimmy: "its hard for the client to see the logout
           // button, put it also down the support and moon" — restored here
           // (same pill style as Support, not a bare icon — a plain icon was
