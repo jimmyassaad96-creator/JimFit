@@ -8332,7 +8332,7 @@
           mode === "signup" && role === "trainer" && e(React.Fragment, null,
             e("label", { style: styles.gateLabel }, "Phone number"),
             e("input", { type: "tel", style: styles.input, placeholder: "Your phone number", value: trainerPhone, onChange: (ev) => setTrainerPhone(ev.target.value) }),
-            e("p", { style: { fontSize: 11.5, color: C.ink3, margin: "6px 0 0" } }, "So we can match your Whish payment to your account.")
+            e("p", { style: { fontSize: 11.5, color: C.ink3, margin: "6px 0 0" } }, "So we can match your payment to your account.")
           ),
           e("label", { style: { ...styles.gateLabel, ...(mode === "login" && role !== "trainer" && role !== "gymowner" ? { marginTop: 0 } : {}) } }, "Email"),
           e("input", {
