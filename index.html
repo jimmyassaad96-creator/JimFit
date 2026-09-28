@@ -16822,7 +16822,7 @@
             // any other pending request.
             trainerRestricted && e(React.Fragment, null,
               pendingRequest
-                ? e(WhishPayBox, { amount: DIET_PLAN_PRICE, note: "waiting for JimFit to pick a plan and confirm payment" })
+                ? e(WhishPayBox, { note: "Waiting for JimFit to pick a plan and confirm payment." })
                 // Sept 14 2026, Jimmy: "show that is tappable" \u2014 this used to
                 // be demoLinkBtn (plain blue text, no background), which read
                 // as a caption rather than the actual $30 call-to-action it
@@ -17894,7 +17894,7 @@
             : null
         ),
         !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Your first payment date hasn't been confirmed yet — pay below, then message JimFit to confirm."),
-        e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { amount: Number(trainer.rate_monthly) || B2B_FLAT_RATE_MONTHLY, note: "then message JimFit to confirm — it renews monthly" })),
+        e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Message JimFit to confirm your payment — it renews monthly." })),
         trainer.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, trainer.billing_note),
         trainer.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your account is frozen — contact JimFit to reactivate.")
       ),
@@ -20282,7 +20282,7 @@
           !canAssign && !isSelfTrain && trainerId && (!nudgeSent
             ? e("button", { type: "button", style: { ...styles.demoLinkBtn, padding: "0" }, onClick: handleNudgeTrainer }, "Nudge my trainer →")
             : nudgeSent && e("p", { style: { ...styles.emptyText, fontSize: 11.5, color: C.good } }, "Nudge sent — your trainer's been notified.")),
-          purchaseLocked && e(WhishPayBox, { amount: SELF_TRAIN_MONTHLY_PRICE, note: "your monthly membership — we'll confirm it and unlock programs shortly after" })
+          purchaseLocked && e(WhishPayBox, { note: "Contact JimFit about your monthly membership — we'll confirm it and unlock programs shortly after." })
           ),
       // "Assign a program" reads like manager/trainer language when it's a
       // self-training client picking one for themselves — same button and
@@ -21284,22 +21284,19 @@
     );
   }
 
-  // Reusable "how to pay" box — same Whish name/number everywhere a client
-  // is told a payment is pending, so it's not just "ask your gym" with no
-  // way to actually act on it. amount/note are optional; pass them to add
-  // the "Send $X..." line under the box, same wording each screen used to
-  // write out by hand.
+  // Sept 28 2026, Jimmy: stripped for App Store/Play Store compliance
+  // (Guideline 3.1.1 / Play Billing policy — no in-app purchasing
+  // mechanism for digital subscriptions/content). This used to show the
+  // Whish Money name/number/amount as in-app payment instructions, which
+  // reads exactly like a non-IAP purchase flow to app review. Payment now
+  // happens entirely outside the app (WhatsApp, in person, etc.) and a
+  // trainer/manager unlocks access via the existing manual "Mark as paid"
+  // toggle once it's confirmed — this box is now just a neutral status
+  // note, no payment method or amount named here.
   function WhishPayBox({ amount = null, note = "" }) {
-    return e(React.Fragment, null,
-      e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
-        e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Pay via Whish Money"),
-        e("p", { style: { margin: "4px 0 0", fontSize: 14, fontWeight: 600, color: C.ink } }, WHISH_NAME),
-        e("p", { style: { margin: "2px 0 0", fontSize: 14, fontFamily: "'Inter', sans-serif", color: C.ink } }, WHISH_NUMBER)
-      ),
-      // Sept 13 2026, Jimmy: "exact same the photo" — jimfit-flow_15.html
-      // shows this line bold and gold/amber, not the small gray caption it
-      // used to be; same gold as the SlideToUnlock lock icon.
-      amount != null && e("p", { style: { margin: "8px 0 0", fontSize: 16, fontWeight: 700, color: C.brand, textAlign: "center" } }, `Send $${amount}${note ? `, ${note}` : ""}`)
+    return e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
+      e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Payment pending"),
+      e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Contact your trainer or JimFit to arrange payment.")
     );
   }
 
@@ -21367,20 +21364,21 @@
       if (row) setClaim(row);
     }
 
-    // Sept 13 2026, Jimmy: "when i unlock and buy its something else" — swap
-    // the old 3-item vertical stepper list for jimfit-flow_15.html's compact
-    // readout: title, pay box, one full-width action button that turns into
-    // a disabled "Marked as sent" confirmation, then a small 3-dot progress
-    // row with a single line of status copy underneath. Same underlying
-    // data (isFresh/claim/handleSubmit) — only the layout changed.
+    // Sept 28 2026, Jimmy: stripped for App Store/Play Store compliance —
+    // no payment amount and no payment-method name/number shown in-app
+    // (that's what WhishPayBox used to render here). A client arranges and
+    // sends payment entirely outside the app; this still lets them flag
+    // "I've arranged it" so a trainer/manager knows to check and confirm —
+    // same underlying payment_claims data/flow as before, just no in-app
+    // purchase instructions surfaced alongside it.
     return e("div", { style: { width: "100%", marginTop: 4 } },
-      e("div", { style: styles.stepperTitle }, "Send payment via Whish"),
-      e(WhishPayBox, { amount }),
+      e("div", { style: styles.stepperTitle }, "Payment pending"),
+      e(WhishPayBox, {}),
       e("button", {
         style: { ...styles.saveBtn, marginTop: 10, width: "100%", ...((isFresh || submitting || !loaded) ? styles.btnDisabled : {}) },
         disabled: isFresh || submitting || !loaded,
         onClick: handleSubmit
-      }, submitting ? "Marking as sent…" : isFresh ? "Marked as sent ✓" : "I've sent the payment"),
+      }, submitting ? "Marking as sent…" : isFresh ? "Marked as sent ✓" : "I've arranged payment"),
       e("div", { style: styles.stepperDotsRow },
         e("span", { style: { ...styles.stepperDotSmall, ...styles.stepperDotSmallLit } }),
         e("span", { style: { ...styles.stepperDotSmall, ...(isFresh ? styles.stepperDotSmallLit : {}) } }),
@@ -21394,7 +21392,7 @@
       e("p", { style: { ...styles.stepperHintLine, ...(isFresh ? { color: C.warning } : {}) } },
         isFresh
           ? `Sent ${fmtDateTimeMed(claim.submitted_at)} — usually confirmed within a day.`
-          : "Send the payment above, then mark it as sent."
+          : "Arrange payment with your trainer or JimFit, then mark it as sent."
       ),
       isFresh && e("p", { style: { ...styles.stepperHintLine, marginTop: 4, color: C.ink3, fontSize: 11 } }, approvedCopy || "We'll notify you the moment it's approved.")
     );
