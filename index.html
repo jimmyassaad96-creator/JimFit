@@ -16388,9 +16388,20 @@
       ? templatesForGoal.reduce((best, t) => {
           if (t.calories_target == null) return best;
           const diff = Math.abs(t.calories_target - suggestedCalories);
-          return (!best || diff < best.diff) ? { id: t.id, diff } : best;
+          return (!best || diff < best.diff) ? { id: t.id, diff, cal: t.calories_target } : best;
         }, null)
       : null;
+    // Sept 30 2026, Jimmy: the notice quoted the raw Mifflin-St Jeor figure
+    // (e.g. 2006) while the card flagged "Recommended for you" right below
+    // it was the nearest real plan (2100) — two different numbers on one
+    // screen, both presented as "what you should eat". The raw figure is a
+    // target nobody can actually pick, since plans only come in fixed
+    // steps, so the notice now quotes the plan being recommended and the
+    // two agree. Falls back to the raw figure when no plan matched (no
+    // templates for this goal, or none with a calories_target).
+    const recommendedCalories = (closestTemplateId && closestTemplateId.cal != null)
+      ? closestTemplateId.cal
+      : suggestedCalories;
 
     function templateMacroSummary(t) {
       return [
@@ -16480,7 +16491,7 @@
         showRecommendation && suggestedCalories != null && e("div", { style: { ...styles.setupNotice, marginTop: 10, background: C.brandSoft, borderColor: C.brand, flexDirection: "column", alignItems: "stretch", gap: 8 } },
           e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
             e(Icon, { name: "alert", size: 14, color: C.brand }),
-            e("p", { style: { margin: 0 } }, `Based on your numbers, you'll likely want around `, e("span", { style: { fontWeight: 700 } }, `${suggestedCalories} kcal/day`), ` for ${goalLabel(templateGoal).toLowerCase()}.`)
+            e("p", { style: { margin: 0 } }, `Based on your numbers, you'll likely want around `, e("span", { style: { fontWeight: 700 } }, `${recommendedCalories} kcal/day`), ` for ${goalLabel(templateGoal).toLowerCase()}.`)
           ),
           e("select", {
             style: { ...styles.input }, value: activityKey,
