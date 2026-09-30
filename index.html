@@ -12267,7 +12267,15 @@
       if (isSwitch) { update.template_id = req.pending_switch_template_id; update.pending_switch_template_id = null; }
       const { error: err } = await sb.from("diet_plans").upsert([{ user_id: req.user_id, client_name: req.client_name, ...update }], { onConflict: "user_id" });
       if (err) { setSaving(false); setError("Couldn't save: " + err.message); return; }
-      await sb.from("client_payments").insert([{ user_id: req.user_id, client_name: req.client_name, amount: amt, paid_on: date, note: "Diet plan unlock", template_id: tplId || null }]);
+      // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not —
+      // so a blocked or failed insert left the client unlocked and notified while no payment
+      // row was ever written, AND the total_due bump below still ran. Net effect: the charge
+      // went up, the matching payment never appeared, the balance silently drifted against the
+      // client, and the revenue dashboard under-reported — with nothing on screen to show for
+      // it. Surfaced instead, and stopped before total_due is touched so the ledger can never
+      // end up half-written.
+      const { error: payErr } = await sb.from("client_payments").insert([{ user_id: req.user_id, client_name: req.client_name, amount: amt, paid_on: date, note: "Diet plan unlock", template_id: tplId || null }]);
+      if (payErr) { setSaving(false); setError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
       // Sept 19 2026 inspection fix: this inbox handles the exact same
       // "Diet plan unlock" charge DietPanel.handleUnlockPlan does for a
       // trainer-restricted client's own request — that path bumps
@@ -12307,7 +12315,15 @@
       if (isSwitch) { update.template_id = req.pending_switch_template_id; update.pending_switch_template_id = null; }
       const { error: err } = await sb.from("diet_plans").upsert([{ user_id: req.user_id, client_name: req.client_name, ...update }], { onConflict: "user_id" });
       if (err) { setRestoring(false); setError("Couldn't save: " + err.message); return; }
-      await sb.from("client_payments").insert([{ user_id: req.user_id, client_name: req.client_name, amount: 0, paid_on: todayISO(), note: "Diet plan unlock", template_id: tplId || null }]);
+      // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not —
+      // so a blocked or failed insert left the client unlocked and notified while no payment
+      // row was ever written, AND the total_due bump below still ran. Net effect: the charge
+      // went up, the matching payment never appeared, the balance silently drifted against the
+      // client, and the revenue dashboard under-reported — with nothing on screen to show for
+      // it. Surfaced instead, and stopped before total_due is touched so the ledger can never
+      // end up half-written.
+      const { error: payErr } = await sb.from("client_payments").insert([{ user_id: req.user_id, client_name: req.client_name, amount: 0, paid_on: todayISO(), note: "Diet plan unlock", template_id: tplId || null }]);
+      if (payErr) { setRestoring(false); setError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
       notifyClient(req.user_id, `Your diet plan${templateName ? ` "${templateName}"` : ""} is back — check your Diet tab.`);
       setRestoring(false);
       onResolved(req.id);
@@ -12612,7 +12628,15 @@
       if (!updated || updated.length === 0) { setSaving(false); setError("Save was blocked by a permissions rule (0 rows updated) — this needs a database fix, not a retry. Tell your developer: RLS blocked update on client_program_assignments."); return; }
       // Log it as a real payment, same ledger as everything else this client pays.
       if (clientProfile && clientProfile.user_id) {
-        await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: req.client_name, amount: amt, paid_on: date, note: `Program: ${programName || "Program"}`, program_id: req.program_id || null }]);
+        // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not
+        // — so a blocked or failed insert left the client unlocked and notified while no
+        // payment row was ever written, AND the total_due bump below still ran. Net effect: the
+        // charge went up, the matching payment never appeared, the balance silently drifted
+        // against the client, and the revenue dashboard under-reported — with nothing on screen
+        // to show for it. Surfaced instead, and stopped before total_due is touched so the
+        // ledger can never end up half-written.
+        const { error: payErr } = await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: req.client_name, amount: amt, paid_on: date, note: `Program: ${programName || "Program"}`, program_id: req.program_id || null }]);
+        if (payErr) { setSaving(false); setError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
         // Sept 19 2026 inspection fix: same bug class the diet-plan unlock
         // fix closed a round ago — this logged the payment but never
         // bumped total_due, so approving a program pick here made the
@@ -15767,7 +15791,15 @@
       // the SAME plan (after a client or trainer deletes it by mistake) be
       // recognized as already paid instead of charging again. See
       // DietPlanRequestRow's alreadyPaid/handleRestore for where that's used.
-      await sb.from("client_payments").insert([{ user_id: userId, client_name: clientName, amount: amt, paid_on: unlockDate, note: "Diet plan unlock", template_id: (plan && plan.templateId) || null }]);
+      // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not —
+      // so a blocked or failed insert left the client unlocked and notified while no payment
+      // row was ever written, AND the total_due bump below still ran. Net effect: the charge
+      // went up, the matching payment never appeared, the balance silently drifted against the
+      // client, and the revenue dashboard under-reported — with nothing on screen to show for
+      // it. Surfaced instead, and stopped before total_due is touched so the ledger can never
+      // end up half-written.
+      const { error: payErr } = await sb.from("client_payments").insert([{ user_id: userId, client_name: clientName, amount: amt, paid_on: unlockDate, note: "Diet plan unlock", template_id: (plan && plan.templateId) || null }]);
+      if (payErr) { setUnlockSaving(false); setUnlockError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
       notifyClient(userId, "Your diet plan is ready — check your Diet tab.");
       if (onUnlockDietPlan) onUnlockDietPlan(amt);
       setUnlockSaving(false);
@@ -21420,7 +21452,15 @@
       const { data: updated, error: err } = await sb.from("client_profiles").update({ access_paid_through: paidThrough }).eq("id", clientProfile.id).select();
       if (err) { setSaving(false); setError("Couldn't save: " + err.message); return; }
       if (!updated || updated.length === 0) { setSaving(false); setError("Save was blocked by a permissions rule (0 rows updated)."); return; }
-      await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: clientProfile.client_name, amount: amt, paid_on: todayISO(), note: `App access — paid through ${paidThrough}` }]);
+      // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not —
+      // so a blocked or failed insert left the client unlocked and notified while no payment
+      // row was ever written, AND the total_due bump below still ran. Net effect: the charge
+      // went up, the matching payment never appeared, the balance silently drifted against the
+      // client, and the revenue dashboard under-reported — with nothing on screen to show for
+      // it. Surfaced instead, and stopped before total_due is touched so the ledger can never
+      // end up half-written.
+      const { error: payErr } = await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: clientProfile.client_name, amount: amt, paid_on: todayISO(), note: `App access — paid through ${paidThrough}` }]);
+      if (payErr) { setSaving(false); setError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
       // Sept 19 2026 inspection fix: same bug class the diet-plan/program
       // unlock fixes closed — this logged the payment but never bumped
       // total_due, so marking an app-access renewal paid made the
@@ -21553,7 +21593,15 @@
       if (!updated || updated.length === 0) { setSaving(false); setError("Save was blocked by a permissions rule (0 rows updated) — this needs a database fix, not a retry. Tell your developer: RLS blocked update on client_program_assignments."); return; }
       // Log it as a real payment, same ledger as everything else this client pays.
       const label = program ? `${styleLabel(program.style)} — ${program.name}` : "Program";
-      await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: clientProfile.client_name, amount: amt, paid_on: date, note: `Program: ${label}`, program_id: assignment.program_id || null }]);
+      // Sept 30 2026: the unlock write above is error-checked, but this ledger insert was not —
+      // so a blocked or failed insert left the client unlocked and notified while no payment
+      // row was ever written, AND the total_due bump below still ran. Net effect: the charge
+      // went up, the matching payment never appeared, the balance silently drifted against the
+      // client, and the revenue dashboard under-reported — with nothing on screen to show for
+      // it. Surfaced instead, and stopped before total_due is touched so the ledger can never
+      // end up half-written.
+      const { error: payErr } = await sb.from("client_payments").insert([{ user_id: clientProfile.user_id, client_name: clientProfile.client_name, amount: amt, paid_on: date, note: `Program: ${label}`, program_id: assignment.program_id || null }]);
+      if (payErr) { setSaving(false); setError("Unlocked, but the payment was NOT recorded — log it manually. (" + payErr.message + ")"); return; }
       // Sept 19 2026 inspection fix: same bug class the diet-plan unlock fix
       // closed a round ago — logged the payment but never bumped total_due,
       // so unlocking a program here made the client's shown balance go DOWN
