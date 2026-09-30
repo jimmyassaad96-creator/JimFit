@@ -1044,12 +1044,21 @@
     }, e(Icon, { name: isLight ? "sun" : "moon", size: 16 }));
   }
 
-  const MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Glutes", "Full Body"];
+  // Sept 30 2026, Jimmy: "i need also triceps and biceps not arms" — split
+  // the single "Arms" bucket into "Biceps" and "Triceps" as their own
+  // top-level groups (not "Traps" — that stays folded into "Back", same as
+  // before). "Arms" is kept in MUSCLE_COLORS/PRIMARY_MUSCLE_TO_GROUP below
+  // (just not offered as a pickable option anymore) purely so any entry
+  // logged before this change still has a color to show and a group to
+  // aggregate into — it's legacy-display-only from here on.
+  const MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Glutes", "Full Body"];
   const MUSCLE_COLORS = {
     Chest: "#3987e5",
     Back: "#d95926",
     Legs: "#199e70",
     Shoulders: "#c98500",
+    Biceps: "#d55181",
+    Triceps: "#b8447a",
     Arms: "#d55181",
     Core: "#3fae3f",
     Glutes: "#9085e9",
@@ -1072,8 +1081,8 @@
     "Overhead Press": "Shoulders",
     "Shoulder Press": "Shoulders",
     "Lateral Raise": "Shoulders",
-    "Bicep Curl": "Arms",
-    "Tricep Extension": "Arms",
+    "Bicep Curl": "Biceps",
+    "Tricep Extension": "Triceps",
     "Hip Thrust": "Glutes",
     "Plank": "Core"
   };
@@ -5164,7 +5173,10 @@
     chest: "Chest",
     lats: "Back", "middle back": "Back", "lower back": "Back", traps: "Back",
     shoulders: "Shoulders",
-    biceps: "Arms", triceps: "Arms", forearms: "Arms",
+    // Sept 30 2026: forearms has no group of its own — folded into Biceps
+    // (same call as GROUP_TO_PRIMARY_MUSCLES below) rather than Triceps,
+    // since curl/forearm work is the more common pairing.
+    biceps: "Biceps", triceps: "Triceps", forearms: "Biceps",
     quadriceps: "Legs", hamstrings: "Legs", calves: "Legs", adductors: "Legs", abductors: "Legs",
     glutes: "Glutes",
     abdominals: "Core",
@@ -5253,7 +5265,8 @@
     Back: ["lats", "middle back", "lower back", "traps"],
     Legs: ["quadriceps", "hamstrings", "calves", "adductors", "abductors"],
     Shoulders: ["shoulders"],
-    Arms: ["biceps", "triceps", "forearms"],
+    Biceps: ["biceps", "forearms"],
+    Triceps: ["triceps"],
     Core: ["abdominals", "neck"],
     Glutes: ["glutes"],
     "Full Body": [] // too ambiguous to attribute to any one region
@@ -24562,9 +24575,13 @@
         // primary action instead of a small right-aligned link. Own scoped style
         // (clientNewExerciseBtn) rather than editing the shared newBtn used by
         // "Write a new program" / "Add a week" / etc. elsewhere in the app.
-        e("div", { style: { padding: "16px 18px 0", display: "flex", gap: 10 } },
-          e("button", { style: { ...styles.clientNewExerciseBtn, flex: 1 }, onClick: openNewExercise }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New exercise"),
-          e(MachineScanSheet, { onUseAsExercise: (name) => { openNewExercise(); setExercise(name); } })
+        // Sept 30 2026, Jimmy: "delete the camera feature here" — the
+        // "Scan a machine" camera button (MachineScanSheet) that used to sit
+        // next to New exercise is gone; New exercise goes back to its
+        // original full-width button with no side-by-side flex wrapper
+        // needed for a second item anymore.
+        e("div", { style: { padding: "16px 18px 0" } },
+          e("button", { style: styles.clientNewExerciseBtn, onClick: openNewExercise }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New exercise")
         ),
         error && e("div", { style: styles.errorBanner }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
         !loaded ? e("div", { style: styles.empty }, "Loading your log…") : e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo, newExerciseLabel: "New exercise" })
