@@ -456,6 +456,29 @@
     }
   }
 
+  // Sept 30 2026, Jimmy: "the push notification still stuck on the phone and
+  // shows unable but its working". The quiet repair run (added Sept 18) re-
+  // subscribes and re-saves on every app open when permission is already
+  // granted — sensible in itself — but its result was piped straight into
+  // pushStatus. So any transient failure at open (offline, a slow cold-start
+  // service worker hitting the 10s timeout above, a momentary RPC error)
+  // flipped a perfectly working device to "Something went wrong turning that
+  // on" — and on the client side that state ALSO triggers the full-screen
+  // PushOnboardingGate, i.e. a blocking "Turn on notifications?" screen shown
+  // to someone whose notifications were already arriving fine. This lets the
+  // callers ask whether the device actually holds a push subscription, so a
+  // failed repair is only ever surfaced when there's genuinely none.
+  async function hasLivePushSubscription() {
+    if (!PUSH_SUPPORTED) return false;
+    try {
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))
+      ]);
+      return !!(await reg.pushManager.getSubscription());
+    } catch (err) { return false; }
+  }
+
   // ---- palette ----
   const DARK_THEME = {
     // Sept 9 2026: lets the new calendar date-filter input (and any other
@@ -17625,8 +17648,20 @@
           // broken state gets fixed just by reopening the app, no re-tap
           // needed. Calling requestPermission() when already granted never
           // shows a popup, so this is safe to do without asking again.
-          if (selfUserId) enablePushForUser(selfUserId).then(setPushStatus);
-          else setPushStatus("granted");
+          // Sept 30 2026: show "On" straight away instead of leaving
+          // pushStatus at "unknown" — which matches no render branch at all,
+          // so the whole notifications section rendered blank while this ran
+          // — and only contradict it if the quiet repair fails AND this
+          // device turns out to hold no push subscription. A repair that
+          // fails on a device that IS subscribed means notifications still
+          // work; saying otherwise is what made this look broken.
+          setPushStatus("granted");
+          if (selfUserId) {
+            enablePushForUser(selfUserId).then(async (result) => {
+              if (result === "granted") return;
+              if (!(await hasLivePushSubscription())) setPushStatus(result);
+            });
+          }
         }
         else if (Notification.permission === "denied") setPushStatus("denied");
         else setPushStatus("promptable");
@@ -23713,8 +23748,21 @@
           // silently failed. Quietly re-run the real subscribe+save so
           // anyone stuck in that state gets fixed just by reopening the
           // app. requestPermission() never re-prompts once already granted.
-          if (userId) enablePushForUser(userId).then(setPushStatus);
-          else setPushStatus("granted");
+          // Sept 30 2026: same fix as the trainer side — report "On" up
+          // front rather than sitting on "unknown" (which renders nothing),
+          // and only report a failure if the repair fails AND the device
+          // holds no subscription. Critical here specifically: an "error:"
+          // status on this screen also raises the full-screen
+          // PushOnboardingGate, so a transient failure at app open was
+          // putting a blocking "Turn on notifications?" screen in front of
+          // clients whose notifications were already working.
+          setPushStatus("granted");
+          if (userId) {
+            enablePushForUser(userId).then(async (result) => {
+              if (result === "granted") return;
+              if (!(await hasLivePushSubscription())) setPushStatus(result);
+            });
+          }
         }
         else if (Notification.permission === "denied") setPushStatus("denied");
         else setPushStatus("promptable");
