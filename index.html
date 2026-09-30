@@ -11313,8 +11313,24 @@
       const cp = resolveClientById(id);
       if (!cp) return;
       const prevTrainerId = cp.trainer_id;
-      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, trainer_id: trainerId || null } : p)));
-      if (sb) await sb.from("client_profiles").update({ trainer_id: trainerId || null }).eq("id", cp.id);
+      // Sept 30 2026, Jimmy: "what if they got a trainer and after they are self
+      // training again the trial disappeared?" — exactly right, and this was the
+      // cause. handleAssignRequest (the client-requests-self-train path) already
+      // grants the 14-day trial to anyone landing on Self-Training with no trial
+      // and no paid-through date, specifically so approving it doesn't silently
+      // lock them out. Moving a client to Self-Training from an assignment
+      // dropdown did NOT, so a client who came back from having a trainer was
+      // locked out the instant it saved — and because they had no trial on
+      // record their screen read "Payment due to keep using the app", never even
+      // mentioning a trial. Same one-time-only grant as that path: anyone with
+      // existing trial or payment history keeps it, nothing is reset or extended.
+      const destTrainer = trainers.find((t) => t.id === trainerId);
+      const grantTrial = !!destTrainer && destTrainer.name === SELF_TRAIN_NAME && !cp.trial_ends_at && !cp.access_paid_through;
+      const assignUpdate = grantTrial
+        ? { trainer_id: trainerId || null, trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() }
+        : { trainer_id: trainerId || null };
+      setProfiles((prev) => prev.map((p) => (p.id === cp.id ? { ...p, ...assignUpdate } : p)));
+      if (sb) await sb.from("client_profiles").update(assignUpdate).eq("id", cp.id);
       // Sept 17 2026, Jimmy: "the trainers how they get notifications" — new
       // client assigned is one of the three events he wants pushed. Only
       // fires on an actual change to a real trainer (not a no-op re-save,
@@ -17496,8 +17512,25 @@
     // real client id straight from the row that was actually clicked, with
     // no name-matching step in between at all.
     async function handleAssign(clientId, trainerId) {
-      setGymClients((prev) => prev.map((p) => (p.id === clientId ? { ...p, trainer_id: trainerId || null } : p)));
-      if (sb) await sb.from("client_profiles").update({ trainer_id: trainerId || null }).eq("id", clientId).eq("gym_id", trainer.gym_id);
+      // Sept 30 2026, Jimmy: "what if they got a trainer and after they are self
+      // training again the trial disappeared?" — exactly right, and this was the
+      // cause. handleAssignRequest (the client-requests-self-train path) already
+      // grants the 14-day trial to anyone landing on Self-Training with no trial
+      // and no paid-through date, specifically so approving it doesn't silently
+      // lock them out. Moving a client to Self-Training from an assignment
+      // dropdown did NOT, so a client who came back from having a trainer was
+      // locked out the instant it saved — and because they had no trial on
+      // record their screen read "Payment due to keep using the app", never even
+      // mentioning a trial. Same one-time-only grant as that path: anyone with
+      // existing trial or payment history keeps it, nothing is reset or extended.
+      const destTrainer = gymTrainers.find((t) => t.id === trainerId);
+      const cpRow = gymClients.find((p) => p.id === clientId);
+      const grantTrial = !!destTrainer && destTrainer.name === SELF_TRAIN_NAME && !!cpRow && !cpRow.trial_ends_at && !cpRow.access_paid_through;
+      const assignUpdate = grantTrial
+        ? { trainer_id: trainerId || null, trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() }
+        : { trainer_id: trainerId || null };
+      setGymClients((prev) => prev.map((p) => (p.id === clientId ? { ...p, ...assignUpdate } : p)));
+      if (sb) await sb.from("client_profiles").update(assignUpdate).eq("id", clientId).eq("gym_id", trainer.gym_id);
     }
 
     if (loading) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading your gym…"));
