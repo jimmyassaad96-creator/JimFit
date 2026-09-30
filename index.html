@@ -1044,19 +1044,23 @@
     }, e(Icon, { name: isLight ? "sun" : "moon", size: 16 }));
   }
 
-  // Sept 30 2026, Jimmy: "i need also triceps and biceps not arms" — split
-  // the single "Arms" bucket into "Biceps" and "Triceps" as their own
-  // top-level groups (not "Traps" — that stays folded into "Back", same as
-  // before). "Arms" is kept in MUSCLE_COLORS/PRIMARY_MUSCLE_TO_GROUP below
-  // (just not offered as a pickable option anymore) purely so any entry
-  // logged before this change still has a color to show and a group to
-  // aggregate into — it's legacy-display-only from here on.
-  const MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Glutes", "Full Body"];
+  // Sept 30 2026, Jimmy: "i need also triceps and biceps not arms and traps"
+  // — split the single "Arms" bucket into "Biceps" and "Triceps", and pull
+  // "Traps" out of "Back" into its own top-level group. (First pass read
+  // that quote as "neither arms nor traps" and left traps inside Back;
+  // Jimmy corrected it — he wanted Traps pickable too.) "Arms" is kept in
+  // MUSCLE_COLORS/PRIMARY_MUSCLE_TO_GROUP below (just not offered as a
+  // pickable option anymore) purely so any entry logged before this change
+  // still has a color to show and a group to aggregate into — it's
+  // legacy-display-only from here on. Same applies to traps entries logged
+  // as "Back" before today: they stay "Back", nothing is rewritten.
+  const MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Traps", "Biceps", "Triceps", "Core", "Glutes", "Full Body"];
   const MUSCLE_COLORS = {
     Chest: "#3987e5",
     Back: "#d95926",
     Legs: "#199e70",
     Shoulders: "#c98500",
+    Traps: "#21b0c4",
     Biceps: "#d55181",
     Triceps: "#b8447a",
     Arms: "#d55181",
@@ -2765,7 +2769,14 @@
       totals[mg] = (totals[mg] || 0) + entryVol;
       setCounts[mg] = (setCounts[mg] || 0) + x.sets.length;
     });
-    return MUSCLE_GROUPS.map((m) => ({ muscle: m, volume: Math.round(totals[m] || 0), sets: setCounts[m] || 0 }))
+    // Sept 30 2026: this used to map over MUSCLE_GROUPS alone, so any group
+    // not in that list was tallied above and then silently dropped here —
+    // which as of today's Arms -> Biceps/Triceps split meant every entry
+    // logged as "Arms" vanished from the breakdown, and would have meant the
+    // same for anything typed into the new free-text muscle group field.
+    // Preset groups keep their canonical order; anything else follows.
+    const extraGroups = Object.keys(totals).filter((m) => !MUSCLE_GROUPS.includes(m));
+    return [...MUSCLE_GROUPS, ...extraGroups].map((m) => ({ muscle: m, volume: Math.round(totals[m] || 0), sets: setCounts[m] || 0 }))
       .filter((x) => x.volume > 0 || x.sets > 0)
       .sort((a, b) => statsMetric === "sets" ? b.sets - a.sets : b.volume - a.volume);
   }
@@ -5171,7 +5182,7 @@
   // filters, colors) already knows how to handle.
   const PRIMARY_MUSCLE_TO_GROUP = {
     chest: "Chest",
-    lats: "Back", "middle back": "Back", "lower back": "Back", traps: "Back",
+    lats: "Back", "middle back": "Back", "lower back": "Back", traps: "Traps",
     shoulders: "Shoulders",
     // Sept 30 2026: forearms has no group of its own — folded into Biceps
     // (same call as GROUP_TO_PRIMARY_MUSCLES below) rather than Triceps,
@@ -5187,7 +5198,7 @@
   // Quadriceps/Hamstrings/Calves) so a client browsing "every exercise" can actually
   // find things by the muscle they think in, not just the 8-bucket app-wide grouping.
   const PRIMARY_MUSCLE_LABEL = {
-    chest: "Chest", lats: "Back — Lats", "middle back": "Back — Middle Back", "lower back": "Back — Lower Back", traps: "Back — Traps",
+    chest: "Chest", lats: "Back — Lats", "middle back": "Back — Middle Back", "lower back": "Back — Lower Back", traps: "Traps",
     shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps", forearms: "Forearms",
     quadriceps: "Quadriceps", hamstrings: "Hamstrings", calves: "Calves", adductors: "Adductors", abductors: "Abductors",
     glutes: "Glutes", abdominals: "Abs / Core", neck: "Neck"
@@ -5262,9 +5273,10 @@
   // even when the free-text name match later comes up empty.
   const GROUP_TO_PRIMARY_MUSCLES = {
     Chest: ["chest"],
-    Back: ["lats", "middle back", "lower back", "traps"],
+    Back: ["lats", "middle back", "lower back"],
     Legs: ["quadriceps", "hamstrings", "calves", "adductors", "abductors"],
     Shoulders: ["shoulders"],
+    Traps: ["traps"],
     Biceps: ["biceps", "forearms"],
     Triceps: ["triceps"],
     Core: ["abdominals", "neck"],
@@ -7586,7 +7598,22 @@
               showMic: false
             }),
             e("label", { style: styles.formLabel }, "Muscle group"),
-            e(Select, { value: muscleGroup, onChange: (v) => { setMuscleGroup(v); setMuscleTouched(true); }, options: MUSCLE_GROUPS, style: { width: "100%" } })
+            // Sept 30 2026, Jimmy: "i want to see or type custom title like the
+            // workout title option so when i speak ... i can also change it" —
+            // this was a fixed <Select>, so whatever the voice/exercise parser
+            // auto-filled could only be swapped for another preset group, never
+            // corrected to something the list doesn't have. Now the same shape
+            // as Workout title above: a one-tap chip row of the standard groups
+            // plus a free-text field for anything else. No native <datalist>
+            // here on purpose — see the Sept 10 2026 note on the title field.
+            e("div", { style: styles.chipScrollRow },
+              MUSCLE_GROUPS.map((m) => e("button", {
+                key: m, type: "button",
+                style: { ...styles.browseChip, flexShrink: 0, scrollSnapAlign: "start", padding: "7px 13px", fontSize: 11.5, ...((muscleGroup || "").trim().toLowerCase() === m.toLowerCase() ? styles.browseChipActive : {}) },
+                onClick: () => { setMuscleGroup(m); setMuscleTouched(true); }
+              }, m))
+            ),
+            e("input", { type: "text", value: muscleGroup || "", placeholder: "Or type a custom muscle group", onChange: (ev) => { setMuscleGroup(ev.target.value); setMuscleTouched(true); }, style: { ...styles.input, marginTop: 10 } })
           ),
           e("div", { style: styles.formSection },
             e("label", { style: { ...styles.formLabel, marginTop: 0 } }, "Quick entry (optional)"),
@@ -24895,7 +24922,22 @@
               showMic: false
             }),
             e("label", { style: styles.formLabel }, "Muscle group"),
-            e(Select, { value: muscleGroup, onChange: (v) => { setMuscleGroup(v); setMuscleTouched(true); }, options: MUSCLE_GROUPS, style: { width: "100%" } })
+            // Sept 30 2026, Jimmy: "i want to see or type custom title like the
+            // workout title option so when i speak ... i can also change it" —
+            // this was a fixed <Select>, so whatever the voice/exercise parser
+            // auto-filled could only be swapped for another preset group, never
+            // corrected to something the list doesn't have. Now the same shape
+            // as Workout title above: a one-tap chip row of the standard groups
+            // plus a free-text field for anything else. No native <datalist>
+            // here on purpose — see the Sept 10 2026 note on the title field.
+            e("div", { style: styles.chipScrollRow },
+              MUSCLE_GROUPS.map((m) => e("button", {
+                key: m, type: "button",
+                style: { ...styles.browseChip, flexShrink: 0, scrollSnapAlign: "start", padding: "7px 13px", fontSize: 11.5, ...((muscleGroup || "").trim().toLowerCase() === m.toLowerCase() ? styles.browseChipActive : {}) },
+                onClick: () => { setMuscleGroup(m); setMuscleTouched(true); }
+              }, m))
+            ),
+            e("input", { type: "text", value: muscleGroup || "", placeholder: "Or type a custom muscle group", onChange: (ev) => { setMuscleGroup(ev.target.value); setMuscleTouched(true); }, style: { ...styles.input, marginTop: 10 } })
           ),
           e("div", { style: styles.formSection },
             e("label", { style: { ...styles.formLabel, marginTop: 0 } }, "Quick entry (optional)"),
