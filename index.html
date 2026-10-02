@@ -2790,22 +2790,42 @@
     const cp = r.profile || null;
 
     // Money — about to lose access, or already has, or owes.
+    //
+    // Oct 3 2026 fix, same day this shipped: the trial/access-date checks
+    // below used to read cp.trial_ends_at on ANY profile. They must not.
+    // The paywall is self-training only — DietPanel gates on
+    // `!canManage && isSelfTrain && !paidAccessOk`, and renewalFor returns
+    // null outright for anyone with a real trainer. A trainer-assigned
+    // member can still carry a leftover trial_ends_at from before they were
+    // assigned (handleAssignTrainer grants one, and several of Jimmy's rows
+    // have dates months stale), so reading it directly announced "trial ends
+    // in 3 days" for people whose trainer handles their billing and who were
+    // never going to be locked out of anything.
+    //
+    // renewalFor IS the app's own definition of "is this person on the
+    // self-train paywall" (it returns null when they're not), so gating on
+    // it keeps one source of truth instead of a second copy of the rule that
+    // can drift. TrainerView passes no renewalFor at all — correctly, since
+    // every member on a trainer's own roster is by definition assigned — so
+    // the date checks simply never run there.
+    const rn = o.renewalFor ? o.renewalFor(cp) : null;
+    const onPaywall = !!rn;
     const soon = (iso) => {
       if (!iso) return null;
       const d = daysSince(String(iso).slice(0, 10));
       return d == null ? null : -d; // daysSince is negative-in-future, so flip
     };
-    const trialIn = soon(cp && cp.trial_ends_at);
-    const paidIn = soon(cp && cp.access_paid_through);
+    const trialIn = onPaywall ? soon(cp && cp.trial_ends_at) : null;
+    const paidIn = onPaywall ? soon(cp && cp.access_paid_through) : null;
     if (trialIn != null && trialIn >= 0 && trialIn <= ATTENTION_SOON_DAYS) {
       reasons.push(trialIn === 0 ? "trial ends today" : `trial ends in ${trialIn} day${trialIn === 1 ? "" : "s"}`);
       score += 90;
     } else if (paidIn != null && paidIn >= 0 && paidIn <= ATTENTION_SOON_DAYS) {
       reasons.push(paidIn === 0 ? "access ends today" : `access ends in ${paidIn} day${paidIn === 1 ? "" : "s"}`);
       score += 85;
-    } else {
-      const rn = o.renewalFor ? o.renewalFor(cp) : null;
-      if (rn && rn.ok === false) { reasons.push("access lapsed — locked out"); score += 80; }
+    } else if (rn && rn.ok === false) {
+      reasons.push("access lapsed — locked out");
+      score += 80;
     }
     const bal = o.balanceFor ? o.balanceFor(cp) : null;
     if (bal != null && bal > 0) { reasons.push(`owes $${bal}`); score += 70; }
