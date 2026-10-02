@@ -11358,10 +11358,39 @@
         confirmLabel: "Delete member",
         onConfirm: async () => {
           setConfirmDialog(null);
-          setAllEntries((prev) => prev.filter((x) => (cp && cp.id ? x.clientId !== cp.id : x.clientName !== name)));
-          setProfiles((prev) => prev.filter((p) => (cp && cp.id ? p.id !== cp.id : p.client_name !== name)));
-          setAllPayments((prev) => prev.filter((p) => (cp && cp.user_id ? p.user_id !== cp.user_id : p.client_name !== name)));
-          if (selectedClient === id) setSelectedClient(null);
+          // Oct 3 2026 fix. This used to strip the member from the three
+          // roster lists FIRST and then fire four deletes without checking a
+          // single one of them. supabase-js doesn't throw on a failed write —
+          // it hands back an { error } object — so an RLS block, a foreign-key
+          // constraint or a dropped connection looked exactly like success.
+          //
+          // That made a partial delete both silent and destructive: if the
+          // workout_entries delete went through and the client_profiles
+          // delete didn't, the member reappeared on the next load with their
+          // entire training history gone, and nothing anywhere said so. The
+          // deletes run in child-then-parent order precisely because they
+          // can't be wrapped in one transaction from the client, which is
+          // exactly why each step has to be checked before the next one runs.
+          //
+          // Now: do the work first, check every step, stop at the first
+          // failure, and only touch the screen once the database agrees.
+          // Same rule handleDeleteSession already documents for the session
+          // delete — wait for the real result before updating the screen
+          // either way.
+          let failedAt = "";
+          let completed = [];
+          // Takes a THUNK, not a built query. supabase-js query builders are
+          // thenable and fire the moment they're awaited — but they're also
+          // constructed eagerly, so passing `sb.from(...).delete().eq(...)`
+          // directly would send every later delete to the database before
+          // this guard ever ran, which is the exact destruction this whole
+          // change exists to prevent. Caught by the test, not by reading it.
+          async function step(label, make) {
+            if (failedAt) return;
+            const { error: err } = await make();
+            if (err) failedAt = `${label} (${err.message})`;
+            else completed.push(label);
+          }
           if (sb) {
             if (hasLogin) {
               const { error: rpcErr } = await sb.rpc("owner_delete_client_account", { target_user_id: cp.user_id });
@@ -11370,20 +11399,41 @@
                 // app-data-only cleanup so the client still disappears from
                 // the roster now; their login is left for the SQL script to
                 // be run, same as before this feature existed.
-                await sb.from("workout_entries").delete().eq("client_id", cp.id);
-                await sb.from("client_program_assignments").delete().eq("client_id", cp.id);
-                await sb.from("client_payments").delete().eq("user_id", cp.user_id);
-                await sb.from("client_profiles").delete().eq("id", cp.id);
+                await step("workout history", () => sb.from("workout_entries").delete().eq("client_id", cp.id));
+                await step("program assignments", () => sb.from("client_program_assignments").delete().eq("client_id", cp.id));
+                await step("payment records", () => sb.from("client_payments").delete().eq("user_id", cp.user_id));
+                await step("profile", () => sb.from("client_profiles").delete().eq("id", cp.id));
               }
             } else if (cp && cp.id) {
-              await sb.from("workout_entries").delete().eq("client_id", cp.id);
-              await sb.from("client_program_assignments").delete().eq("client_id", cp.id);
-              await sb.from("client_profiles").delete().eq("id", cp.id);
+              await step("workout history", () => sb.from("workout_entries").delete().eq("client_id", cp.id));
+              await step("program assignments", () => sb.from("client_program_assignments").delete().eq("client_id", cp.id));
+              await step("profile", () => sb.from("client_profiles").delete().eq("id", cp.id));
             } else {
-              await sb.from("workout_entries").delete().eq("client_name", name);
-              await sb.from("client_profiles").delete().eq("client_name", name);
+              await step("workout history", () => sb.from("workout_entries").delete().eq("client_name", name));
+              await step("profile", () => sb.from("client_profiles").delete().eq("client_name", name));
             }
           }
+          if (failedAt) {
+            // Don't remove them from the roster — they're still in the
+            // database. Say exactly which step failed and what already went
+            // through, because the earlier steps are real deletes that cannot
+            // be undone, and a half-deleted member is something Jimmy needs
+            // to know about rather than discover later.
+            setConfirmDialog({
+              title: "Couldn't finish deleting that member",
+              message: `${name} is still on your roster — the step that failed was ${failedAt}.`
+                + (completed.length
+                    ? ` Their ${completed.join(", ")} ${completed.length === 1 ? "was" : "were"} already deleted and can't be brought back, so delete them again to finish, or check with whoever manages the database.`
+                    : " Nothing was deleted, so you can safely try again."),
+              confirmLabel: "OK",
+              onConfirm: () => setConfirmDialog(null)
+            });
+            return;
+          }
+          setAllEntries((prev) => prev.filter((x) => (cp && cp.id ? x.clientId !== cp.id : x.clientName !== name)));
+          setProfiles((prev) => prev.filter((p) => (cp && cp.id ? p.id !== cp.id : p.client_name !== name)));
+          setAllPayments((prev) => prev.filter((p) => (cp && cp.user_id ? p.user_id !== cp.user_id : p.client_name !== name)));
+          if (selectedClient === id) setSelectedClient(null);
         }
       });
     }
