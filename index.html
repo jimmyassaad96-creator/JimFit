@@ -2732,6 +2732,108 @@
     return null;
   }
 
+  // Oct 3 2026, Jimmy: step 2 of the "more pro" pass. Asked, as a trainer,
+  // what would actually help: not another dashboard — a worklist. Who do I
+  // contact today, ranked. Everything below is computed from data these
+  // screens already hold (the roster rows and their profiles); there is no
+  // new fetch and no new table.
+  //
+  // Deliberately NOT included: pending trainer/diet-plan/program requests.
+  // Those already have their own counted sections and menu entries in the
+  // owner's view (see the summary row that links to coachTab "requests" /
+  // "dietRequests" / "programRequests"), and a regular trainer can't action
+  // them at all — client requests route through the manager. Surfacing a
+  // queue someone can't clear is noise, and duplicating one Jimmy already
+  // sees is worse than leaving it where it works.
+  const ATTENTION_SOON_DAYS = 3;
+  // "Showing up but not progressing" — the same top weight on the three most
+  // recent sessions of one exercise. Reads the same exerciseGifKey grouping
+  // and top-weight-per-date shape as computeExerciseProgression, but asks a
+  // different question of it, so it stays its own pass. Bodyweight and timed
+  // work is skipped: a plank held for 60s three weeks running isn't a stall
+  // worth a text message, and weight 0 would flag every bodyweight move.
+  function computeStall(entries) {
+    if (!entries || entries.length < 3) return null;
+    const byEx = {};
+    entries.forEach((x) => {
+      const key = exerciseGifKey(x.exercise);
+      if (!key || !x.sets || !x.sets.length) return;
+      if (x.sets.some((st) => st.isTimed || st.isBodyweight)) return;
+      const top = Math.max(0, ...x.sets.map((st) => Number(st.weight) || 0));
+      if (!(top > 0)) return;
+      (byEx[key] = byEx[key] || { exercise: x.exercise, byDate: {} });
+      const cur = byEx[key].byDate[x.date];
+      byEx[key].byDate[x.date] = cur === undefined ? top : Math.max(cur, top);
+    });
+    let best = null;
+    Object.values(byEx).forEach((info) => {
+      const dates = Object.keys(info.byDate).sort().reverse();
+      if (dates.length < 3) return;
+      const w = info.byDate[dates[0]];
+      let n = 1;
+      while (n < dates.length && info.byDate[dates[n]] === w) n += 1;
+      if (n < 3) return;
+      if (!best || n > best.times) best = { exercise: info.exercise, weight: w, times: n };
+    });
+    return best;
+  }
+  // One roster row in, { score, reasons } out. Pure, so it can be tested
+  // without a browser. Ranking is by how time-sensitive the reason is:
+  // somebody about to lose access beats somebody drifting, which beats
+  // somebody merely not progressing. A row with no reasons scores 0 and is
+  // never shown.
+  function computeAttention(r, opts) {
+    const o = opts || {};
+    const unit = o.unit || "kg";
+    const reasons = [];
+    let score = 0;
+    const cp = r.profile || null;
+
+    // Money — about to lose access, or already has, or owes.
+    const soon = (iso) => {
+      if (!iso) return null;
+      const d = daysSince(String(iso).slice(0, 10));
+      return d == null ? null : -d; // daysSince is negative-in-future, so flip
+    };
+    const trialIn = soon(cp && cp.trial_ends_at);
+    const paidIn = soon(cp && cp.access_paid_through);
+    if (trialIn != null && trialIn >= 0 && trialIn <= ATTENTION_SOON_DAYS) {
+      reasons.push(trialIn === 0 ? "trial ends today" : `trial ends in ${trialIn} day${trialIn === 1 ? "" : "s"}`);
+      score += 90;
+    } else if (paidIn != null && paidIn >= 0 && paidIn <= ATTENTION_SOON_DAYS) {
+      reasons.push(paidIn === 0 ? "access ends today" : `access ends in ${paidIn} day${paidIn === 1 ? "" : "s"}`);
+      score += 85;
+    } else {
+      const rn = o.renewalFor ? o.renewalFor(cp) : null;
+      if (rn && rn.ok === false) { reasons.push("access lapsed — locked out"); score += 80; }
+    }
+    const bal = o.balanceFor ? o.balanceFor(cp) : null;
+    if (bal != null && bal > 0) { reasons.push(`owes $${bal}`); score += 70; }
+
+    // Gone quiet — the churn signal. AT_RISK_DAYS is already 10 everywhere
+    // else in this file, so this reuses it rather than inventing a second
+    // threshold that could drift away from the "Inactive Nd" badge.
+    if (!r.lastDate) {
+      reasons.push("never logged a workout");
+      score += 55;
+    } else {
+      const d = daysSince(r.lastDate);
+      if (d != null && d >= AT_RISK_DAYS) {
+        reasons.push(`no session in ${d} days`);
+        score += 40 + Math.min(d, 60);
+      }
+    }
+
+    // Stalled — showing up, not progressing. Lowest weight: it's a coaching
+    // conversation, not an emergency.
+    const st = computeStall(r.entries);
+    if (st) {
+      reasons.push(`${st.exercise} stuck at ${st.weight}${unit} for ${st.times} sessions`);
+      score += 25;
+    }
+    return { score, reasons };
+  }
+
   function computeDashboardStats(entries, payments) {
     const today = todayISO();
     const monthPrefix = today.slice(0, 7);
@@ -10493,13 +10595,33 @@
     };
     const [needsPaymentOnly, setNeedsPaymentOnly] = useState(false);
     const needsPaymentCount = React.useMemo(() => roster.filter(ownesMoney).length, [roster, renewalFor, balanceFor]);
+    // Oct 3 2026, Jimmy: the worklist. Same one-tap pattern as "Needs
+    // payment" beside it, so there's nothing new to learn — but it answers
+    // "who do I contact today" instead of "who owes me". The reason line
+    // only renders while the filter is on, so the default roster is
+    // unchanged for anyone who doesn't use it.
+    const [attentionOnly, setAttentionOnly] = useState(false);
+    const attentionById = React.useMemo(() => {
+      const m = {};
+      roster.forEach((r) => { m[r.id] = computeAttention(r, { renewalFor, balanceFor }); });
+      return m;
+    }, [roster, renewalFor, balanceFor]);
+    const attentionCount = React.useMemo(
+      () => roster.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0).length,
+      [roster, attentionById]
+    );
     const visibleRoster = React.useMemo(() => {
       const q = search.trim().toLowerCase();
       let list = roster;
       if (q) list = list.filter((r) => (r.name || "").toLowerCase().includes(q) || (r.clientEmail || "").toLowerCase().includes(q));
       if (needsPaymentOnly) list = list.filter(ownesMoney);
+      if (attentionOnly) {
+        list = list.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0)
+          .slice()
+          .sort((a, b) => (attentionById[b.id].score - attentionById[a.id].score) || a.name.localeCompare(b.name));
+      }
       return list;
-    }, [roster, search, needsPaymentOnly, renewalFor, balanceFor]);
+    }, [roster, search, needsPaymentOnly, attentionOnly, attentionById, renewalFor, balanceFor]);
     return e(React.Fragment, null,
       roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, emptyText)),
       roster.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 } },
@@ -10522,11 +10644,18 @@
               ? { ...styles.goalChip, ...styles.goalChipBad, cursor: "pointer", border: "none" }
               : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
           }, e(Icon, { name: "alert", size: 10 }), ` Needs payment (${needsPaymentCount})`),
+          attentionCount > 0 && e("button", {
+            type: "button",
+            onClick: () => setAttentionOnly((v) => !v),
+            style: attentionOnly
+              ? { ...styles.goalChip, background: C.brand, color: C.brandInk, cursor: "pointer", border: "none" }
+              : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
+          }, e(Icon, { name: "bell", size: 10 }), ` Needs attention (${attentionCount})`),
           e("span", { style: styles.rosterCount }, visibleRoster.length, "/", roster.length)
         )
       ),
       roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
-        e("p", { style: styles.emptyText }, needsPaymentOnly ? "No members currently need to pay." : `No members match "${search.trim()}".`)
+        e("p", { style: styles.emptyText }, attentionOnly ? "Nothing needs attention right now." : needsPaymentOnly ? "No members currently need to pay." : `No members match "${search.trim()}".`)
       ),
       // Sept 11 2026, Jimmy: brand pass, step 6 (phase 3 — decluttering the
       // busiest screens) — a card here can stack up to 5 lines (name, email,
@@ -10545,6 +10674,7 @@
         const cats = categoriesFor ? categoriesFor(r.profile) : null;
         const hasCats = cats && (cats.subscription > 0 || cats.diet > 0 || cats.programs > 0 || cats.other > 0);
         const renewal = renewalFor ? renewalFor(r.profile) : null;
+        const att = attentionOnly ? (attentionById[r.id] || null) : null;
         return e("div", { key: r.id, style: styles.rosterRowFlat, onClick: () => onSelect(r.id), role: "button", tabIndex: 0, onKeyDown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onSelect(r.id); } } },
         e("div", { style: styles.clientCardLeft },
           e("div", { style: styles.avatar }, r.name.slice(0, 1).toUpperCase()),
@@ -10554,6 +10684,12 @@
             e("span", { style: styles.muscleSubText },
               r.sessions, " session", r.sessions === 1 ? "" : "s", " · last ", r.lastDate ? fmtDate(r.lastDate) : "—",
               trainerNameFor && ` · trains with ${trainerNameFor(r.trainerId)}`
+            ),
+            // Why this person is on the worklist, in their own words-worth of
+            // detail. Only while the filter is on — see the note on
+            // attentionOnly above.
+            att && att.reasons.length > 0 && e("span", { style: styles.attentionReason },
+              e(Icon, { name: "bell", size: 10, color: C.brand }), " ", att.reasons.join(" · ")
             ),
             hasCats && e("span", { style: { ...styles.muscleSubText, opacity: 0.85 } },
               [
@@ -18947,9 +19083,28 @@
       let list = roster;
       if (q) list = list.filter((r) => (r.name || "").toLowerCase().includes(q) || (r.clientEmail || "").toLowerCase().includes(q));
       if (needsPaymentOnly) list = list.filter((r) => { const b = balanceFor(r.profile); return b != null && b > 0; });
+      if (attentionOnly) {
+        list = list.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0)
+          .slice()
+          .sort((a, b) => (attentionById[b.id].score - attentionById[a.id].score) || a.name.localeCompare(b.name));
+      }
       return list;
-    }, [roster, clientSearch, needsPaymentOnly]);
+    }, [roster, clientSearch, needsPaymentOnly, attentionOnly, attentionById]);
     const needsPaymentCount = useMemo(() => roster.filter((r) => { const b = balanceFor(r.profile); return b != null && b > 0; }).length, [roster]);
+    // Oct 3 2026: the same worklist the manager's roster gets (see
+    // computeAttention). No renewalFor here — that helper is self-train only
+    // and lives in CoachView — so the lapsed/ending checks read the profile
+    // dates directly, which is what computeAttention does anyway.
+    const [attentionOnly, setAttentionOnly] = useState(false);
+    const attentionById = useMemo(() => {
+      const m = {};
+      roster.forEach((r) => { m[r.id] = computeAttention(r, { balanceFor }); });
+      return m;
+    }, [roster]);
+    const attentionCount = useMemo(
+      () => roster.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0).length,
+      [roster, attentionById]
+    );
 
     function resolveClientById(id) {
       if (typeof id === "string" && id.indexOf("name:") === 0) return null;
@@ -19522,14 +19677,22 @@
                       ? { ...styles.goalChip, ...styles.goalChipBad, cursor: "pointer", border: "none" }
                       : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
                   }, e(Icon, { name: "alert", size: 10 }), ` Needs payment (${needsPaymentCount})`),
+                  attentionCount > 0 && e("button", {
+                    type: "button",
+                    onClick: () => setAttentionOnly((v) => !v),
+                    style: attentionOnly
+                      ? { ...styles.goalChip, background: C.brand, color: C.brandInk, cursor: "pointer", border: "none" }
+                      : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
+                  }, e(Icon, { name: "bell", size: 10 }), ` Needs attention (${attentionCount})`),
                   e("span", { style: styles.rosterCount }, visibleRoster.length, "/", roster.length)
                 )
               ),
               roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
-                e("p", { style: styles.emptyText }, needsPaymentOnly ? "No members currently owe you money." : `No members match "${clientSearch.trim()}".`)
+                e("p", { style: styles.emptyText }, attentionOnly ? "Nothing needs attention right now." : needsPaymentOnly ? "No members currently owe you money." : `No members match "${clientSearch.trim()}".`)
               ),
               e("div", { style: { display: "flex", flexDirection: "column", gap: 0 } }, visibleRoster.map((r) => {
                 const risk = clientRiskLabel(r.lastDate);
+                const att = attentionOnly ? (attentionById[r.id] || null) : null;
                 const balance = balanceFor(r.profile);
                 const paidUp = balance != null && balance <= 0;
                 const prog = r.profile ? clientPrograms[r.profile.id] : null;
@@ -19550,6 +19713,11 @@
                       // doesn't read as a wall of red badges.
                       e("span", { style: { ...styles.muscleSubText, ...(risk ? { color: C.critical } : {}) } },
                         risk || `${r.sessions} session${r.sessions === 1 ? "" : "s"} · last ${r.lastDate ? fmtDate(r.lastDate) : "—"}`
+                      ),
+                      // Why they're on the worklist — only while the filter
+                      // is on, same as the manager's roster.
+                      att && att.reasons.length > 0 && e("span", { style: styles.attentionReason },
+                        e(Icon, { name: "bell", size: 10, color: C.brand }), " ", att.reasons.join(" · ")
                       ),
                       // Sept 13 2026, Jimmy: "how do i know that the client
                       // got the program and what if later i want to check
@@ -25881,6 +26049,7 @@
     lastTimeLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700, color: C.ink3, letterSpacing: "0.08em" },
     lastTimeSets: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 12.5, fontWeight: 600, color: C.ink2, marginTop: 3, overflowWrap: "anywhere" },
     lastTimeUseBtn: { flexShrink: 0, background: withAlpha(C.brand, 0.16), border: `1px solid ${withAlpha(C.brand, 0.45)}`, borderRadius: 8, padding: "7px 12px", color: C.brand, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11.5, cursor: "pointer" },
+    attentionReason: { display: "flex", alignItems: "center", gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 11.5, fontWeight: 600, color: C.brand, marginTop: 2, flexWrap: "wrap" },
     setColLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9, color: C.ink3, letterSpacing: "0.06em" },
     setRow: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, alignItems: "center" },
     setIndex: { fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.ink3, textAlign: "center" },
