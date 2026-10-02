@@ -6756,7 +6756,7 @@
     );
   }
 
-  function LogFeed({ entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete, onEdit, onDuplicate, onDeleteSet, onAddToWorkout, onEditSession, onDeleteSession, undoDeleted, onUndoDelete, onDismissUndo, newExerciseLabel = "Add exercise" }) {
+  function LogFeed({ entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete, onEdit, onDuplicate, onDeleteSet, onAddToWorkout, onEditSession, onDeleteSession, onRepeatSession, undoDeleted, onUndoDelete, onDismissUndo, newExerciseLabel = "Add exercise" }) {
     // Sept 9 2026, Jimmy: editing a whole session's date or title used to mean
     // opening every exercise under it one at a time and re-typing the same new
     // date/title on each — no way to change the "big title" card itself once
@@ -6776,6 +6776,17 @@
     // exercise deletes have.
     const [confirmDeleteSession, setConfirmDeleteSession] = useState(null); // { date, title, count }
     const [deletingSession, setDeletingSession] = useState(false);
+    // Oct 2 2026, Jimmy: "we can add to the design now repeat this session
+    // button?" — repeating a workout meant tapping each exercise's own
+    // Duplicate one at a time (and that opens the sheet prefilled, one row
+    // per tap, so a six-exercise session was six round trips through the
+    // form). This copies every exercise under one titled session onto today
+    // in one action, sets included, so last week's numbers are on screen to
+    // beat instead of retyped. Confirmed first — like the session delete
+    // beside it, it writes several rows at once, and unlike a single-entry
+    // delete there's no per-session undo.
+    const [confirmRepeatSession, setConfirmRepeatSession] = useState(null); // { date, title, count, sets }
+    const [repeatingSession, setRepeatingSession] = useState(false);
     function openEditSession(d, title) {
       setEditingSession({ date: d, title });
       setSessionDraft({ date: d, title });
@@ -6887,6 +6898,16 @@
                       // Bulk-edits every exercise sharing this exact date+title — not
                       // a single exercise's own date, which each exercise's own edit
                       // (the pencil on its row) still handles independently.
+                      // Oct 2 2026: "rotate" rather than "copy" on purpose — the
+                      // copy icon already means "duplicate this ONE exercise" on
+                      // every row below, and reusing it here for a whole-session
+                      // action would read as the same thing at a different size.
+                      // Hidden on a session already dated today: groupByTitle keys
+                      // off date+title, so copying today's own session onto today
+                      // would fold the copies straight back into THIS card and read
+                      // as "my exercises just doubled", not as a new workout. Every
+                      // past session still offers it.
+                      onRepeatSession && d !== todayISO() && e("button", { style: styles.editBtn, onClick: () => setConfirmRepeatSession({ date: d, title, count: group.length, sets: group.reduce((n, x) => n + ((x.sets && x.sets.length) || 0), 0) }), "aria-label": "Repeat this workout today", title: "Repeat this workout — copies every exercise and its sets onto today" }, e(Icon, { name: "rotate", size: 13 })),
                       onEditSession && e("button", { style: styles.editBtn, onClick: () => openEditSession(d, title), "aria-label": "Edit this session's date or title", title: "Edit this session's date or title — applies to every exercise in it" }, e(Icon, { name: "edit", size: 13 })),
                       // Sept 18 2026, Jimmy: "delete button also for the title" —
                       // removes every exercise sharing this date+title, not just
@@ -6951,6 +6972,22 @@
           await onDeleteSession(confirmDeleteSession.date, confirmDeleteSession.title);
           setDeletingSession(false);
           setConfirmDeleteSession(null);
+        }
+      }),
+      // Oct 2 2026: the counts are spelled out because this writes rows —
+      // someone tapping it on a ten-exercise session should see "10
+      // exercises" before it lands, not after.
+      confirmRepeatSession && e(ConfirmDialog, {
+        title: "Repeat this workout?",
+        message: `This copies all ${confirmRepeatSession.count} exercise${confirmRepeatSession.count === 1 ? "" : "s"} under “${confirmRepeatSession.title}” onto today, with the same ${confirmRepeatSession.sets} set${confirmRepeatSession.sets === 1 ? "" : "s"} and weights. Edit anything after — the original session isn't touched.`,
+        confirmLabel: "Repeat on today",
+        busy: repeatingSession,
+        onCancel: () => setConfirmRepeatSession(null),
+        onConfirm: async () => {
+          setRepeatingSession(true);
+          await onRepeatSession(confirmRepeatSession.date, confirmRepeatSession.title);
+          setRepeatingSession(false);
+          setConfirmRepeatSession(null);
         }
       })
     );
@@ -7393,6 +7430,44 @@
       setEntries((prev) => prev.filter((x) => !matchIds.includes(x.id)));
     }
 
+    // Oct 2 2026, Jimmy: "repeat this session button" — see the matching note
+    // in LogFeed. Reads the session by the same date+title pair handleEditSession
+    // and handleDeleteSession match on, and re-inserts each entry against today
+    // with its sets copied verbatim. Not optimistic: the real row ids come back
+    // from the insert, and a half-written session on screen would be worse than
+    // a moment's wait. Rows are reordered to match the order they were sent in,
+    // because the session card renders its exercises in array order and Postgres
+    // makes no promise about the order of a multi-row RETURNING.
+    async function handleRepeatSession(date, title) {
+      const group = entries.filter((x) => x.date === date && (x.workoutTitle || "") === (title || ""));
+      if (!group.length) return;
+      const toDate = todayISO();
+      const rows = group.map((en) => ({
+        date: toDate, exercise: en.exercise, muscle_group: en.muscleGroup,
+        workout_title: en.workoutTitle || null, sets: en.sets,
+        client_name: clientName, client_id: clientId || null
+      }));
+      if (!sb) { setError("Couldn't repeat that workout — you look offline."); return; }
+      const { data, error: err } = await sb.from("workout_entries").insert(rows).select();
+      if (err || !data || !data.length) {
+        setError("Couldn't repeat that workout — try again.");
+        return;
+      }
+      const pool = [...data];
+      const ordered = rows.map((want) => {
+        const key = JSON.stringify(want.sets);
+        let i = pool.findIndex((r) => r.exercise === want.exercise && (r.workout_title || "") === (want.workout_title || "") && JSON.stringify(r.sets) === key);
+        if (i === -1) i = 0;
+        return pool.splice(i, 1)[0];
+      }).filter(Boolean);
+      const mapped = ordered.map((row) => ({ id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, createdAt: row.created_at }));
+      setEntries((prev) => [...prev, ...mapped]);
+      // Same rule as the back-dating pass: a date filter narrower than today
+      // would hide the session that was just created, which reads as "nothing
+      // happened". Move the filter to today rather than leave a silent write.
+      if (dateFilter && dateFilter !== "All" && dateFilter !== "none" && dateFilter !== toDate) setDateFilter(toDate);
+    }
+
     return e(React.Fragment, null,
       // Check-ins are a client-to-trainer thing (a client speaking a note
       // for their trainer to read) — there's no one for a trainer to check
@@ -7407,7 +7482,7 @@
       // (e.g. a failed save) needs a visible spot here too, not just inside
       // the sheet's error banner further down.
       error && e("div", { style: { ...styles.errorBanner, margin: "0 18px 14px" } }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
-      e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo }),
+      e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, onRepeatSession: handleRepeatSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo }),
       showForm && e("div", { style: styles.overlay, onClick: closeSheet },
         e("div", { style: styles.sheet, onClick: (ev) => ev.stopPropagation() },
           e("div", { style: styles.sheetHeader },
@@ -24294,6 +24369,50 @@
       }
       setEntries((prev) => prev.filter((x) => !matchIds.includes(x.id)));
     }
+    // Same auto-clearing error surface the rest of this panel's handlers use —
+    // pulled out because handleRepeatSession below needs it in two places.
+    function showLogError(msg) {
+      setError(msg);
+      clearTimeout(errorTimer.current);
+      errorTimer.current = setTimeout(() => setError(""), 3000);
+    }
+    // Oct 2 2026, Jimmy: "repeat this session button" — see the matching note
+    // in LogFeed. Reads the session by the same date+title pair handleEditSession
+    // and handleDeleteSession match on, and re-inserts each entry against today
+    // with its sets copied verbatim. Not optimistic: the real row ids come back
+    // from the insert, and a half-written session on screen would be worse than
+    // a moment's wait. Rows are reordered to match the order they were sent in,
+    // because the session card renders its exercises in array order and Postgres
+    // makes no promise about the order of a multi-row RETURNING.
+    async function handleRepeatSession(date, title) {
+      const group = entries.filter((x) => x.date === date && (x.workoutTitle || "") === (title || ""));
+      if (!group.length) return;
+      const toDate = todayISO();
+      const rows = group.map((en) => ({
+        date: toDate, exercise: en.exercise, muscle_group: en.muscleGroup,
+        workout_title: en.workoutTitle || null, sets: en.sets,
+        client_name: clientName, client_id: profile ? profile.id : null
+      }));
+      if (!sb) { showLogError("Couldn't repeat that workout — you look offline."); return; }
+      const { data, error: err } = await sb.from("workout_entries").insert(rows).select();
+      if (err || !data || !data.length) {
+        showLogError("Couldn't repeat that workout — try again.");
+        return;
+      }
+      const pool = [...data];
+      const ordered = rows.map((want) => {
+        const key = JSON.stringify(want.sets);
+        let i = pool.findIndex((r) => r.exercise === want.exercise && (r.workout_title || "") === (want.workout_title || "") && JSON.stringify(r.sets) === key);
+        if (i === -1) i = 0;
+        return pool.splice(i, 1)[0];
+      }).filter(Boolean);
+      const mapped = ordered.map((row) => ({ id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, createdAt: row.created_at }));
+      setEntries((prev) => [...prev, ...mapped]);
+      // Same rule as the back-dating pass: a date filter narrower than today
+      // would hide the session that was just created, which reads as "nothing
+      // happened". Move the filter to today rather than leave a silent write.
+      if (dateFilter && dateFilter !== "All" && dateFilter !== "none" && dateFilter !== toDate) setDateFilter(toDate);
+    }
     function startEditingName() { setNameDraft(appName); setEditingName(true); }
     function commitName() {
       const trimmed = nameDraft.trim();
@@ -24685,7 +24804,7 @@
           e("button", { style: styles.clientNewExerciseBtn, onClick: openNewExercise }, e(Icon, { name: "plus", size: 15, strokeWidth: 3 }), "New exercise")
         ),
         error && e("div", { style: styles.errorBanner }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
-        !loaded ? e("div", { style: styles.empty }, "Loading your log…") : e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo, newExerciseLabel: "New exercise" })
+        !loaded ? e("div", { style: styles.empty }, "Loading your log…") : e(LogFeed, { entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete: handleDelete, onEdit: startEdit, onDuplicate: startDuplicate, onDeleteSet: handleDeleteSet, onAddToWorkout: openAddToWorkout, onEditSession: handleEditSession, onDeleteSession: handleDeleteSession, onRepeatSession: handleRepeatSession, undoDeleted: lastDeleted, onUndoDelete: handleUndoDelete, onDismissUndo: dismissUndo, newExerciseLabel: "New exercise" })
       )),
       // Sept 18 2026, Jimmy: "the client cant use any feature until they
       // pay" — Muscles was previously wide open even for a self-train
