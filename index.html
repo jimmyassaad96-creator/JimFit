@@ -7084,7 +7084,19 @@
     // 2026: also collapses the title picker (titleStepDone) — see the
     // matching note on TrainingLog.
     function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
-    function openNewExercise() { setError(""); resetForm(); setShowForm(true); }
+    // Oct 2 2026, Jimmy: "i want to be able to go back in any date and add a
+    // workout not only now and the future dates". Nothing ever blocked a past
+    // date — the date picker allows it — but two defaults made it feel that
+    // way. The Log feed starts filtered to TODAY (dateFilter = todayISO), and
+    // "New exercise" always reopened on today via resetForm. So picking a past
+    // day in the feed and tapping New exercise handed you today's date again,
+    // and a past-dated save then vanished from a feed still filtered to today
+    // — indistinguishable from "it didn't save". The form now opens on
+    // whichever day you're actually looking at.
+    function activeLogDate() {
+      return (dateFilter && dateFilter !== "All" && dateFilter !== "none") ? dateFilter : todayISO();
+    }
+    function openNewExercise() { setError(""); resetForm(); setDate(activeLogDate()); setShowForm(true); }
     function openAddToWorkout(d, title, beforeId = null) {
       // Same as "New exercise" but pre-fills the date and workout title from the
       // card the trainer tapped "Add exercise" on, so it lands in the same
@@ -7219,6 +7231,11 @@
         // fetch uses, not jump to the top until the next refetch fixes it.
         return [...prev, mapped];
       });
+      // Oct 2 2026: and if the entry was saved onto a different day than the
+      // feed is filtered to, follow it there — otherwise a past-dated save
+      // disappears the moment it succeeds, which is the other half of why
+      // back-dating felt impossible.
+      if (dateFilter && dateFilter !== "All" && dateFilter !== "none" && dateFilter !== date) setDateFilter(date);
       if (keepOpen && !editingId) {
         const flashText = `${exercise.trim()} — ${summarizeSetsForFlash(cleanSets, isTimed)}`;
         resetFormKeepSession();
@@ -23966,7 +23983,19 @@
     // already set for this session, so it doesn't need to be shown again
     // for every exercise; "Change" in the sheet re-expands it if needed.
     function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
-    function openNewExercise() { setEditingId(null); resetForm(); setShowForm(true); }
+    // Oct 2 2026, Jimmy: "i want to be able to go back in any date and add a
+    // workout not only now and the future dates". Nothing ever blocked a past
+    // date — the date picker allows it — but two defaults made it feel that
+    // way. The Log feed starts filtered to TODAY (dateFilter = todayISO), and
+    // "New exercise" always reopened on today via resetForm. So picking a past
+    // day in the feed and tapping New exercise handed you today's date again,
+    // and a past-dated save then vanished from a feed still filtered to today
+    // — indistinguishable from "it didn't save". The form now opens on
+    // whichever day you're actually looking at.
+    function activeLogDate() {
+      return (dateFilter && dateFilter !== "All" && dateFilter !== "none") ? dateFilter : todayISO();
+    }
+    function openNewExercise() { setEditingId(null); resetForm(); setDate(activeLogDate()); setShowForm(true); }
     function openAddToWorkout(d, title, beforeId = null) {
       // Same as "New exercise" but pre-fills the date and workout title from the
       // card that was tapped, so it lands in the same session instead of
@@ -24114,6 +24143,11 @@
         // a newly logged exercise is the newest by created_at, so it belongs at the end.
         return [...prev, mapped];
       });
+      // Oct 2 2026: and if the entry was saved onto a different day than the
+      // feed is filtered to, follow it there — otherwise a past-dated save
+      // disappears the moment it succeeds, which is the other half of why
+      // back-dating felt impossible.
+      if (dateFilter && dateFilter !== "All" && dateFilter !== "none" && dateFilter !== date) setDateFilter(date);
       if (keepOpen && !editingId) {
         const flashText = `${exercise.trim()} — ${summarizeSetsForFlash(cleanSets, isTimed)}`;
         resetFormKeepSession();
