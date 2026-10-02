@@ -3912,7 +3912,15 @@
   // gates instead of inventing a new one. Tapping the dimmed backdrop
   // counts as Discard — same as everywhere else a sheet-over-sheet closes
   // on outside tap.
-  function VoiceConfirmPopup({ fields, onConfirm, onDiscard, saving }) {
+  // Oct 2 2026, Jimmy: "no option for muscle group through voice note! and
+  // save and add another it disappeared!!!" — both about this popup. It listed
+  // Workout / Exercise / Sets only, so the muscle group the voice pass had (or
+  // more often hadn't) filled was invisible and unsettable before saving; and
+  // its single "Confirm & save" button hid the fact that it saves keeping the
+  // form open, i.e. the "Save & add another" behaviour the main sheet spells
+  // out. Now the popup carries the same chip row + custom field as the sheet,
+  // and names both save actions explicitly.
+  function VoiceConfirmPopup({ fields, onConfirm, onConfirmClose, onDiscard, saving, muscleGroup, onMuscleGroup }) {
     return e("div", {
       style: {
         position: "fixed", inset: 0, background: "rgba(6,10,22,0.6)",
@@ -3946,13 +3954,28 @@
             )
           )
         ),
-        e("div", { style: { display: "flex", gap: 10 } },
-          e("button", {
-            type: "button",
-            style: { ...styles.exSheetSaveAddAnotherBtn, flex: 1, ...(saving ? styles.btnDisabled : {}) },
-            disabled: saving, onClick: onConfirm
-          }, saving ? "Saving…" : "✓ Confirm & save"),
-          e("button", { type: "button", style: { ...styles.demoLinkBtn, flexShrink: 0 }, onClick: onDiscard }, "Discard")
+        onMuscleGroup && e("div", { style: { textAlign: "left", marginBottom: 14 } },
+          e("div", { style: { fontSize: 10.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 } }, "Muscle group"),
+          e("div", { style: styles.chipScrollRow },
+            MUSCLE_GROUPS.map((m) => e("button", {
+              key: m, type: "button",
+              style: { ...styles.browseChip, flexShrink: 0, scrollSnapAlign: "start", padding: "6px 11px", fontSize: 11, ...((muscleGroup || "").trim().toLowerCase() === m.toLowerCase() ? styles.browseChipActive : {}) },
+              onClick: () => onMuscleGroup(m)
+            }, m))
+          ),
+          e("input", {
+            type: "text", value: muscleGroup || "", placeholder: "Or type a custom muscle group",
+            onChange: (ev) => onMuscleGroup(ev.target.value), style: { ...styles.input, marginTop: 8 }
+          })
+        ),
+        e("button", {
+          type: "button",
+          style: { ...styles.exSheetSaveAddAnotherBtn, width: "100%", ...(saving ? styles.btnDisabled : {}) },
+          disabled: saving, onClick: onConfirm
+        }, saving ? "Saving…" : "✓ Save & add another"),
+        e("div", { style: { display: "flex", gap: 10, marginTop: 10, justifyContent: "center" } },
+          onConfirmClose && e("button", { type: "button", style: { ...styles.demoLinkBtn, marginTop: 0 }, disabled: saving, onClick: onConfirmClose }, "Save & close"),
+          e("button", { type: "button", style: { ...styles.demoLinkBtn, marginTop: 0 }, onClick: onDiscard }, "Discard")
         )
       )
     );
@@ -7424,10 +7447,14 @@
             fields: [
               { label: "Workout", value: sessionTitle.trim() || "—" },
               { label: "Exercise", value: exercise.trim() || "—" },
+              { label: "Muscle group", value: (muscleGroup || "").trim() || "— not set, pick one below" },
               { label: "Sets", value: summarizeSetsForFlash(sets.map((s) => ({ reps: Number(s.reps) || 0, weight: isBodyweight ? 0 : Number(s.weight) || 0, duration: Number(s.reps) || 0, isBodyweight })).filter((s) => (isTimed ? s.duration > 0 : s.reps > 0)), isTimed) || "No sets heard" }
             ],
             saving,
+            muscleGroup,
+            onMuscleGroup: (v) => { setMuscleGroup(v); setMuscleTouched(true); },
             onConfirm: () => { setVoiceConfirmPending(false); handleSave(true, true); },
+            onConfirmClose: () => { setVoiceConfirmPending(false); handleSave(false, true); },
             onDiscard: () => { setVoiceConfirmPending(false); setExercise(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); }
           }),
           // Sept 18 2026, Jimmy: "check the frames in it not fitting the
@@ -24900,10 +24927,14 @@
             fields: [
               { label: "Workout", value: sessionTitle.trim() || "—" },
               { label: "Exercise", value: exercise.trim() || "—" },
+              { label: "Muscle group", value: (muscleGroup || "").trim() || "— not set, pick one below" },
               { label: "Sets", value: summarizeSetsForFlash(sets.map((s) => ({ reps: Number(s.reps) || 0, weight: isBodyweight ? 0 : Number(s.weight) || 0, duration: Number(s.reps) || 0, isBodyweight })).filter((s) => (isTimed ? s.duration > 0 : s.reps > 0)), isTimed) || "No sets heard" }
             ],
             saving,
+            muscleGroup,
+            onMuscleGroup: (v) => { setMuscleGroup(v); setMuscleTouched(true); },
             onConfirm: () => { setVoiceConfirmPending(false); handleSave(true, true); },
+            onConfirmClose: () => { setVoiceConfirmPending(false); handleSave(false, true); },
             onDiscard: () => { setVoiceConfirmPending(false); setExercise(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); }
           }),
           // Sept 18 2026, Jimmy: see the matching note on ClientLogPanel —
