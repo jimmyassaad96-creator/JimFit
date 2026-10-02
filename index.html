@@ -2825,6 +2825,37 @@
   // Per-exercise strength trend: one top-set weight per day, across every session ever
   // logged for that exercise (independent of the week/all-time toggle, which is about
   // muscle volume, not long-run trend) — each date stays its own point, never merged.
+  // Oct 2 2026, Jimmy: step 1 of the "more pro" pass — the most-asked-for
+  // thing in any logging app is last session's numbers while you're typing
+  // this session's. computeExerciseProgression below only keeps the TOP
+  // weight per date (it draws a trend line), which can't answer "what did I
+  // actually do set by set", so this is its own pass over the same entries.
+  // Keyed by exerciseGifKey (trim + lowercase) for the same reason every
+  // other per-exercise helper here is: "Bench Press" and "bench press" are
+  // one exercise. Latest wins on date, then on created_at for two sessions
+  // the same day.
+  function computeLastSessionByExercise(entries) {
+    const out = {};
+    entries.forEach((x) => {
+      const key = exerciseGifKey(x.exercise);
+      if (!key || !x.sets || !x.sets.length) return;
+      const cur = out[key];
+      if (!cur) { out[key] = x; return; }
+      if (x.date > cur.date) { out[key] = x; return; }
+      if (x.date === cur.date && (x.createdAt || "") > (cur.createdAt || "")) out[key] = x;
+    });
+    return out;
+  }
+  // "80×12 · 90×10" for weighted work, "60s" for timed, "12 × BW" for
+  // bodyweight — the same shorthand the log card already speaks, kept short
+  // enough to sit on one line above the set rows on a phone.
+  function fmtSetsShort(sets, unit) {
+    return (sets || []).map((st) => {
+      if (st.isTimed) return `${st.duration != null ? st.duration : st.reps}s`;
+      if (st.isBodyweight) return `${st.reps} × BW`;
+      return `${st.weight}${unit}×${st.reps}`;
+    }).join(" · ");
+  }
   function computeExerciseProgression(entries) {
     // Same case/whitespace normalization as computeMaxWeightByExercise and
     // computePersonalRecords — grouped by exerciseGifKey so "Bench Press" and
@@ -6756,6 +6787,29 @@
     );
   }
 
+  // Oct 2 2026: one line above the Sets block showing the last time this
+  // exercise was logged, with a one-tap fill. Deliberately does NOT
+  // pre-fill the rows on its own — Jimmy's call, and the right one: a form
+  // that arrives pre-filled with last week's numbers will quietly save
+  // last week's numbers for anyone who taps straight past it, and a log you
+  // can't trust is worse than no log. Renders nothing at all when there's
+  // no history, so a first-time exercise shows no empty state.
+  function LastTimeRow({ entries, exercise, excludeId, unit, onUse }) {
+    const lastByEx = useMemo(() => computeLastSessionByExercise(entries), [entries]);
+    const key = exerciseGifKey(exercise || "");
+    const last = key ? lastByEx[key] : null;
+    // Editing an entry: its own row is not "last time", it's the thing on screen.
+    if (!last || (excludeId && last.id === excludeId)) return null;
+    const when = last.date === todayISO() ? "EARLIER TODAY" : fmtDate(last.date);
+    return e("div", { style: styles.lastTimeRow },
+      e("div", { style: { minWidth: 0, flex: 1 } },
+        e("span", { style: styles.lastTimeLabel }, `LAST TIME · ${when}`),
+        e("div", { style: styles.lastTimeSets }, fmtSetsShort(last.sets, unit))
+      ),
+      e("button", { type: "button", style: styles.lastTimeUseBtn, onClick: () => onUse(last) }, "Use these")
+    );
+  }
+
   function LogFeed({ entries, unit, titleFilter, setTitleFilter, dateFilter, setDateFilter, onDelete, onEdit, onDuplicate, onDeleteSet, onAddToWorkout, onEditSession, onDeleteSession, onRepeatSession, undoDeleted, onUndoDelete, onDismissUndo, newExerciseLabel = "Add exercise" }) {
     // Sept 9 2026, Jimmy: editing a whole session's date or title used to mean
     // opening every exercise under it one at a time and re-typing the same new
@@ -7661,6 +7715,20 @@
                 }, "Bodyweight")
               )
             ),
+            e(LastTimeRow, {
+              entries, exercise, excludeId: editingId, unit,
+              onUse: (last) => {
+                const timed = last.sets.some((st) => st.isTimed);
+                const bw = last.sets.some((st) => st.isBodyweight);
+                setIsTimed(timed);
+                setIsBodyweight(bw);
+                setSets(last.sets.map((st) => ({
+                  reps: String(timed ? (st.duration != null ? st.duration : st.reps) : st.reps),
+                  weight: String(st.weight),
+                  rest: st.rest != null ? String(st.rest) : ""
+                })));
+              }
+            }),
             e("div", { style: { ...styles.setRows, marginTop: 8 } },
               e("div", { style: { ...styles.setRowHeader, gridTemplateColumns: isBodyweight ? "26px 1fr 1fr 34px" : "26px 1fr 1fr 1fr 34px" } },
                 e("span", { style: styles.setColLabel }, "SET"),
@@ -25163,6 +25231,20 @@
                 }, "Bodyweight")
               )
             ),
+            e(LastTimeRow, {
+              entries, exercise, excludeId: editingId, unit,
+              onUse: (last) => {
+                const timed = last.sets.some((st) => st.isTimed);
+                const bw = last.sets.some((st) => st.isBodyweight);
+                setIsTimed(timed);
+                setIsBodyweight(bw);
+                setSets(last.sets.map((st) => ({
+                  reps: String(timed ? (st.duration != null ? st.duration : st.reps) : st.reps),
+                  weight: String(st.weight),
+                  rest: st.rest != null ? String(st.rest) : ""
+                })));
+              }
+            }),
             e("div", { style: { ...styles.setRows, marginTop: 8 } },
               e("div", { style: { ...styles.setRowHeader, gridTemplateColumns: isBodyweight ? "26px 1fr 1fr 34px" : "26px 1fr 1fr 1fr 34px" } },
                 e("span", { style: styles.setColLabel }, "SET"),
@@ -25795,6 +25877,10 @@
 
     setRows: { display: "flex", flexDirection: "column", gap: 7 },
     setRowHeader: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, padding: "0 2px" },
+    lastTimeRow: { display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "9px 11px", background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 10 },
+    lastTimeLabel: { display: "block", fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700, color: C.ink3, letterSpacing: "0.08em" },
+    lastTimeSets: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 12.5, fontWeight: 600, color: C.ink2, marginTop: 3, overflowWrap: "anywhere" },
+    lastTimeUseBtn: { flexShrink: 0, background: withAlpha(C.brand, 0.16), border: `1px solid ${withAlpha(C.brand, 0.45)}`, borderRadius: 8, padding: "7px 12px", color: C.brand, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 11.5, cursor: "pointer" },
     setColLabel: { fontFamily: "'Inter', sans-serif", fontSize: 9, color: C.ink3, letterSpacing: "0.06em" },
     setRow: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, alignItems: "center" },
     setIndex: { fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.ink3, textAlign: "center" },
