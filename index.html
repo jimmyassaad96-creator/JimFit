@@ -1182,6 +1182,19 @@
     const hit = Object.keys(WORKOUT_TITLE_TO_MUSCLES).find((k) => k.toLowerCase() === t);
     return hit ? WORKOUT_TITLE_TO_MUSCLES[hit] : null;
   }
+  // Oct 2 2026, Jimmy: "make it to start empty so when i add the exercises i
+  // can fill too as custom and by voice" — the Muscle group field used to
+  // start pre-filled with "Full Body", so typing a custom group meant clearing
+  // that word first (the Workout title field next to it starts blank, which is
+  // the behaviour he asked for). The field now starts empty, and auto-fill only
+  // writes a group when the exercise name is genuinely recognised: a miss used
+  // to stamp "Full Body" in, which is the same friction by another route.
+  // guessMuscleGroup itself is unchanged because a direct save path depends on
+  // its "Full Body" fallback (see the ProgramSetsForm save around line 19659).
+  function guessMuscleGroupForForm(name) {
+    const g = guessMuscleGroup(name);
+    return g === "Full Body" ? "" : g;
+  }
   function guessMuscleGroup(name) {
     const hit = Object.keys(LIFT_MUSCLE_MAP).find((k) => k.toLowerCase() === name.trim().toLowerCase());
     return hit ? LIFT_MUSCLE_MAP[hit] : "Full Body";
@@ -6993,7 +7006,7 @@
     // client-side sheet — see the matching note on TrainingLog.
     const [titleStepDone, setTitleStepDone] = useState(false);
     const [exercise, setExercise] = useState("");
-    const [muscleGroup, setMuscleGroup] = useState("Full Body");
+    const [muscleGroup, setMuscleGroup] = useState("");
     const [muscleTouched, setMuscleTouched] = useState(false);
     const [sets, setSets] = useState([{ reps: "", weight: "", rest: "" }]);
     // Sept 18 2026, Jimmy: "can we do an option before to save ... to see
@@ -7053,7 +7066,7 @@
     // this just saves retyping "8, 60, 90" three times for a typical 3x8.
     function addSetRow() { setSets((p) => [...p, p.length > 0 ? { ...p[p.length - 1] } : { reps: "", weight: "", rest: "" }]); }
     function removeSetRow(idx) { setSets((p) => (p.length === 1 ? p : p.filter((_, i) => i !== idx))); }
-    function handleExerciseChange(val) { setExercise(val); if (!muscleTouched) setMuscleGroup(guessMuscleGroup(val)); }
+    function handleExerciseChange(val) { setExercise(val); if (!muscleTouched) setMuscleGroup(guessMuscleGroupForForm(val)); }
     function applyQuickEntry() {
       const parsed = parseQuickSets(quickEntry);
       if (!parsed) { setQuickEntryError("Try “sets x reps” or “sets x reps x weight” — e.g. 3x8 or 3x8x60."); return; }
@@ -7062,7 +7075,7 @@
     }
     // Sept 18 2026: also clears titleStepDone — a genuinely fresh session
     // asks for the workout title again. See the matching note on TrainingLog.
-    function resetForm() { setDate(todayISO()); setSessionTitle(""); setTitleStepDone(false); setExercise(""); setMuscleGroup("Full Body"); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setEditingId(null); setAddBeforeId(null); setVoiceConfirmPending(false); }
+    function resetForm() { setDate(todayISO()); setSessionTitle(""); setTitleStepDone(false); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setEditingId(null); setAddBeforeId(null); setVoiceConfirmPending(false); }
     // Sept 14 2026, Jimmy: the partial reset behind "Save & add another" —
     // same as resetForm but keeps Date and Workout title as they are (the
     // next exercise almost always belongs to the same session) and only
@@ -7070,7 +7083,7 @@
     // back-to-back instead of retyping the date/title each time. Sept 18
     // 2026: also collapses the title picker (titleStepDone) — see the
     // matching note on TrainingLog.
-    function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup("Full Body"); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
+    function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
     function openNewExercise() { setError(""); resetForm(); setShowForm(true); }
     function openAddToWorkout(d, title, beforeId = null) {
       // Same as "New exercise" but pre-fills the date and workout title from the
@@ -7094,7 +7107,7 @@
       setDate(entry.date);
       setSessionTitle(entry.workoutTitle || "");
       setExercise(entry.exercise);
-      setMuscleGroup(entry.muscleGroup || "Full Body");
+      setMuscleGroup(entry.muscleGroup || "");
       setMuscleTouched(true);
       const timed = entry.sets.some((s) => s.isTimed);
       const bw = entry.sets.some((s) => s.isBodyweight);
@@ -7111,7 +7124,7 @@
       setDate(todayISO());
       setSessionTitle(entry.workoutTitle || "");
       setExercise(entry.exercise);
-      setMuscleGroup(entry.muscleGroup || "Full Body");
+      setMuscleGroup(entry.muscleGroup || "");
       setMuscleTouched(true);
       const timed = entry.sets.some((s) => s.isTimed);
       const bw = entry.sets.some((s) => s.isBodyweight);
@@ -7161,7 +7174,7 @@
       if (!exercise.trim() || cleanSets.length === 0) { setError("Add an exercise and at least one valid set."); return; }
       if (!sb) { setError("Backend not configured yet."); return; }
       setSaving(true);
-      const payload = { date, exercise: exercise.trim(), muscle_group: muscleGroup, workout_title: sessionTitle.trim() || null, sets: cleanSets };
+      const payload = { date, exercise: exercise.trim(), muscle_group: (muscleGroup || "").trim() || "Full Body", workout_title: sessionTitle.trim() || null, sets: cleanSets };
       // Sept 12 2026, Jimmy: "add an exercise below or above the other
       // exercise option" — workout_entries has no order_index to reorder,
       // only created_at, so an "insert above" target (addBeforeId) gets a
@@ -7365,7 +7378,7 @@
             onParsed: (result) => {
               let gotExercise = false, gotSets = false;
               if (result.workoutTitle) setSessionTitle(result.workoutTitle);
-              if (result.exerciseName) { setExercise(result.exerciseName); if (!muscleTouched) setMuscleGroup(guessMuscleGroup(result.exerciseName)); gotExercise = true; }
+              if (result.exerciseName) { setExercise(result.exerciseName); if (!muscleTouched) setMuscleGroup(guessMuscleGroupForForm(result.exerciseName)); gotExercise = true; }
               if (Array.isArray(result.sets) && result.sets.length) {
                 setSets(result.sets.map((s) => ({ reps: s.reps != null ? String(s.reps) : "", weight: s.weight != null ? String(s.weight) : "", rest: s.rest != null ? String(s.rest) : "" })));
                 gotSets = true;
@@ -23286,7 +23299,7 @@
     // duplicating an entry) or if the client taps "Change".
     const [titleStepDone, setTitleStepDone] = useState(false);
     const [exercise, setExercise] = useState("");
-    const [muscleGroup, setMuscleGroup] = useState("Full Body");
+    const [muscleGroup, setMuscleGroup] = useState("");
     const [muscleTouched, setMuscleTouched] = useState(false);
     const [sets, setSets] = useState([{ reps: "", weight: "", rest: "" }]);
     // Sept 18 2026, Jimmy: "can we do an option before to save ... to see
@@ -23937,13 +23950,13 @@
     // this just saves retyping "8, 60, 90" three times for a typical 3x8.
     function addSetRow() { setSets((p) => [...p, p.length > 0 ? { ...p[p.length - 1] } : { reps: "", weight: "", rest: "" }]); }
     function removeSetRow(idx) { setSets((p) => (p.length === 1 ? p : p.filter((_, i) => i !== idx))); }
-    function handleExerciseChange(val) { setExercise(val); if (!muscleTouched) setMuscleGroup(guessMuscleGroup(val)); }
+    function handleExerciseChange(val) { setExercise(val); if (!muscleTouched) setMuscleGroup(guessMuscleGroupForForm(val)); }
     // Sept 18 2026, Jimmy: resetForm now also clears sessionTitle/titleStepDone
     // — a genuinely fresh session (opened via "+ New exercise" after closing)
     // should ask for the workout title again, not silently carry over
     // whatever was last typed. See resetFormKeepSession below for the
     // opposite case (still the same session, title stays).
-    function resetForm() { setDate(todayISO()); setSessionTitle(""); setTitleStepDone(false); setExercise(""); setMuscleGroup("Full Body"); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setEditingId(null); setAddBeforeId(null); setVoiceConfirmPending(false); }
+    function resetForm() { setDate(todayISO()); setSessionTitle(""); setTitleStepDone(false); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setEditingId(null); setAddBeforeId(null); setVoiceConfirmPending(false); }
     // Sept 14 2026, Jimmy: the partial reset behind "Save & add another" —
     // same as resetForm but keeps Date and Workout title as they are (the
     // next exercise almost always belongs to the same session) and only
@@ -23952,7 +23965,7 @@
     // 2026: also collapses the title picker (titleStepDone) — the title's
     // already set for this session, so it doesn't need to be shown again
     // for every exercise; "Change" in the sheet re-expands it if needed.
-    function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup("Full Body"); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
+    function resetFormKeepSession() { setTitleStepDone(true); setExercise(""); setMuscleGroup(""); setMuscleTouched(false); setSets([{ reps: "", weight: "", rest: "" }]); setIsTimed(false); setIsBodyweight(false); setQuickEntry(""); setQuickEntryError(""); setAddBeforeId(null); setVoiceConfirmPending(false); }
     function openNewExercise() { setEditingId(null); resetForm(); setShowForm(true); }
     function openAddToWorkout(d, title, beforeId = null) {
       // Same as "New exercise" but pre-fills the date and workout title from the
@@ -23975,7 +23988,7 @@
       setDate(entry.date);
       setSessionTitle(entry.workoutTitle || "");
       setExercise(entry.exercise);
-      setMuscleGroup(entry.muscleGroup || "Full Body");
+      setMuscleGroup(entry.muscleGroup || "");
       setMuscleTouched(true);
       const timed = entry.sets.some((s) => s.isTimed);
       const bw = entry.sets.some((s) => s.isBodyweight);
@@ -23991,7 +24004,7 @@
       setDate(todayISO());
       setSessionTitle(entry.workoutTitle || "");
       setExercise(entry.exercise);
-      setMuscleGroup(entry.muscleGroup || "Full Body");
+      setMuscleGroup(entry.muscleGroup || "");
       setMuscleTouched(true);
       const timed = entry.sets.some((s) => s.isTimed);
       const bw = entry.sets.some((s) => s.isBodyweight);
@@ -24051,7 +24064,7 @@
       }
       if (!sb) { setError("Backend not configured yet."); return; }
       setSaving(true);
-      const payload = { date, exercise: exercise.trim(), muscle_group: muscleGroup, workout_title: sessionTitle.trim() || null, sets: cleanSets };
+      const payload = { date, exercise: exercise.trim(), muscle_group: (muscleGroup || "").trim() || "Full Body", workout_title: sessionTitle.trim() || null, sets: cleanSets };
       // Sept 12 2026, Jimmy: "add an exercise below or above the other
       // exercise option" — see the matching note on ClientLogPanel's own
       // handleSave. Same synthetic-created_at trick here.
@@ -24834,7 +24847,7 @@
             onParsed: (result) => {
               let gotExercise = false, gotSets = false;
               if (result.workoutTitle) setSessionTitle(result.workoutTitle);
-              if (result.exerciseName) { setExercise(result.exerciseName); if (!muscleTouched) setMuscleGroup(guessMuscleGroup(result.exerciseName)); gotExercise = true; }
+              if (result.exerciseName) { setExercise(result.exerciseName); if (!muscleTouched) setMuscleGroup(guessMuscleGroupForForm(result.exerciseName)); gotExercise = true; }
               if (Array.isArray(result.sets) && result.sets.length) {
                 setSets(result.sets.map((s) => ({ reps: s.reps != null ? String(s.reps) : "", weight: s.weight != null ? String(s.weight) : "", rest: s.rest != null ? String(s.rest) : "" })));
                 gotSets = true;
