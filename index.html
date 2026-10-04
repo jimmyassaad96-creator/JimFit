@@ -24831,23 +24831,39 @@
           // owner-only setting later.
           e("h1", { style: styles.title }, "JimFit"),
           e("div", { style: { flex: 1 } }),
-          // Sept 13 2026, Jimmy: "beside the email can we insert like email
-          // for support or something like that?" — the mail icon was
-          // icon-only (no visible label, and there's no hover to reveal the
-          // title tooltip on a touch phone), so its purpose wasn't obvious
-          // at a glance. Swapped in the same icon+"Support" pill the
-          // trainer/manager header already uses for this exact button
-          // (styles.supportBtn) instead of inventing a new look.
-          e("button", { style: styles.supportBtn, onClick: () => openSupportEmail(clientName), title: "Email support" }, e(Icon, { name: "mail", size: 14 }), "Support"),
-          e("button", { style: styles.supportBtn, onClick: openSupportWhatsApp, title: `WhatsApp ${SUPPORT_WHATSAPP}` }, e(Icon, { name: "chat", size: 14 }), "WhatsApp"),
-          // Sept 17 2026, Jimmy: "its hard for the client to see the logout
-          // button, put it also down the support and moon" — restored here
-          // (same pill style as Support, not a bare icon — a plain icon was
-          // already found too easy to miss on a touch phone, see the
-          // Support note above) alongside the copy still at the bottom of
-          // My info for anyone who lands there first.
-          e("button", { style: styles.logoutBtn, onClick: handleLogout }, e(Icon, { name: "logout", size: 13 }), "Log out"),
-          e(ThemeToggle, { theme, onToggle: toggleTheme })
+          // Oct 4 2026, Jimmy: "Can we place the moon logo under the logout?"
+          // — the brand row was a single unwrappable line holding the logo,
+          // the title, Support, WhatsApp, Log out AND the theme toggle. At
+          // 430px that needs ~630px, so the tail of the row was simply cut
+          // off at the screen edge; the moon was last in source order, so
+          // the moon was what disappeared. Moving it alone wouldn't have
+          // fixed anything — Log out would just have become the clipped one.
+          //
+          // So the four action buttons now live in their own right-aligned
+          // group that wraps as a unit. The moon falls to the next line and
+          // sits under Log out (what he asked for), and on a narrower phone
+          // the others wrap too — all of them staying right-aligned instead
+          // of jumping to the left margin, which is what a bare flexWrap on
+          // the brand row did when I tried that first.
+          e("div", { style: styles.clientHeaderActions },
+            // Sept 13 2026, Jimmy: "beside the email can we insert like email
+            // for support or something like that?" — the mail icon was
+            // icon-only (no visible label, and there's no hover to reveal the
+            // title tooltip on a touch phone), so its purpose wasn't obvious
+            // at a glance. Swapped in the same icon+"Support" pill the
+            // trainer/manager header already uses for this exact button
+            // (styles.supportBtn) instead of inventing a new look.
+            e("button", { style: styles.supportBtn, onClick: () => openSupportEmail(clientName), title: "Email support" }, e(Icon, { name: "mail", size: 14 }), "Support"),
+            e("button", { style: styles.supportBtn, onClick: openSupportWhatsApp, title: `WhatsApp ${SUPPORT_WHATSAPP}` }, e(Icon, { name: "chat", size: 14 }), "WhatsApp"),
+            // Sept 17 2026, Jimmy: "its hard for the client to see the logout
+            // button, put it also down the support and moon" — restored here
+            // (same pill style as Support, not a bare icon — a plain icon was
+            // already found too easy to miss on a touch phone, see the
+            // Support note above) alongside the copy still at the bottom of
+            // My info for anyone who lands there first.
+            e("button", { style: styles.logoutBtn, onClick: handleLogout }, e(Icon, { name: "logout", size: 13 }), "Log out"),
+            e(ThemeToggle, { theme, onToggle: toggleTheme })
+          )
         ),
         // Sept 15 2026, Jimmy: "show here the user is opened like me the
         // owner to know which account i opened even for trainers and
@@ -25607,6 +25623,7 @@
     // client app's own logo header.
     clientHeader: { display: "flex", flexDirection: "column", gap: 10, padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 14px", borderBottom: `1px solid ${C.cardBorder}`, position: "sticky", top: 0, background: withAlpha(C.bg, 0.85), backdropFilter: "blur(10px)", zIndex: 30 },
     clientHeaderBrandRow: { display: "flex", alignItems: "center", gap: 10 },
+    clientHeaderActions: { display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 10, flex: "1 1 auto", minWidth: 0 },
     clientHeaderInfoRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
     clientHeaderLogoutRow: { display: "flex", justifyContent: "flex-end" },
     // Same bordered/tinted circle ThemeToggle already uses — paired together
