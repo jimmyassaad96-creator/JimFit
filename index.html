@@ -19397,6 +19397,36 @@
       return rows.sort((a, b) => (a.lastDate < b.lastDate ? 1 : -1));
     }, [allEntries, myClientNames, profiles]);
 
+    // Oct 3 2026: the same worklist the manager's roster gets (see
+    // computeAttention). No renewalFor here — that helper is self-train only
+    // and lives in CoachView — so the lapsed/ending checks read the profile
+    // dates directly, which is what computeAttention does anyway.
+    //
+    // Oct 6 2026 CRASH FIX — these three MUST stay above visibleRoster.
+    // When this worklist was added on Oct 3 the two declarations were placed
+    // BELOW the visibleRoster useMemo that reads them. `const` is in the
+    // temporal dead zone until its declaration runs, and a useMemo's
+    // dependency array is evaluated immediately during render, so TrainerView
+    // threw "Cannot access 'attentionOnly' before initialization" on its very
+    // first render and rendered nothing at all. Every trainer's app was a
+    // blank screen for three days.
+    //
+    // It survived because nothing caught it: node --check only parses, a TDZ
+    // error is a runtime fault; the unit tests exercised computeAttention as
+    // a pure function, never the component; CoachView declares its own copies
+    // in the right order so the owner's app was fine; and the one trainer who
+    // would have hit it was sitting behind the payment gate screen instead.
+    // Ordering is load-bearing here — do not move these below visibleRoster.
+    const [attentionOnly, setAttentionOnly] = useState(false);
+    const attentionById = useMemo(() => {
+      const m = {};
+      roster.forEach((r) => { m[r.id] = computeAttention(r, { balanceFor }); });
+      return m;
+    }, [roster]);
+    const attentionCount = useMemo(
+      () => roster.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0).length,
+      [roster, attentionById]
+    );
     const visibleRoster = useMemo(() => {
       const q = clientSearch.trim().toLowerCase();
       let list = roster;
@@ -19410,20 +19440,6 @@
       return list;
     }, [roster, clientSearch, needsPaymentOnly, attentionOnly, attentionById]);
     const needsPaymentCount = useMemo(() => roster.filter((r) => { const b = balanceFor(r.profile); return b != null && b > 0; }).length, [roster]);
-    // Oct 3 2026: the same worklist the manager's roster gets (see
-    // computeAttention). No renewalFor here — that helper is self-train only
-    // and lives in CoachView — so the lapsed/ending checks read the profile
-    // dates directly, which is what computeAttention does anyway.
-    const [attentionOnly, setAttentionOnly] = useState(false);
-    const attentionById = useMemo(() => {
-      const m = {};
-      roster.forEach((r) => { m[r.id] = computeAttention(r, { balanceFor }); });
-      return m;
-    }, [roster]);
-    const attentionCount = useMemo(
-      () => roster.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0).length,
-      [roster, attentionById]
-    );
 
     function resolveClientById(id) {
       if (typeof id === "string" && id.indexOf("name:") === 0) return null;
