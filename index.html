@@ -10998,6 +10998,12 @@
     // window PaymentStatusStepper itself uses, so this reads "sent" exactly
     // as long as the trainer's own screen does.
     const [firstPaymentClaimsByEmail, setFirstPaymentClaimsByEmail] = useState({});
+    // Oct 6 2026: every context, not just trainer_first_payment — the map
+    // above is deliberately filtered to first payments, so an approved
+    // trainer's monthly renewal claim never appeared in it. The Trainers "By
+    // payment" screen needs the unfiltered set. Shares the same cached fetch
+    // the rosters and the billing panel use.
+    const allClaimsByEmail = usePaymentClaimsByEmail(true);
     function fetchFirstPaymentClaims() {
       if (!sb) return;
       sb.from("payment_claims").select("*").eq("context", "trainer_first_payment").order("submitted_at", { ascending: false }).then(({ data, error }) => {
@@ -11285,16 +11291,32 @@
     // the same way the Clients tab was split: "pending" is never-paid OR
     // currently owing (the same two conditions the badges already flagged),
     // "paid" is everyone else (paid at least once and not currently owing).
+    // Oct 6 2026, Jimmy: "here its paid but i didnt see the section where i
+    // see the payment needed from her" — Magali was sitting under "Paid" with
+    // a $49.99 CREDIT badge while she was locked out of the app staring at a
+    // "Payment due" screen. Pending read 0.
+    //
+    // Cause: this split measured a lifetime money balance —
+    // trainerBalanceFor = amount_due - total_paid — but `amount_due` is 0 on
+    // every trainer row and nothing maintains it. So the balance is always
+    // 0 - (something paid) = negative = "credit", for everyone, forever, and
+    // the Pending bucket could only ever catch a trainer with literally zero
+    // payments. Access, meanwhile, is gated on next_payment_date
+    // (isTrainerPaymentOverdue, the same check the router locks them with).
+    // Two different definitions of "paid", so the screen contradicted the
+    // app.
+    //
+    // Now it buckets on the rule that actually governs access. If the app
+    // says someone is locked out, this screen says they're pending — by
+    // construction, because it is the same function.
     const trainerPaymentSplit = useMemo(() => {
       const paid = [], pending = [];
       visibleBrowsableTrainers.forEach((t) => {
-        const bal = trainerBalanceFor(t.id);
         const neverPaid = !paidByTrainerId[t.id];
-        const owes = bal != null && bal > 0;
-        (neverPaid || owes ? pending : paid).push(t);
+        (isTrainerPaymentOverdue(t) || neverPaid ? pending : paid).push(t);
       });
       return { paid, pending };
-    }, [visibleBrowsableTrainers, paidByTrainerId]);
+    }, [visibleBrowsableTrainers, paidByTrainerId, trainers]);
     // Same as browsableTrainers but also drops the Self-Training bucket — used
     // anywhere trainers are treated as real people with real stats (the
     // dashboard's "by trainer" breakdown), so "Self-Training (no trainer)"
@@ -12476,19 +12498,53 @@
                     const neverPaid = !paidByTrainerId[t.id];
                     const claim = neverPaid && t.email && firstPaymentClaimsByEmail[t.email.toLowerCase()];
                     const claimFresh = !!claim && (Date.now() - new Date(claim.submitted_at).getTime()) < PAYMENT_CLAIM_FRESH_MS;
+                    // Oct 6 2026: an already-approved trainer going overdue
+                    // writes a "trainer_monthly" claim, which the first-payment
+                    // map above never covers — that map is deliberately
+                    // context-filtered. Read the full claim set so this screen
+                    // can show "says they paid" for a monthly renewal too.
+                    const overdue = isTrainerPaymentOverdue(t);
+                    const monthlyClaim = overdue ? freshClaimFor(allClaimsByEmail, t.email) : null;
                     return e("div", { key: t.id, style: { ...styles.trainerStatCard, cursor: "pointer" }, onClick: () => setSelectedTrainerId(t.id) },
                       e("div", { style: styles.clientCardLeft },
                         e(TrainerAvatar, { name: t.name, photoUrl: t.photo_url }),
                         e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
                           e("span", { style: styles.exerciseName }, t.name || "Unnamed trainer"),
-                          e("span", { style: styles.muscleSubText }, trainerClientCounts[t.id] || 0, " client", (trainerClientCounts[t.id] || 0) === 1 ? "" : "s"),
+                          // Oct 6 2026, Jimmy: "i want to see here for each
+                          // trainer when his next payment". Sits on the line
+                          // that already carries the client count, so the card
+                          // keeps its height. Reads red once the date has
+                          // passed, matching the chip on the right rather than
+                          // quietly contradicting it.
+                          e("span", { style: styles.muscleSubText },
+                            trainerClientCounts[t.id] || 0, " client", (trainerClientCounts[t.id] || 0) === 1 ? "" : "s",
+                            t.next_payment_date
+                              ? e("span", { style: { color: overdue ? C.critical : C.ink3 } },
+                                  ` · ${overdue ? "Was due" : "Next payment"} ${fmtDateMed(t.next_payment_date)}`)
+                              : e("span", { style: { color: C.ink3 } }, " · No payment date set")
+                          ),
                           isBirthdayToday(t.birthday) && e(BirthdayBadge, { style: { marginTop: 2 } })
                         )
                       ),
                       e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
                         neverPaid && e("span", { style: { ...styles.goalChip, ...styles.goalChipBad } }, claimFresh ? "Payment claimed" : "No payment yet"),
+                        // Oct 6 2026: the state that matters most — they are
+                        // locked out of the app right now and only Jimmy can
+                        // let them back in. Amber when they have said they
+                        // paid, red when they have not.
+                        !neverPaid && overdue && e("span", {
+                          style: monthlyClaim
+                            ? { ...styles.goalChip, background: withAlpha(C.warning, 0.14), color: C.warning, border: `1px solid ${withAlpha(C.warning, 0.4)}` }
+                            : { ...styles.goalChip, ...styles.goalChipBad }
+                        }, monthlyClaim ? "Says they paid — confirm" : `Overdue since ${fmtDateMed(t.next_payment_date)}`),
                         bal != null && bal > 0 && e("span", { style: { ...styles.goalChip, ...styles.goalChipBad } }, `$${bal.toLocaleString()} due`),
-                        bal != null && bal < 0 && e("span", { style: { ...styles.goalChip, ...styles.goalChipGood } }, `$${Math.abs(bal).toLocaleString()} credit`),
+                        // A "credit" is only real against a charge that was
+                        // actually recorded. amount_due is 0 on every row and
+                        // nothing maintains it, so without this guard every
+                        // trainer wore a permanent green credit badge that
+                        // meant nothing — and read as reassurance on exactly
+                        // the people who were locked out.
+                        bal != null && bal < 0 && Number(t.amount_due) > 0 && e("span", { style: { ...styles.goalChip, ...styles.goalChipGood } }, `$${Math.abs(bal).toLocaleString()} credit`),
                         e("span", { style: { display: "flex", transform: "rotate(-90deg)" } }, e(Icon, { name: "chevron", size: 14, color: C.ink3 }))
                       )
                     );
