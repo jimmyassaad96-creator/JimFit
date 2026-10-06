@@ -2860,7 +2860,20 @@
     // and the reason disappears on the next render with no schema change.
     const stillWaiting = (rn && rn.ok === false) || (bal != null && bal > 0);
     if (claim && stillWaiting) {
-      reasons.push(`says they paid for ${paymentClaimLabel(claim.context)} — confirm it`);
+      // Oct 6 2026, later the same day: do NOT name what they claimed to pay
+      // for. A claim row is never marked resolved, so the newest fresh claim
+      // is often one that has ALREADY been actioned — Perla's newest was a
+      // diet plan that was unlocked the same week, yet she still shows here
+      // because she separately owes $30. Printing the claim's own context
+      // would have told Jimmy to go confirm a diet plan that was already
+      // live: a false alarm dressed up as a specific instruction.
+      //
+      // So state only what is independently verifiable from this row: they
+      // made a claim recently, AND the thing that blocks them is still
+      // blocking them. Jimmy opens the member and sees which it is.
+      reasons.push(bal != null && bal > 0
+        ? `says they paid — $${bal} still showing as due`
+        : "says they paid — still locked out");
       score += 95;
     }
     if (bal != null && bal > 0) { reasons.push(`owes $${bal}`); score += 70; }
