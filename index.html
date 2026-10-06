@@ -25841,7 +25841,16 @@
     headerLeft: { display: "flex", alignItems: "center", gap: 10 },
     title: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 20, letterSpacing: "0.05em", color: C.ink, cursor: "pointer" },
     titleInput: { fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 20, letterSpacing: "0.05em", color: C.ink, background: "transparent", border: "none", borderBottom: `1px solid ${C.brand}`, padding: "0 0 2px", outline: "none", maxWidth: 220 },
-    headerRight: { display: "flex", alignItems: "center", gap: 14 },
+    // Oct 6 2026, Jimmy: "fix the trainer header too". Same four buttons and
+    // the same flaw the member header had — this one just hid it better. The
+    // outer row does wrap, so this block could drop to its own line and never
+    // clipped as obviously; but the block itself was nowrap with a 14px gap,
+    // so on a narrow phone the buttons inside it ran off the right edge with
+    // no way to break. Matches clientHeaderActions now: wraps internally as a
+    // last resort, stays right-aligned when it does, and the 8px gap plus the
+    // trimmed pill padding (shared supportBtn/logoutBtn) keeps all four on one
+    // line at 390pt. Used in exactly one place, TrainerView's header.
+    headerRight: { display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, marginLeft: "auto", minWidth: 0 },
     // Sept 12 2026, Jimmy: new phone-first stacked header for the client
     // dashboard only (see the "keep the logo the same" comment above it) —
     // separate from header/headerLeft/headerRight so TrainerView's header
