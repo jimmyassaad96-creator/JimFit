@@ -2842,7 +2842,27 @@
       reasons.push("access lapsed — locked out");
       score += 80;
     }
+    // Oct 6 2026, Jimmy: "i didnt get a notification or something needs my
+    // attention that the trainer wants to pay". Scored ABOVE everything
+    // else on this list, including a trial ending today, because it is the
+    // only reason here where JIMMY is the blocker: the person has already
+    // done their part, said so, and is sitting locked out waiting on him.
+    // Perla had been waiting fourteen days behind a lock when this shipped.
     const bal = o.balanceFor ? o.balanceFor(cp) : null;
+    const claim = o.claimsByEmail ? freshClaimFor(o.claimsByEmail, r.clientEmail) : null;
+    // payment_claims carries no "resolved" flag — a row reads fresh for the
+    // full 20 days whether or not it was ever confirmed. So this must NOT
+    // fire on the claim alone, or confirming a payment would leave the
+    // worklist nagging about it for another two and a half weeks, which is
+    // exactly the kind of false alarm that teaches someone to ignore the
+    // list. Gate it on the person still actually being blocked: lapsed
+    // access, or money still outstanding. Confirming clears one or both,
+    // and the reason disappears on the next render with no schema change.
+    const stillWaiting = (rn && rn.ok === false) || (bal != null && bal > 0);
+    if (claim && stillWaiting) {
+      reasons.push(`says they paid for ${paymentClaimLabel(claim.context)} — confirm it`);
+      score += 95;
+    }
     if (bal != null && bal > 0) { reasons.push(`owes $${bal}`); score += 70; }
 
     // Gone quiet — the churn signal. AT_RISK_DAYS is already 10 everywhere
@@ -10636,11 +10656,17 @@
     // only renders while the filter is on, so the default roster is
     // unchanged for anyone who doesn't use it.
     const [attentionOnly, setAttentionOnly] = useState(false);
+    // Oct 6 2026: see usePaymentClaimsByEmail. Only the owner's rosters pass
+    // renewalFor, and only the owner can confirm a payment, so the fetch is
+    // gated on that — a regular trainer's roster (TrainerView) neither needs
+    // it nor could action it, same reasoning as the note above about not
+    // surfacing a queue someone can't clear.
+    const claimsByEmail = usePaymentClaimsByEmail(!!renewalFor);
     const attentionById = React.useMemo(() => {
       const m = {};
-      roster.forEach((r) => { m[r.id] = computeAttention(r, { renewalFor, balanceFor }); });
+      roster.forEach((r) => { m[r.id] = computeAttention(r, { renewalFor, balanceFor, claimsByEmail }); });
       return m;
-    }, [roster, renewalFor, balanceFor]);
+    }, [roster, renewalFor, balanceFor, claimsByEmail]);
     const attentionCount = React.useMemo(
       () => roster.filter((r) => (attentionById[r.id] || { score: 0 }).score > 0).length,
       [roster, attentionById]
@@ -13465,6 +13491,14 @@
     // Sept 14 2026, Jimmy: same "search instead of scroll" ask as the
     // other rosters — this list can run to one row per paying trainer.
     const [search, setSearch] = useState("");
+    // Oct 6 2026, Jimmy: Magali marked her monthly payment as sent and
+    // nothing anywhere told him. The Sept 13 fix for the identical
+    // complaint only ever read context "trainer_first_payment", and only in
+    // the pending-approval section above — an already-approved trainer
+    // going overdue writes "trainer_monthly" instead, which nothing read.
+    // An approved trainer is also not on any member roster, so the new
+    // worklist reason can never cover them; they need it here.
+    const trainerClaimsByEmail = usePaymentClaimsByEmail(true);
 
     useEffect(() => {
       if (!sb) { setLoading(false); return; }
@@ -13661,10 +13695,22 @@
               : t.next_payment_date
               ? `Overdue since ${fmtDateMed(t.next_payment_date)}`
               : "No payment date on file yet";
+            // Only while they're actually still overdue — see the matching
+            // note in computeAttention. A claim row never gets marked
+            // resolved, so without this the banner would keep insisting a
+            // paid-up trainer is waiting on confirmation for 20 more days.
+            const trainerClaim = upToDate ? null : freshClaimFor(trainerClaimsByEmail, t.email);
             return e("div", { style: { marginTop: 10 } },
               e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
                 e("span", { style: styles.profileLabel }, "Billing status"),
                 e("span", { style: { fontSize: 11, fontWeight: 600, color: upToDate ? C.good : C.critical } }, statusText)
+              ),
+              // Same amber "waiting on you" treatment the pending-approval
+              // section already uses for a first payment, so the two read
+              // identically wherever a trainer is waiting on confirmation.
+              trainerClaim && e("div", { style: { ...styles.setupNotice, marginTop: 8, background: C.warningSoft, borderColor: withAlpha(C.warning, 0.35) } },
+                e(Icon, { name: "alert", size: 14, color: C.warning }),
+                e("span", { style: { color: C.warning } }, `Marked their payment as sent ${fmtDateTimeMed(trainerClaim.submitted_at)} — check it, then confirm below.`)
               ),
               markPayingId === t.id
                 ? e("div", { style: { ...styles.sessionForm, marginTop: 8 } },
@@ -21769,10 +21815,34 @@
   // trainer/manager unlocks access via the existing manual "Mark as paid"
   // toggle once it's confirmed — this box is now just a neutral status
   // note, no payment method or amount named here.
+  // Oct 6 2026, Jimmy: "say said whatsapp tap it and no whatsapp section and
+  // number". Caught from Magali's locked-out screenshot. Every copy string
+  // here said "Tap WhatsApp at the top" — but the gate screens this box
+  // appears on (TrainerPaymentOverdueScreen, TrainerFirstPaymentDueScreen,
+  // the client paywall) render no header at all: logo, title, message,
+  // stepper, Log out, and nothing else. There was no WhatsApp button at the
+  // top because there is no top. A locked-out trainer was told to tap
+  // something that does not exist on their screen, with no number anywhere
+  // to fall back on, so they had no way to reach anyone at all.
+  //
+  // So the box carries its own button now, rather than pointing at one.
+  // openSupportWhatsApp/SUPPORT_WHATSAPP are the same support channel the
+  // main header already offers, and the number shows as text too so it is
+  // still usable if wa.me fails to open (common inside an installed PWA).
+  //
+  // Nothing here names a payment method or an amount — that stays stripped
+  // for App Store/Play Store compliance (see the Sept 28 note above). A
+  // support contact is not an in-app purchase mechanism.
   function WhishPayBox({ amount = null, note = "" }) {
     return e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
       e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Payment pending"),
-      e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Tap WhatsApp at the top to arrange payment.")
+      e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Message us on WhatsApp to arrange payment."),
+      e("button", {
+        type: "button", onClick: openSupportWhatsApp,
+        style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", marginTop: 10,
+                 background: C.brand, color: C.brandInk, border: "none", borderRadius: 10, padding: "10px 12px",
+                 fontFamily: "'Inter', sans-serif", fontSize: 13.5, fontWeight: 700, cursor: "pointer" }
+      }, e(Icon, { name: "chat", size: 15 }), `WhatsApp ${SUPPORT_WHATSAPP}`)
     );
   }
 
@@ -21802,12 +21872,83 @@
     return data || null;
   }
 
+  // Human label for a claim's context, used in the owner's notification and
+  // on the roster worklist. A program claim carries the program's uuid in
+  // the context string, so anything unrecognised falls back to a generic
+  // phrase rather than printing a raw id at Jimmy.
+  function paymentClaimLabel(context) {
+    const c = String(context || "");
+    if (c === "trainer_monthly") return "monthly trainer payment";
+    if (c === "trainer_first_payment") return "first trainer payment";
+    if (c === "self_train_access") return "app access";
+    if (c === "diet_plan") return "diet plan";
+    if (c.indexOf("program_") === 0) return "a program";
+    return "a payment";
+  }
+
   async function submitPaymentClaim(email, context) {
     if (!sb || !email) return null;
     const { data } = await sb.from("payment_claims")
       .insert([{ payer_email: email.toLowerCase(), context }])
       .select().maybeSingle();
+    // Oct 6 2026, Jimmy: "on my side i didnt get a notification or something
+    // needs my attention that the trainer wants to pay". Writing the row was
+    // never the problem — Magali's landed correctly. Nothing told Jimmy it
+    // had. Fire-and-forget, exactly like every other notify* call site: a
+    // failed push must never stop the claim itself from counting as made,
+    // since the row is the record and the roster worklist below reads it
+    // back regardless of whether this push ever arrives.
+    if (data) {
+      try { notifyOwner(`${email} marked their ${paymentClaimLabel(context)} as sent — check it, then confirm in JimFit.`); } catch (err) {}
+    }
     return data || null;
+  }
+
+  // Oct 6 2026: every claim, keyed by lowercased payer email, newest first.
+  // Until now the ONLY context anything read back was trainer_first_payment
+  // (the Sept 13 fix for "i didnt see the request even"). That left
+  // trainer_monthly, self_train_access, diet_plan and every program_* claim
+  // writing rows nobody ever saw — nine of them live at the time of this
+  // change, one of them a member who had been locked out and waiting two
+  // weeks. Read them all, once, and share the result.
+  //
+  // Module-level cache because up to seven ClientRosterList instances can
+  // mount across the owner's menu; they should not each refetch this.
+  let _paymentClaimsCache = null;
+  let _paymentClaimsCacheAt = 0;
+  const PAYMENT_CLAIMS_CACHE_MS = 60 * 1000;
+  function usePaymentClaimsByEmail(enabled) {
+    const [map, setMap] = useState(_paymentClaimsCache || {});
+    useEffect(() => {
+      if (!enabled || !sb) return;
+      if (_paymentClaimsCache && Date.now() - _paymentClaimsCacheAt < PAYMENT_CLAIMS_CACHE_MS) { setMap(_paymentClaimsCache); return; }
+      let cancelled = false;
+      sb.from("payment_claims").select("*").order("submitted_at", { ascending: false }).then(({ data, error }) => {
+        if (error || !data || cancelled) return;
+        const m = {};
+        data.forEach((row) => {
+          const k = String(row.payer_email || "").toLowerCase();
+          if (!k) return;
+          (m[k] = m[k] || []).push(row);
+        });
+        _paymentClaimsCache = m;
+        _paymentClaimsCacheAt = Date.now();
+        setMap(m);
+      });
+      return () => { cancelled = true; };
+    }, [enabled]);
+    return map;
+  }
+
+  // The freshest unexpired claim for an email, or null. Same staleness
+  // window PaymentStatusStepper uses, so the owner sees "says they paid"
+  // for exactly as long as that person's own screen still reads "sent".
+  function freshClaimFor(claimsByEmail, email) {
+    if (!claimsByEmail || !email) return null;
+    const rows = claimsByEmail[String(email).toLowerCase()];
+    if (!rows || !rows.length) return null;
+    const newest = rows[0];
+    return (Date.now() - new Date(newest.submitted_at).getTime()) < PAYMENT_CLAIM_FRESH_MS ? newest : null;
   }
 
   // Real 3-step payment status: "Send payment" (with an "I've sent it"
