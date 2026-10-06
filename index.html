@@ -25633,11 +25633,18 @@
     // whole block drops to its own line, right-aligned by marginLeft:auto,
     // instead of splitting mid-group. Two clean lines, never a ragged three.
     //
-    // Measured at 390px: the group needs ~334px against 354px of usable width
-    // once the pill padding below is trimmed, so it sits on one line down to
-    // 375px. Narrower than that it simply wraps again, still right-aligned.
+    // Measured on the LIVE page with the real icons and font, the group is
+    // 346.5px wide (93.5 + 103 + 90 + 36, plus three 8px gaps) — not the 334px
+    // a mock-up with stand-in glyphs suggested. That fits the 354px of usable
+    // width on a 390pt iPhone but NOT the 339px on a 375pt SE/mini.
+    //
+    // So the group keeps flexWrap:"wrap" and flex:"0 1 auto" rather than the
+    // nowrap/0-0-auto it was first shipped with: nowrap could not shrink and
+    // could not break, so at 375px it would have overflowed the screen edge —
+    // reintroducing the exact clipping this whole change exists to remove.
+    // Wrapping is the safety net; it just never triggers at 390px and above.
     clientHeaderBrandRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 8 },
-    clientHeaderActions: { display: "flex", alignItems: "center", flexWrap: "nowrap", justifyContent: "flex-end", gap: 8, flex: "0 0 auto", marginLeft: "auto" },
+    clientHeaderActions: { display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, flex: "0 1 auto", marginLeft: "auto" },
     clientHeaderInfoRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
     clientHeaderLogoutRow: { display: "flex", justifyContent: "flex-end" },
     // Same bordered/tinted circle ThemeToggle already uses — paired together
