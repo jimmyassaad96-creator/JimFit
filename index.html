@@ -11505,8 +11505,28 @@
         confirmLabel: "Delete payment",
         onConfirm: async () => {
           setConfirmDialog(null);
+          // Oct 6 2026: same silent-failure class as handleDeleteClient
+          // (fixed Oct 3). supabase-js hands back an { error } object rather
+          // than throwing, so an unchecked delete looks exactly like a
+          // successful one — the row left the screen, stayed in the
+          // database, and came back on the next load with nothing said.
+          // Worse here than most: this is a financial record, so a delete
+          // that silently didn't happen leaves the books disagreeing with
+          // what Jimmy believes he just corrected. Do the work, check it,
+          // and only then touch the screen.
+          if (sb) {
+            const { error: delErr } = await sb.from("client_payments").delete().eq("id", payment.id);
+            if (delErr) {
+              setConfirmDialog({
+                title: "Couldn't delete that payment",
+                message: `The payment is still on record (${delErr.message}). Nothing was changed, so you can safely try again.`,
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmDialog(null)
+              });
+              return;
+            }
+          }
           setAllPayments((prev) => prev.filter((p) => p.id !== payment.id));
-          if (sb) await sb.from("client_payments").delete().eq("id", payment.id);
         }
       });
     }
@@ -11520,11 +11540,26 @@
         confirmLabel: "Clear history",
         onConfirm: async () => {
           setConfirmDialog(null);
-          setAllEntries((prev) => prev.filter((x) => (cp && cp.id ? x.clientId !== cp.id : x.clientName !== name)));
+          // Oct 6 2026: unchecked bulk delete — see handleDeletePayment just
+          // above for the shape of the bug. This one wipes an entire training
+          // history, so a silent failure is the worst kind: the screen says
+          // the history is gone, Jimmy moves on believing it, and every
+          // session reappears on the next load. Check before clearing.
           if (sb) {
-            if (cp && cp.id) await sb.from("workout_entries").delete().eq("client_id", cp.id);
-            else await sb.from("workout_entries").delete().eq("client_name", name);
+            const { error: delErr } = cp && cp.id
+              ? await sb.from("workout_entries").delete().eq("client_id", cp.id)
+              : await sb.from("workout_entries").delete().eq("client_name", name);
+            if (delErr) {
+              setConfirmDialog({
+                title: "Couldn't clear that history",
+                message: `${name}'s workouts are still there (${delErr.message}). Nothing was deleted, so you can safely try again.`,
+                confirmLabel: "OK",
+                onConfirm: () => setConfirmDialog(null)
+              });
+              return;
+            }
           }
+          setAllEntries((prev) => prev.filter((x) => (cp && cp.id ? x.clientId !== cp.id : x.clientName !== name)));
         }
       });
     }
@@ -11671,8 +11706,24 @@
             setDeletingTrainer(false);
             return;
           }
-          await sb.from("client_profiles").update({ trainer_id: null }).eq("trainer_id", trainerId);
-          await sb.from("trainers").delete().eq("id", trainerId);
+          // Oct 6 2026: both of these were unchecked. The order matters —
+          // members are unassigned FIRST so deleting the trainer can't orphan
+          // them — but if that unassign silently failed and the delete went
+          // through anyway, every one of that trainer's members was left
+          // pointing at a trainer row that no longer exists. Stop at the
+          // first failure instead, and leave the trainer in place.
+          const { error: unassignErr } = await sb.from("client_profiles").update({ trainer_id: null }).eq("trainer_id", trainerId);
+          if (unassignErr) {
+            setDeleteTrainerError(`Couldn't unassign their members (${unassignErr.message}) — the trainer was left in place so nobody is orphaned.`);
+            setDeletingTrainer(false);
+            return;
+          }
+          const { error: delErr } = await sb.from("trainers").delete().eq("id", trainerId);
+          if (delErr) {
+            setDeleteTrainerError(`Their members were unassigned, but the trainer couldn't be deleted (${delErr.message}). Try again — reassign anyone who needs a trainer.`);
+            setDeletingTrainer(false);
+            return;
+          }
         }
         // Sept 19 2026 inspection fix: neither the RPC nor this fallback
         // touched scheduled_sessions — any booking already on the Rota for
@@ -11762,7 +11813,17 @@
       const t = trainers.find((x) => x.id === trainerId);
       if (!t) return;
       setConfirmRejectId(null);
-      if (sb) await sb.from("trainers").delete().eq("id", trainerId);
+      // Oct 6 2026: unchecked delete — the card vanished whether or not the
+      // row went. A rejected trainer who is still in the table keeps their
+      // pending-approval screen and silently reappears on the next load,
+      // which reads as the Reject button being broken at random.
+      if (sb) {
+        const { error: delErr } = await sb.from("trainers").delete().eq("id", trainerId);
+        if (delErr) {
+          setDeleteTrainerError(`Couldn't reject ${t.name} (${delErr.message}). They're still pending — try again.`);
+          return;
+        }
+      }
       setTrainers((prev) => prev.filter((x) => x.id !== trainerId));
     }
 
