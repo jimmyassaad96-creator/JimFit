@@ -13499,6 +13499,23 @@
     // An approved trainer is also not on any member roster, so the new
     // worklist reason can never cover them; they need it here.
     const trainerClaimsByEmail = usePaymentClaimsByEmail(true);
+    // Oct 6 2026, Jimmy: "create a section also to see the trainers who didnt
+    // pay and who's pending and waiting to pay and wants to use the app
+    // again". Three states, in the order they need acting on:
+    //   waiting — overdue AND they've marked payment as sent, so they are
+    //             locked out of the app right now waiting on Jimmy alone.
+    //             This is the "wants to use the app again" bucket.
+    //   overdue — payment date passed (or never set) and no claim: they
+    //             haven't paid and haven't said they have. Chase them.
+    //   ok      — paid through a future date.
+    // Same one-tap chip pattern as the member roster's "Needs payment" /
+    // "Needs attention" filters, so there is nothing new to learn.
+    const [billingFilter, setBillingFilter] = useState("");
+    function billingStateOf(t) {
+      const due = t.next_payment_date ? new Date(t.next_payment_date + "T23:59:59") : null;
+      if (due && due > new Date()) return "ok";
+      return freshClaimFor(trainerClaimsByEmail, t.email) ? "waiting" : "overdue";
+    }
 
     useEffect(() => {
       if (!sb) { setLoading(false); return; }
@@ -13629,7 +13646,18 @@
     const totalMonthly = activeTrainersForTotal.reduce((sum, t) => sum + (Number(t.rate_monthly) || 0), 0);
     const frozenTrainerCount = trainersList.length - activeTrainersForTotal.length;
     const q = search.trim().toLowerCase();
-    const visibleTrainersList = !q ? trainersList : trainersList.filter((t) => (t.name || "").toLowerCase().includes(q) || (t.email || "").toLowerCase().includes(q));
+    const billingStates = {};
+    trainersList.forEach((t) => { billingStates[t.id] = billingStateOf(t); });
+    const waitingCount = trainersList.filter((t) => billingStates[t.id] === "waiting").length;
+    const overdueCount = trainersList.filter((t) => billingStates[t.id] === "overdue").length;
+    // Waiting first, then overdue, then everyone else — so the people the
+    // owner is personally blocking sit at the top of the list by default,
+    // with no filter needed.
+    const BILLING_ORDER = { waiting: 0, overdue: 1, ok: 2 };
+    let visibleTrainersList = !q ? trainersList : trainersList.filter((t) => (t.name || "").toLowerCase().includes(q) || (t.email || "").toLowerCase().includes(q));
+    if (billingFilter) visibleTrainersList = visibleTrainersList.filter((t) => billingStates[t.id] === billingFilter);
+    visibleTrainersList = visibleTrainersList.slice().sort((a, b) =>
+      (BILLING_ORDER[billingStates[a.id]] - BILLING_ORDER[billingStates[b.id]]) || (a.name || "").localeCompare(b.name || ""));
 
     return e("div", null,
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
@@ -13655,8 +13683,38 @@
         ),
         e("span", { style: styles.rosterCount }, visibleTrainersList.length, "/", trainersList.length)
       ),
+      // Oct 6 2026, Jimmy: the payment section. Only renders a chip when
+      // that state actually has someone in it, so a month where everyone
+      // has paid shows no clutter at all.
+      trainersList.length > 0 && (waitingCount > 0 || overdueCount > 0) && e("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } },
+        waitingCount > 0 && e("button", {
+          type: "button",
+          onClick: () => setBillingFilter((v) => (v === "waiting" ? "" : "waiting")),
+          style: billingFilter === "waiting"
+            ? { ...styles.goalChip, background: C.warning, color: C.brandInk, border: "none", cursor: "pointer" }
+            : { ...styles.goalChip, background: withAlpha(C.warning, 0.12), color: C.warning, border: `1px solid ${withAlpha(C.warning, 0.4)}`, cursor: "pointer" }
+        }, e(Icon, { name: "bell", size: 10 }), ` Waiting on you (${waitingCount})`),
+        overdueCount > 0 && e("button", {
+          type: "button",
+          onClick: () => setBillingFilter((v) => (v === "overdue" ? "" : "overdue")),
+          style: billingFilter === "overdue"
+            ? { ...styles.goalChip, background: C.critical, color: C.brandInk, border: "none", cursor: "pointer" }
+            : { ...styles.goalChip, background: withAlpha(C.critical, 0.12), color: C.critical, border: `1px solid ${withAlpha(C.critical, 0.4)}`, cursor: "pointer" }
+        }, e(Icon, { name: "alert", size: 10 }), ` Hasn't paid (${overdueCount})`),
+        billingFilter && e("button", {
+          type: "button", onClick: () => setBillingFilter(""),
+          style: { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
+        }, "Show all")
+      ),
+      // "Waiting on you" is the one worth spelling out — it is the only
+      // state where the trainer has done everything they can and is locked
+      // out of the app until Jimmy acts.
+      trainersList.length > 0 && waitingCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: -6, marginBottom: 12, color: C.warning } },
+        `${waitingCount} trainer${waitingCount === 1 ? " has" : "s have"} marked payment as sent and ${waitingCount === 1 ? "is" : "are"} locked out until you confirm it.`),
       trainersList.length > 0 && visibleTrainersList.length === 0 && e("div", { style: styles.empty },
-        e("p", { style: styles.emptyText }, `No trainers match "${search.trim()}".`)
+        e("p", { style: styles.emptyText }, billingFilter === "waiting" ? "No trainers are waiting on a confirmation."
+          : billingFilter === "overdue" ? "Every trainer is paid up."
+          : `No trainers match "${search.trim()}".`)
       ),
       e("div", { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: trainersList.length > 0 ? 0 : 0 } }, visibleTrainersList.map((t) => {
         const clientCount = clientCounts[t.id] || 0;
