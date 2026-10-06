@@ -14780,13 +14780,26 @@
   // ---- weekly / monthly session goal ----
 
   function SessionGoalCard({ entries, daysPerWeek }) {
+    // Oct 6 2026: this useMemo used to sit BELOW the `if (!daysPerWeek) return
+    // null` guard, so the component called one hook on some renders and zero
+    // on others. React counts hooks per render and throws "Rendered more hooks
+    // than during the previous render" the moment that count changes while the
+    // component stays mounted — which happens the instant a member saves a
+    // days-per-week value on a profile that didn't have one, since
+    // days_per_week is an editable field feeding this exact prop.
+    //
+    // Found by scanning for hooks called after an early return, the sibling
+    // check to the dependency-array scan that caught TrainerView's blank
+    // screen the same day. computeWeekStreak already guards !daysPerWeek and
+    // returns 0, so running it above the guard costs nothing and makes the
+    // hook count constant. Pre-existing, not from this session's work.
+    const streak = useMemo(() => computeWeekStreak(entries, daysPerWeek), [entries, daysPerWeek]);
     if (!daysPerWeek) return null;
     const weekDone = computeWeekSessions(entries);
     const monthDone = computeMonthSessions(entries);
     const monthTarget = Math.max(1, Math.round((daysPerWeek * 30) / 7));
     const weekHit = weekDone >= daysPerWeek;
     const monthHit = monthDone >= monthTarget;
-    const streak = useMemo(() => computeWeekStreak(entries, daysPerWeek), [entries, daysPerWeek]);
     // Sept 14 2026, Jimmy (screenshot): relabeling to "Last 7 days" fixed the
     // wording clash with ThisWeekCard's "This week", but the numbers alone
     // still read as contradictory at a glance — e.g. "This week: 0/3" right
