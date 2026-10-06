@@ -1258,6 +1258,49 @@
     try { sb.functions.invoke("send-push", { body: { userId, message } }); } catch (err) {}
   }
 
+  // Oct 6 2026, Jimmy: message everyone currently in front of you. The app had
+  // no bulk send of any kind — only one-at-a-time "Send reminder" — so telling
+  // ten drifting members the same thing meant ten trips through ten profiles.
+  //
+  // Deliberately NOT a blind send-to-everybody: it messages exactly the rows
+  // the roster is currently showing, so the existing filters become the
+  // audience picker. Tap "Needs attention (10)", write once, send to those ten.
+  //
+  // Mirrors notifyClient's RPC-then-fallback shape, but RETURNS the outcome
+  // instead of swallowing it. notifyClient is fire-and-forget by design, which
+  // is fine for a single incidental notification and wrong here: sending to
+  // twelve people and silently reaching four is exactly the kind of quiet
+  // half-failure this codebase has been burned by. Each recipient is tried
+  // independently so one bad row can't abort the rest.
+  async function sendBulkClientMessage(recipients, message) {
+    const out = { sent: 0, failed: 0, skipped: 0, failedNames: [] };
+    if (!sb || !message.trim()) return out;
+    for (const r of recipients) {
+      const uid = r.profile && r.profile.user_id;
+      // No login yet (added by a trainer, never signed up) — nothing to deliver to.
+      if (!uid) { out.skipped += 1; continue; }
+      let ok = false;
+      try {
+        const { error: rpcErr } = await sb.rpc("insert_client_notification", { target_user_id: uid, msg: message });
+        if (rpcErr) throw rpcErr;
+        ok = true;
+      } catch (err) {
+        const { error: insErr } = await sb.from("client_notifications").insert([{ user_id: uid, message }]);
+        ok = !insErr;
+      }
+      if (ok) {
+        out.sent += 1;
+        // Push is best-effort on top of the in-app row that already landed —
+        // same reasoning as notifyClient. A failed push is not a failed send.
+        try { sb.functions.invoke("send-push", { body: { userId: uid, message } }); } catch (err) {}
+      } else {
+        out.failed += 1;
+        if (out.failedNames.length < 4) out.failedNames.push(r.name);
+      }
+    }
+    return out;
+  }
+
   // Sept 17 2026, Jimmy: "and the trainers how they get notifications" — the
   // trainer-side equivalent of notifyClient above, for the events he picked
   // (new client assigned, client checks in, client requests a program/diet
@@ -10669,6 +10712,12 @@
     // only renders while the filter is on, so the default roster is
     // unchanged for anyone who doesn't use it.
     const [attentionOnly, setAttentionOnly] = useState(false);
+    // Oct 6 2026: the bulk message composer. Closed by default so the roster
+    // looks exactly as it did for anyone who never opens it.
+    const [composing, setComposing] = useState(false);
+    const [bulkMsg, setBulkMsg] = useState("");
+    const [bulkSending, setBulkSending] = useState(false);
+    const [bulkResult, setBulkResult] = useState(null);
     // Oct 6 2026: see usePaymentClaimsByEmail. Only the owner's rosters pass
     // renewalFor, and only the owner can confirm a payment, so the fetch is
     // gated on that — a regular trainer's roster (TrainerView) neither needs
@@ -10725,7 +10774,58 @@
               ? { ...styles.goalChip, background: C.brand, color: C.brandInk, cursor: "pointer", border: "none" }
               : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
           }, e(Icon, { name: "bell", size: 10 }), ` Needs attention (${attentionCount})`),
+          // Oct 6 2026, Jimmy: "Message all". The audience is whatever the
+          // roster is showing right now, so the filters above double as the
+          // picker — tap "Needs attention (10)", then message exactly those
+          // ten. Count is in the label so there is never any doubt who is
+          // about to receive it.
+          visibleRoster.length > 0 && e("button", {
+            type: "button",
+            onClick: () => { setComposing((v) => !v); setBulkResult(null); },
+            style: composing
+              ? { ...styles.goalChip, background: C.brand, color: C.brandInk, border: "none", cursor: "pointer" }
+              : { ...styles.goalChip, background: withAlpha(C.brand, 0.12), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}`, cursor: "pointer" }
+          }, e(Icon, { name: "chat", size: 10 }), ` Message ${visibleRoster.length}`),
           e("span", { style: styles.rosterCount }, visibleRoster.length, "/", roster.length)
+        )
+      ),
+      composing && roster.length > 0 && e("div", { style: { ...styles.sessionForm, marginBottom: 14 } },
+        e("label", { style: { ...styles.formLabel, marginTop: 0 } },
+          `Message ${visibleRoster.length} member${visibleRoster.length === 1 ? "" : "s"}`),
+        e("textarea", {
+          style: { ...styles.input, minHeight: 78, resize: "vertical", fontFamily: "'Inter', sans-serif" },
+          value: bulkMsg, maxLength: 400,
+          placeholder: "e.g. Gym closed Sunday — see you Monday.",
+          onChange: (ev) => { setBulkMsg(ev.target.value); setBulkResult(null); }
+        }),
+        // Say up front how many can't receive it, rather than reporting it as
+        // a failure afterwards — a member added by a trainer who never signed
+        // up has no login to deliver to, and that is normal, not an error.
+        (() => {
+          const noLogin = visibleRoster.filter((r) => !(r.profile && r.profile.user_id)).length;
+          return noLogin > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 11.5, marginTop: 6, color: C.ink3 } },
+            `${noLogin} of them ${noLogin === 1 ? "has" : "have"} no login yet and will be skipped.`);
+        })(),
+        bulkResult && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 8, color: bulkResult.failed > 0 ? C.warning : C.good } },
+          bulkResult.failed > 0
+            ? `Sent to ${bulkResult.sent}. Couldn't reach ${bulkResult.failed}${bulkResult.failedNames.length ? ` (${bulkResult.failedNames.join(", ")})` : ""} — try those again.`
+            : `Sent to ${bulkResult.sent} member${bulkResult.sent === 1 ? "" : "s"}.${bulkResult.skipped ? ` ${bulkResult.skipped} skipped.` : ""}`),
+        e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+          e("button", {
+            style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...((bulkSending || !bulkMsg.trim()) ? styles.btnDisabled : {}) },
+            disabled: bulkSending || !bulkMsg.trim(),
+            onClick: async () => {
+              setBulkSending(true);
+              setBulkResult(null);
+              const res = await sendBulkClientMessage(visibleRoster, bulkMsg.trim());
+              setBulkSending(false);
+              setBulkResult(res);
+              // Keep the text on a partial failure so it can be retried as-is;
+              // only clear it once everyone reachable actually got it.
+              if (res.failed === 0) setBulkMsg("");
+            }
+          }, bulkSending ? "Sending…" : `Send to ${visibleRoster.length}`),
+          e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: () => { setComposing(false); setBulkResult(null); } }, "Cancel")
         )
       ),
       roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
