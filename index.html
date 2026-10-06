@@ -47,7 +47,22 @@
      0 here is the one extra rule that does, so every date field in the app
      (Measurements, Assessments, Rota/session scheduling, etc.) actually
      shrinks to fit its container instead of bleeding past it. */
-  input[type="date"] { min-width: 0; }
+  /* Oct 6 2026, Jimmy: "also the date section" — same symptom as Sept 13,
+     from fresh iPhone screenshots of the payment form and the progress-photo
+     form: the date field's rounded box sits visibly wider than the Note and
+     Amount fields right under it, breaking past the card's right edge, even
+     though all three are the same styles.input (width:100%) and the global
+     border-box reset applies to all of them.
+     So min-width:0 alone was NOT enough. It lets the control shrink below its
+     intrinsic minimum, but nothing stops iOS's native date control from
+     asserting a larger used width on its own. Two more rules close that:
+     max-width:100% is a hard ceiling the intrinsic width cannot beat, and
+     appearance:none stops the native control contributing an intrinsic size
+     at all. Verified on desktop Chrome that appearance:none keeps both the
+     value and the calendar-picker indicator (styled above) rendering normally
+     — it only drops the platform chrome, so on iOS the value now reads
+     left-aligned like every other field instead of centred. */
+  input[type="date"] { min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; }
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input[type="number"] { -moz-appearance: textfield; }
