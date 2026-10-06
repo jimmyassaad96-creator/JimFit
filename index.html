@@ -25622,8 +25622,22 @@
     // Sept 14 2026 fix, Jimmy: same top-inset fix as styles.header, for the
     // client app's own logo header.
     clientHeader: { display: "flex", flexDirection: "column", gap: 10, padding: "max(16px, calc(6px + env(safe-area-inset-top))) 18px 14px", borderBottom: `1px solid ${C.cardBorder}`, position: "sticky", top: 0, background: withAlpha(C.bg, 0.85), backdropFilter: "blur(10px)", zIndex: 30 },
-    clientHeaderBrandRow: { display: "flex", alignItems: "center", gap: 10 },
-    clientHeaderActions: { display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 10, flex: "1 1 auto", minWidth: 0 },
+    // Oct 6 2026, Jimmy: "adjust the column to fit the cadre" — on his phone
+    // the four buttons were breaking across two ragged lines BESIDE the logo,
+    // leaving the wordmark stranded against a tall, half-empty header.
+    //
+    // The fix is to move the wrapping up one level. The action group itself is
+    // now nowrap and auto-width, so it behaves as a single indivisible block;
+    // the brand row wraps instead. Wide screens still fit logo + buttons on
+    // one row exactly as before, and once the viewport can't hold both the
+    // whole block drops to its own line, right-aligned by marginLeft:auto,
+    // instead of splitting mid-group. Two clean lines, never a ragged three.
+    //
+    // Measured at 390px: the group needs ~334px against 354px of usable width
+    // once the pill padding below is trimmed, so it sits on one line down to
+    // 375px. Narrower than that it simply wraps again, still right-aligned.
+    clientHeaderBrandRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 8 },
+    clientHeaderActions: { display: "flex", alignItems: "center", flexWrap: "nowrap", justifyContent: "flex-end", gap: 8, flex: "0 0 auto", marginLeft: "auto" },
     clientHeaderInfoRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 },
     clientHeaderLogoutRow: { display: "flex", justifyContent: "flex-end" },
     // Same bordered/tinted circle ThemeToggle already uses — paired together
@@ -26105,7 +26119,7 @@
     // a button. Now a visible bordered pill, matching Support beside it
     // (both bumped to the same rounded-pill radius as the rest of the
     // header's buttons for one consistent, more "branded" family).
-    logoutBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
+    logoutBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 10px", whiteSpace: "nowrap", flexShrink: 0 },
     // Sept 15 2026, Jimmy: "show here the user is opened like me the owner
     // to know which account i opened even for trainers and clients down
     // the logo jim fit and i want the log out button to be beside the
@@ -26128,7 +26142,7 @@
     // to fit a short "Support" label next to the icon, same look/feel as the
     // header's "Log out" button (uppercase mono, no fixed square width) so
     // people actually know what tapping it does.
-    supportBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 12px" },
+    supportBtn: { display: "flex", alignItems: "center", gap: 5, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 20, color: C.ink2, fontFamily: "'Inter', sans-serif", fontSize: 10.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer", padding: "7px 10px", whiteSpace: "nowrap", flexShrink: 0 },
 
     setRows: { display: "flex", flexDirection: "column", gap: 7 },
     setRowHeader: { display: "grid", gridTemplateColumns: "26px 1fr 1fr 1fr 24px", gap: 8, padding: "0 2px" },
