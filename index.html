@@ -1301,6 +1301,39 @@
     return out;
   }
 
+  // Oct 10 2026, Jimmy: "i also i want to be able to msg the trainers".
+  // Mirrors sendBulkClientMessage above, against trainer_notifications and
+  // the trainer RPC. Takes trainers rows (which carry user_id directly), so
+  // unlike notifyTrainer there is no id-to-uid lookup per person.
+  async function sendBulkTrainerMessage(recipients, message) {
+    const out = { sent: 0, failed: 0, skipped: 0, failedNames: [] };
+    if (!sb || !message.trim()) return out;
+    for (const t of recipients) {
+      const uid = t.user_id;
+      // Added to the roster but never signed up — no account to deliver to.
+      if (!uid) { out.skipped += 1; continue; }
+      let ok = false;
+      try {
+        const { error: rpcErr } = await sb.rpc("insert_trainer_notification", { target_user_id: uid, msg: message });
+        if (rpcErr) throw rpcErr;
+        ok = true;
+      } catch (err) {
+        const { error: insErr } = await sb.from("trainer_notifications").insert([{ user_id: uid, message }]);
+        ok = !insErr;
+      }
+      if (ok) {
+        out.sent += 1;
+        // Best-effort on top of the in-app row that already landed — a failed
+        // push is not a failed send.
+        try { sb.functions.invoke("send-push", { body: { userId: uid, message } }); } catch (err) {}
+      } else {
+        out.failed += 1;
+        if (out.failedNames.length < 4) out.failedNames.push(t.name || t.email);
+      }
+    }
+    return out;
+  }
+
   // Sept 17 2026, Jimmy: "and the trainers how they get notifications" — the
   // trainer-side equivalent of notifyClient above, for the events he picked
   // (new client assigned, client checks in, client requests a program/diet
@@ -9055,15 +9088,18 @@
       e(GateDecor, {}),
       e("div", { style: { ...styles.gateCard, position: "relative", zIndex: 1 } },
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
-        e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Payment due"),
+        // Oct 10 2026, Jimmy: this is the full-screen a trainer of months or
+        // years hits, and it opened with the words "Payment due". Says where
+        // they stand instead, and leaves the doing to the stepper below.
+        e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your JimFit month has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your monthly payment was due ${trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently"} and hasn't been confirmed yet, so your account is paused until it is.`
+          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your month ran to ${trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently"}. Your clients, programs and history are all exactly where you left them. Let Jimmy know below once you've sorted it and he'll switch you straight back on.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
             email: trainer && trainer.email, context: "trainer_monthly",
             amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
-            approvedCopy: "Approved — access resumes"
+            approvedCopy: "Confirmed — welcome back"
           })
         ),
         e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.5s forwards" }, onClick: onLogout }, "Log out")
@@ -11233,6 +11269,14 @@
     // browsableTrainers) is the other long roster in this menu besides
     // Clients, so it gets the same search-by-name-or-email box.
     const [trainerSearch, setTrainerSearch] = useState("");
+    // Oct 10 2026: the trainer-side bulk composer. Same excluded-not-included
+    // shape as the members one, so the default audience is everybody and a
+    // search never silently drops someone.
+    const [tComposing, setTComposing] = useState(false);
+    const [tMsg, setTMsg] = useState("");
+    const [tSending, setTSending] = useState(false);
+    const [tResult, setTResult] = useState(null);
+    const [tExcluded, setTExcluded] = useState(() => new Set());
     const [newTrainerName, setNewTrainerName] = useState("");
     const [newTrainerEmail, setNewTrainerEmail] = useState("");
     const [newTrainerPhone, setNewTrainerPhone] = useState("");
@@ -11582,6 +11626,25 @@
       if (!q) return browsableTrainers;
       return browsableTrainers.filter((t) => (t.name || "").toLowerCase().includes(q) || (t.email || "").toLowerCase().includes(q));
     }, [browsableTrainers, trainerSearch]);
+    // Real people only: the Self-Training bucket and the owner's own row are
+    // placeholders that exist to group clients, not trainers to message.
+    const messageableTrainers = useMemo(
+      () => visibleBrowsableTrainers.filter((t) => t.email !== SELF_TRAIN_EMAIL && t.email !== OWNER_TRAINER_EMAIL),
+      [visibleBrowsableTrainers]
+    );
+    const tRecipients = useMemo(
+      () => messageableTrainers.filter((t) => !tExcluded.has(t.id)),
+      [messageableTrainers, tExcluded]
+    );
+    function toggleTRecipient(id) {
+      setTExcluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+      setTResult(null);
+    }
+    function closeTComposer() { setTComposing(false); setTResult(null); setTExcluded(new Set()); }
     // Sept 14 2026, Jimmy: "2 sections for paid and pending trainers" — the
     // Trainers roster used to be one flat list with a per-card "no payment
     // yet" / "$X due" / "$X credit" badge you had to scan for. Splitting it
@@ -12794,7 +12857,70 @@
                       type: "button", onClick: () => setTrainerSearch(""), style: styles.rosterSearchClear, "aria-label": "Clear search"
                     }, e(Icon, { name: "x", size: 12, color: C.ink3 }))
                   ),
-                  e("span", { style: styles.rosterCount }, visibleBrowsableTrainers.length, "/", browsableTrainers.length)
+                  e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                    messageableTrainers.length > 0 && e("button", {
+                      type: "button",
+                      onClick: () => { if (tComposing) { closeTComposer(); } else { setTComposing(true); setTResult(null); } },
+                      style: tComposing
+                        ? { ...styles.goalChip, background: C.brand, color: C.brandInk, border: "none", cursor: "pointer" }
+                        : { ...styles.goalChip, background: withAlpha(C.brand, 0.12), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}`, cursor: "pointer" }
+                    }, e(Icon, { name: "chat", size: 10 }), ` Message ${tComposing ? tRecipients.length : messageableTrainers.length}`),
+                    e("span", { style: styles.rosterCount }, visibleBrowsableTrainers.length, "/", browsableTrainers.length)
+                  )
+                ),
+                tComposing && messageableTrainers.length > 0 && e("div", { style: { ...styles.sessionForm, marginBottom: 14 } },
+                  e("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" } },
+                    e("label", { style: { ...styles.formLabel, marginTop: 0 } },
+                      `Message ${tRecipients.length} trainer${tRecipients.length === 1 ? "" : "s"}`),
+                    tExcluded.size > 0 && e("button", {
+                      type: "button",
+                      onClick: () => { setTExcluded(new Set()); setTResult(null); },
+                      style: { ...styles.demoLinkBtn, padding: 0, marginTop: 0, fontSize: 12, width: "auto", background: "none", border: "none" }
+                    }, `Select all ${messageableTrainers.length}`)
+                  ),
+                  e("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, margin: "2px 0 10px", maxHeight: 148, overflowY: "auto" } },
+                    messageableTrainers.map((t) => {
+                      const on = !tExcluded.has(t.id);
+                      return e("button", {
+                        key: t.id, type: "button",
+                        onClick: () => toggleTRecipient(t.id),
+                        title: on ? "Tap to leave them out" : "Tap to include them",
+                        style: on
+                          ? { ...styles.goalChip, background: withAlpha(C.brand, 0.14), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.42)}`, cursor: "pointer" }
+                          : { ...styles.goalChip, background: C.subtleFill, color: C.ink3, border: `1px dashed ${C.cardBorder}`, cursor: "pointer" }
+                      }, e(Icon, { name: on ? "check" : "x", size: 10 }), " ", t.name || t.email || "Trainer");
+                    })
+                  ),
+                  e("textarea", {
+                    style: { ...styles.input, minHeight: 78, resize: "vertical", fontFamily: "'Inter', sans-serif" },
+                    value: tMsg, maxLength: 400,
+                    placeholder: "e.g. Team meeting Thursday 9am — floor covered by Ali.",
+                    onChange: (ev) => { setTMsg(ev.target.value); setTResult(null); }
+                  }),
+                  (() => {
+                    const noLogin = tRecipients.filter((t) => !t.user_id).length;
+                    return noLogin > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 11.5, marginTop: 6, color: C.ink3 } },
+                      `${noLogin} of them ${noLogin === 1 ? "hasn't" : "haven't"} created an account yet and will be skipped.`);
+                  })(),
+                  tResult && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 8, color: tResult.failed > 0 ? C.warning : C.good } },
+                    tResult.failed > 0
+                      ? `Sent to ${tResult.sent}. Couldn't reach ${tResult.failed}${tResult.failedNames.length ? ` (${tResult.failedNames.join(", ")})` : ""} — try those again.`
+                      : `Sent to ${tResult.sent} trainer${tResult.sent === 1 ? "" : "s"}.${tResult.skipped ? ` ${tResult.skipped} skipped.` : ""}`),
+                  e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+                    e("button", {
+                      style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...((tSending || !tMsg.trim() || tRecipients.length === 0) ? styles.btnDisabled : {}) },
+                      disabled: tSending || !tMsg.trim() || tRecipients.length === 0,
+                      onClick: async () => {
+                        setTSending(true);
+                        setTResult(null);
+                        const res = await sendBulkTrainerMessage(tRecipients, tMsg.trim());
+                        setTSending(false);
+                        setTResult(res);
+                        if (res.failed === 0) setTMsg("");
+                      }
+                    }, tSending ? "Sending…" : tRecipients.length === 0 ? "Pick someone" : `Send to ${tRecipients.length}`),
+                    e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: closeTComposer }, "Cancel")
+                  )
                 ),
                 browsableTrainers.length > 0 && visibleBrowsableTrainers.length === 0 && e("div", { style: styles.empty },
                   e("p", { style: styles.emptyText }, `No trainers match "${trainerSearch.trim()}".`)
@@ -21145,7 +21271,9 @@
       // inside their free trial who just hasn't paid the app-access fee
       // yet (purchaseLocked is about payment, not trial expiry) — "lapsed"
       // wrongly implied something that used to work had broken.
-      if (purchaseLocked) { setError("Pay to unlock picking a program."); return false; }
+      // Oct 10 2026: was "Pay to unlock picking a program." — an instruction
+      // where a plain statement does the same job.
+      if (purchaseLocked) { setError("Programs unlock once your membership is active."); return false; }
       if (!sb) { setError("Backend not configured yet."); return false; }
       setSaving(true);
       setError("");
@@ -22666,10 +22794,11 @@
         e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
           e(Icon, { name: "lock", size: 16, color: C.ink3 }),
           e("span", { style: { fontFamily: "'Manrope', sans-serif", fontWeight: 600, fontSize: 15, letterSpacing: "0.02em", color: C.ink } },
-            trialEnded ? "Your free trial has ended" : "Payment due to keep using the app"
+            // Oct 10 2026: was "Payment due to keep using the app".
+            trialEnded ? "Your free trial has ended" : "Your JimFit month has ended"
           )
         ),
-        e("p", { style: { margin: 0 } }, `Your $${SELF_TRAIN_MONTHLY_PRICE}/month membership includes workout logging, nutrition tracking, and a full view of calories burned versus consumed.`),
+        e("p", { style: { margin: 0 } }, `Everything you've logged is still here. Your $${SELF_TRAIN_MONTHLY_PRICE}/month membership covers workout logging, nutrition tracking, and a full view of calories burned versus consumed.`),
         e("div", { style: { display: "flex", flexDirection: "column", gap: 3, margin: "4px 0" } },
           e("p", { style: { margin: 0, fontSize: 12.5, color: C.ink2 } }, "Instead of separate apps for lifting and food tracking, it's all in one place — plus a weekly muscle-balance view and AI Chat for when there's no coach to ask."),
         ),
