@@ -8922,6 +8922,31 @@
   // so it stays logged in and just explains what's needed and how to pay,
   // rather than booting them with no explanation.
   function TrainerPaymentOverdueScreen({ trainer, onLogout }) {
+    // Oct 10 2026, Jimmy: "i need to recieve a notification when a trainer
+    // needs attention or needs to pay". Bugz went overdue Oct 6 and Hussein
+    // Oct 7 and nothing told him — he found out by opening the app himself.
+    //
+    // Going overdue is a date passing, not an action, so no code runs when
+    // it happens. The one moment something DOES run is this screen: the
+    // trainer opens the app, is blocked, and their own device can raise it.
+    // That is also exactly when they start caring, so the alert arrives when
+    // it is actionable rather than at some arbitrary hour.
+    //
+    // Once a day per trainer, marked on their device: a locked-out trainer
+    // reopening the app five times must not send five pushes.
+    useEffect(() => {
+      if (!trainer || !trainer.id) return;
+      const key = `jf_overdue_notified_${trainer.id}`;
+      try {
+        if (localStorage.getItem(key) === todayISO()) return;
+        localStorage.setItem(key, todayISO());
+      } catch (err) { /* private mode - notify anyway, better than silence */ }
+      const due = trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently";
+      try {
+        notifyOwner(`${trainer.name || trainer.email} is locked out — payment was due ${due}. Mark it received in JimFit to unlock them.`);
+      } catch (err) {}
+    }, [trainer && trainer.id]);
+
     // Sept 15 2026, Jimmy: "and the payment" — same GateDecor + staggered
     // popIn/fadeUp entrance as TrainerFirstPaymentDueScreen (the "one more
     // step" first-payment screen already got this in an earlier pass); this
@@ -11013,6 +11038,18 @@
     const [programVersion, setProgramVersion] = useState(0);
     const [coachTab, setCoachTab] = useState("clients");
     const [selectedTrainerId, setSelectedTrainerId] = useState(null);
+    // Oct 10 2026, Jimmy: unlocking an overdue trainer from the Pending
+    // list itself. Mirrors TrainersBillingPanel.handleConfirmPaid exactly —
+    // same trainer_payments insert, same next_payment_date advance, same
+    // prev_next_payment_date rollback column with the same retry if the
+    // migration has not been run — because the two must not drift into two
+    // different meanings of "paid", which is the bug that put a locked-out
+    // Magali under a green CREDIT badge on Oct 6.
+    const [unlockTrainerId, setUnlockTrainerId] = useState(null);
+    const [unlockAmount, setUnlockAmount] = useState("");
+    const [unlockDate, setUnlockDate] = useState("");
+    const [unlockSaving, setUnlockSaving] = useState(false);
+    const [unlockError, setUnlockError] = useState("");
     const [profiles, setProfiles] = useState([]);
     // ids of client_profiles rows excluded from `profiles` above because
     // is_trainer_self_log is true (a trainer's own personal tracking, not a
@@ -11705,6 +11742,46 @@
       if (err || !data) { setAddTrainerError("Couldn't add that trainer. Try again."); return; }
       setTrainers((prev) => [...prev, data[0]].sort((a, b) => (a.name || "").localeCompare(b.name || "")));
       setNewTrainerName(""); setNewTrainerEmail(""); setNewTrainerPhone(""); setShowAddTrainer(false);
+    }
+
+    function openUnlock(t) {
+      setUnlockError("");
+      setUnlockTrainerId(t.id);
+      setUnlockAmount(String(t.rate_monthly != null ? t.rate_monthly : B2B_FLAT_RATE_MONTHLY));
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setUnlockDate(d.toISOString().slice(0, 10));
+    }
+
+    async function handleUnlockPaid(t) {
+      setUnlockError("");
+      const amt = Number(unlockAmount);
+      if (!unlockAmount || Number.isNaN(amt) || amt <= 0) { setUnlockError("Enter a valid amount."); return; }
+      if (!unlockDate) { setUnlockError("Pick the date they are paid through."); return; }
+      if (!sb) { setUnlockError("Backend not configured yet."); return; }
+      setUnlockSaving(true);
+      const row = {
+        trainer_id: t.id, trainer_name: t.name, amount: amt, paid_on: todayISO(),
+        note: `Monthly billing — paid through ${unlockDate}`
+      };
+      let { error: payErr } = await sb.from("trainer_payments")
+        .insert([{ ...row, prev_next_payment_date: t.next_payment_date || null }]);
+      if (payErr) {
+        const retry = await sb.from("trainer_payments").insert([row]);
+        payErr = retry.error;
+      }
+      if (payErr) {
+        setUnlockSaving(false);
+        setUnlockError("Couldn't save that payment. Try again.");
+        return;
+      }
+      // This is the line that actually lets them back in: the router gates
+      // on isTrainerPaymentOverdue, which reads next_payment_date.
+      await handleUpdateTrainerField(t.id, "next_payment_date", unlockDate);
+      // Tell them, rather than leaving them to discover it by retrying.
+      try { notifyTrainer(t.id, `Your payment was confirmed — your JimFit account is active again until ${fmtDateMed(unlockDate)}.`); } catch (err) {}
+      setUnlockSaving(false);
+      setUnlockTrainerId(null);
     }
 
     async function handleUpdateTrainerField(trainerId, field, value) {
@@ -12605,8 +12682,13 @@
                     // can show "says they paid" for a monthly renewal too.
                     const overdue = isTrainerPaymentOverdue(t);
                     const monthlyClaim = overdue ? freshClaimFor(allClaimsByEmail, t.email) : null;
-                    return e("div", { key: t.id, style: { ...styles.trainerStatCard, cursor: "pointer" }, onClick: () => setSelectedTrainerId(t.id) },
-                      e("div", { style: styles.clientCardLeft },
+                    return e("div", { key: t.id, style: { ...styles.trainerStatCard, cursor: "pointer", ...(unlockTrainerId === t.id || overdue || neverPaid ? { flexDirection: "column", alignItems: "stretch" } : {}) }, onClick: () => setSelectedTrainerId(t.id) },
+                      e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minWidth: 0 } },
+                      // minWidth 0 so a long "Says they paid - confirm" chip
+                      // shrinks the name block instead of pushing the row
+                      // wider than the card, which is what a flex child does
+                      // by default.
+                      e("div", { style: { ...styles.clientCardLeft, minWidth: 0, flex: "1 1 auto" } },
                         e(TrainerAvatar, { name: t.name, photoUrl: t.photo_url }),
                         e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
                           e("span", { style: styles.exerciseName }, t.name || "Unnamed trainer"),
@@ -12646,6 +12728,44 @@
                         // the people who were locked out.
                         bal != null && bal < 0 && Number(t.amount_due) > 0 && e("span", { style: { ...styles.goalChip, ...styles.goalChipGood } }, `$${Math.abs(bal).toLocaleString()} credit`),
                         e("span", { style: { display: "flex", transform: "rotate(-90deg)" } }, e(Icon, { name: "chevron", size: 14, color: C.ink3 }))
+                      )),
+                      // Oct 10 2026: the unlock, on the card that shows the
+                      // problem. stopPropagation throughout - the card itself
+                      // opens the trainer, and a mis-tap here must not throw
+                      // the confirm away mid-edit.
+                      (overdue || neverPaid) && unlockTrainerId !== t.id && e("button", {
+                        type: "button",
+                        onClick: (ev) => { ev.stopPropagation(); openUnlock(t); },
+                        style: { ...styles.goalChip, background: withAlpha(C.good, 0.14), color: C.good, border: `1px solid ${withAlpha(C.good, 0.42)}`, cursor: "pointer", marginTop: 10, alignSelf: "flex-start" }
+                      }, e(Icon, { name: "check", size: 11 }), " Mark received"),
+                      unlockTrainerId === t.id && e("div", {
+                        onClick: (ev) => ev.stopPropagation(),
+                        style: { ...styles.sessionForm, marginTop: 10, marginBottom: 0 }
+                      },
+                        e("label", { style: { ...styles.formLabel, marginTop: 0 } }, "Amount received"),
+                        e("input", {
+                          style: styles.input, type: "number", inputMode: "decimal", value: unlockAmount,
+                          onChange: (ev) => { setUnlockAmount(ev.target.value); setUnlockError(""); }
+                        }),
+                        e("label", { style: styles.formLabel }, "Paid through"),
+                        e("input", {
+                          style: styles.input, type: "date", value: unlockDate,
+                          onChange: (ev) => { setUnlockDate(ev.target.value); setUnlockError(""); }
+                        }),
+                        unlockError && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 8, color: C.critical } }, unlockError),
+                        e("p", { style: { ...styles.profileGoalText, fontSize: 11.5, marginTop: 8, color: C.ink3 } },
+                          "Logs the payment and unlocks their account until that date."),
+                        e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+                          e("button", {
+                            style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...(unlockSaving ? styles.btnDisabled : {}) },
+                            disabled: unlockSaving,
+                            onClick: (ev) => { ev.stopPropagation(); handleUnlockPaid(t); }
+                          }, unlockSaving ? "Saving…" : "Confirm & unlock"),
+                          e("button", {
+                            style: { ...styles.demoLinkBtn, flex: 1 },
+                            onClick: (ev) => { ev.stopPropagation(); setUnlockTrainerId(null); setUnlockError(""); }
+                          }, "Cancel")
+                        )
                       )
                     );
                   };
