@@ -8992,18 +8992,21 @@
     }, [show, trainer && trainer.id, daysLeft]);
 
     if (!show) return null;
+    // Same tone pass as the member banner — this said "Your access ends" and
+    // "Send your payment", which reads like an invoice to somebody who has
+    // been on the team for months.
     const headline = daysLeft === 0
-      ? "Your access ends today"
+      ? "Last day of your JimFit month"
       : daysLeft === 1
-      ? "Your access ends tomorrow"
-      : `Your access ends in ${daysLeft} days`;
+      ? "One day left on your JimFit month"
+      : `${daysLeft} days left on your JimFit month`;
     return e("div", { style: { padding: 14, borderRadius: 12, marginBottom: 14, background: withAlpha(C.warning, 0.1), border: `1px solid ${withAlpha(C.warning, 0.38)}` } },
       e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
         e(Icon, { name: "alert", size: 15, color: C.warning }),
         e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
       ),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
-        `Your paid period runs to ${fmtDateMed(due)}. Send your payment and mark it below — your manager confirms it and nothing gets interrupted.`),
+        `Runs to ${fmtDateMed(due)}. Everything you've logged stays — let Jimmy know below whenever you've sorted it and he'll confirm.`),
       e(PaymentStatusStepper, {
         email: trainer && trainer.email, context: "trainer_monthly",
         amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
@@ -24868,13 +24871,32 @@
     // countdown rather than being surprised when SelfTrainAccessLockedScreen
     // suddenly appears on day 15. null once the trial has ended (the locked
     // screen, or an active paid month, takes over messaging from there).
-    const trialDaysLeft = (() => {
-      if (!isSelfTrainClient || !profile || !profile.trial_ends_at) return null;
-      const end = new Date(profile.trial_ends_at);
+    // Oct 10 2026: this used to read trial_ends_at ONLY, so a member who had
+    // actually paid got no countdown at all - their month simply ended and
+    // the locked screen appeared. Now it reads whichever of the two runs out
+    // last, which is the same rule hasSelfTrainAppAccess uses to grant access.
+    const accessNotice = (() => {
+      if (!isSelfTrainClient || !profile) return null;
       const now = new Date();
-      if (end <= now) return null;
-      return Math.max(1, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+      const trialEnd = profile.trial_ends_at ? new Date(profile.trial_ends_at) : null;
+      const paidEnd = profile.access_paid_through ? new Date(profile.access_paid_through + "T23:59:59") : null;
+      let end = null, isTrial = false;
+      if (trialEnd && (!paidEnd || trialEnd > paidEnd)) { end = trialEnd; isTrial = true; }
+      else if (paidEnd) { end = paidEnd; }
+      if (!end || end <= now) return null;
+      // Calendar days, not elapsed hours. Rounding elapsed time up returns 1
+      // all through the final day, so the banner reads "1 day left" on the
+      // day access actually ends.
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const days = Math.round((endDay - today0) / (1000 * 60 * 60 * 24));
+      // A trial is worth showing the whole way through - it is the thing they
+      // are evaluating. A paid month is only news near the end of it.
+      if (!isTrial && days > 5) return null;
+      return { days, isTrial };
     })();
+    const trialDaysLeft = accessNotice ? accessNotice.days : null;
+    const accessIsTrial = !!(accessNotice && accessNotice.isTrial);
     // Self-train clients only — anyone with a real trainer (in-house or an
     // outside gym's) never pays this and never sees this gate at all.
     const appAccessLocked = !isManager && isSelfTrainClient && !hasSelfTrainAppAccess(profile);
@@ -25709,7 +25731,7 @@
           style: { display: "block", textAlign: "right", marginTop: 6, fontSize: 10, color: C.ink3, textDecoration: "underline" }
         }, "Exercise data by RepDB (repdb.co)")
       ),
-      trialDaysLeft && e("div", { style: { padding: "10px 18px 0" } },
+      trialDaysLeft != null && e("div", { style: { padding: "10px 18px 0" } },
         trialBannerDismissed
           ? e("button", {
               type: "button",
@@ -25719,12 +25741,25 @@
                 border: `1px solid ${withAlpha(C.good, 0.35)}`, borderRadius: 999, padding: "6px 12px",
                 color: C.good, fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, cursor: "pointer"
               }
-            }, e(Icon, { name: "calendar", size: 12, color: C.good }), `Trial — ${trialDaysLeft}d left`)
+            }, e(Icon, { name: "calendar", size: 12, color: C.good }),
+              accessIsTrial
+                ? (trialDaysLeft === 0 ? "Trial — last day" : `Trial — ${trialDaysLeft}d left`)
+                : (trialDaysLeft === 0 ? "Last day" : `${trialDaysLeft}d left`))
           : e("div", { style: { ...styles.setupNotice, marginBottom: 0, flexDirection: "column", alignItems: "stretch", gap: 10, background: withAlpha(C.good, 0.1), borderColor: withAlpha(C.good, 0.35) } },
               e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
                 e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
                   e(Icon, { name: "calendar", size: 14, color: C.good }),
-                  e("span", null, `Free trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left, then $${SELF_TRAIN_MONTHLY_PRICE}/month to keep using the app.`)
+                  // Oct 10 2026, Jimmy: "i dont want to write ... u need to
+                  // pay it sound so materialistic". Lead with what they keep.
+                  // The payment step is still one tap away under "Manage" —
+                  // it is just no longer the sentence.
+                  e("span", null, accessIsTrial
+                    ? (trialDaysLeft === 0
+                        ? `Last day of your free trial — $${SELF_TRAIN_MONTHLY_PRICE}/month after that.`
+                        : `Free trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left, then $${SELF_TRAIN_MONTHLY_PRICE}/month to keep using the app.`)
+                    : (trialDaysLeft === 0
+                        ? "Your JimFit month ends today — everything you've logged stays right where it is."
+                        : `Your JimFit month wraps up in ${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} — everything you've logged stays right where it is.`))
                 ),
                 e("div", { style: { display: "flex", alignItems: "center", gap: 4, flexShrink: 0 } },
                   // jimfit-flow_14.html restyle — "Manage" opens the same
