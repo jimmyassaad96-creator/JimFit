@@ -9452,7 +9452,20 @@
       let landedSelfTrain = false;
       const rawCode = localStorage.getItem(CLIENT_GYM_CODE_KEY);
       if (rawCode) {
-        const { data: trainerRow } = await sb.from("trainers").select("id, gym_id").eq("invite_code", rawCode).maybeSingle();
+        // Oct 11 2026: resolved through an RPC that returns only id/gym_id.
+        // Reading the table directly needs a policy that exposes every
+        // trainer's email, phone and billing date to anyone signed in. The
+        // direct read stays as a fallback so signup keeps working either side
+        // of that policy being removed.
+        let trainerRow = null;
+        try {
+          const { data: resolved, error: rpcErr } = await sb.rpc("resolve_invite_code", { p_code: rawCode });
+          if (rpcErr) throw rpcErr;
+          trainerRow = Array.isArray(resolved) ? (resolved[0] || null) : (resolved || null);
+        } catch (err) {
+          const { data: direct } = await sb.from("trainers").select("id, gym_id").eq("invite_code", rawCode).maybeSingle();
+          trainerRow = direct || null;
+        }
         if (trainerRow) { trainerId = trainerRow.id; gymId = trainerRow.gym_id || null; }
         localStorage.removeItem(CLIENT_GYM_CODE_KEY);
       }
@@ -9562,7 +9575,20 @@
       let landedSelfTrain = false;
       const rawCode = localStorage.getItem(CLIENT_GYM_CODE_KEY);
       if (rawCode) {
-        const { data: trainerRow } = await sb.from("trainers").select("id, gym_id").eq("invite_code", rawCode).maybeSingle();
+        // Oct 11 2026: resolved through an RPC that returns only id/gym_id.
+        // Reading the table directly needs a policy that exposes every
+        // trainer's email, phone and billing date to anyone signed in. The
+        // direct read stays as a fallback so signup keeps working either side
+        // of that policy being removed.
+        let trainerRow = null;
+        try {
+          const { data: resolved, error: rpcErr } = await sb.rpc("resolve_invite_code", { p_code: rawCode });
+          if (rpcErr) throw rpcErr;
+          trainerRow = Array.isArray(resolved) ? (resolved[0] || null) : (resolved || null);
+        } catch (err) {
+          const { data: direct } = await sb.from("trainers").select("id, gym_id").eq("invite_code", rawCode).maybeSingle();
+          trainerRow = direct || null;
+        }
         if (trainerRow) { trainerId = trainerRow.id; gymId = trainerRow.gym_id || null; }
         localStorage.removeItem(CLIENT_GYM_CODE_KEY);
       }
