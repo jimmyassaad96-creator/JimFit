@@ -9388,12 +9388,11 @@
     function commitPhone() {
       const digits = phoneDigits.trim();
       const cc = countryCode.trim();
-      // Oct 10 2026: a phone number is not needed to start using JimFit, and
-      // demanding one before the app has shown anything costs more signups
-      // than the number is worth. Empty is allowed through and can be added
-      // later from My info; the trainer-facing side already handles a member
-      // with no phone.
-      if (!digits) { setPhone(""); return true; }
+      // Oct 10 2026, reversed the same day: this was briefly optional, on my
+      // reasoning that a phone number is not needed to START using the app.
+      // True, and beside the point — it is needed to RUN a gym. Jimmy lost a
+      // real number inside twenty minutes. Required again.
+      if (!digits) { setError("Enter your phone number."); return false; }
       if (!cc) { setError("Enter your country code."); return false; }
       // Sept 26 2026, round-8 audit finding: this only checked the field
       // wasn't empty — a single stray digit would pass and save as a "phone
@@ -9405,7 +9404,7 @@
       // tighter means guessing at per-country rules, which vary far too much
       // to hard-code — this still catches a stray digit or a pasted mess.
       if (digits.length < 5 || cc.length + digits.length > 15) {
-        setError("Enter a valid phone number, or leave it blank for now.");
+        setError("Enter a valid phone number.");
         return false;
       }
       setPhone(`+${cc}${digits}`);
@@ -9436,6 +9435,10 @@
       if (!inRange(Number(age), AGE_RANGE)) { setError(`Age should be between ${AGE_RANGE[0]} and ${AGE_RANGE[1]}.`); return; }
       if (!inRange(Number(height), HEIGHT_CM_RANGE)) { setError(`Height should be between ${HEIGHT_CM_RANGE[0]} and ${HEIGHT_CM_RANGE[1]} cm.`); return; }
       if (!inRange(Number(weight), WEIGHT_KG_RANGE)) { setError(`Weight should be between ${WEIGHT_KG_RANGE[0]} and ${WEIGHT_KG_RANGE[1]} kg.`); return; }
+      if (!phone.trim()) {
+        setError("Enter your phone number.");
+        return;
+      }
       if (!birthday) {
         setError("Enter your birthday.");
         return;
@@ -9628,12 +9631,13 @@
       setSavedProfile(data[0]);
     }
 
-    // Oct 10 2026: birthday is now the ONLY hard-required answer — it is the
-    // 18+ check, which is a policy, not a preference — and it is step 0. So
-    // "Skip for now" is offered from step 1 onward instead of step 4.
-    // Everything it skips can be filled in later from My info, and every
-    // screen that reads these fields already copes with them being null.
-    const canSkip = step >= 1;
+    // Two answers are compulsory: birthday (step 0 — the 18+ check, a policy
+    // rather than a preference) and phone (step 2 — Jimmy has to be able to
+    // reach a member). "Skip for now" therefore appears from step 3,
+    // "Height & weight?", by which point both are committed. Everything it
+    // skips can be filled in later from My info, and every screen that reads
+    // those fields already copes with them being null.
+    const canSkip = step >= 3;
 
     if (savedProfile) {
       return e(WizardShell, { step: PROFILE_WIZARD_STEPS.length - 1, totalSteps: PROFILE_WIZARD_STEPS.length, hideBack: true, direction: "next" },
@@ -9674,7 +9678,7 @@
       ),
       stepName === "phone" && e(React.Fragment, null,
         e("h1", { style: styles.wizardQuestion }, "What's your phone number?"),
-        e("p", { style: styles.wizardSub }, "So your coach can reach you — optional"),
+        e("p", { style: styles.wizardSub }, "So your coach can reach you"),
         e("div", { style: styles.wizardPhoneRow },
           e("span", { style: styles.wizardPhonePrefix }, "+"),
           // Narrow fixed-width field so the country code reads as a prefix
@@ -9691,10 +9695,7 @@
           })
         ),
         error && e("span", { style: { ...styles.inlineError, marginTop: 10 } }, error),
-        // One button, not two: it says what it will actually do, so leaving
-        // the field blank is an obvious choice rather than a hidden one.
-        e("button", { style: styles.wizardActionBtn, onClick: () => { if (commitPhone()) goNext(); } },
-          phoneDigits.trim() ? "Next" : "Skip for now")
+        e("button", { style: styles.wizardActionBtn, onClick: () => { if (commitPhone()) goNext(); } }, "Next")
       ),
       stepName === "heightWeight" && e(React.Fragment, null,
         e("h1", { style: styles.wizardQuestion }, "Height & weight?"),
