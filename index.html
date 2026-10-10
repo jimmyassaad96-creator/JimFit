@@ -10866,6 +10866,28 @@
       }
       return list;
     }, [roster, search, needsPaymentOnly, attentionOnly, attentionById, renewalFor, balanceFor]);
+    // Oct 10 2026, Jimmy: "i want ... the option to select also who i want to
+    // send a msg to". Tracked as who is EXCLUDED, not who is included, so the
+    // default is everyone and a filter change (or a new member appearing)
+    // never silently drops somebody from the audience.
+    const [excluded, setExcluded] = useState(() => new Set());
+    const recipients = React.useMemo(
+      () => visibleRoster.filter((r) => !excluded.has(r.id)),
+      [visibleRoster, excluded]
+    );
+    function toggleRecipient(id) {
+      setExcluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+      setBulkResult(null);
+    }
+    function closeComposer() {
+      setComposing(false);
+      setBulkResult(null);
+      setExcluded(new Set());
+    }
     return e(React.Fragment, null,
       roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, emptyText)),
       roster.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 } },
@@ -10902,17 +10924,40 @@
           // about to receive it.
           visibleRoster.length > 0 && e("button", {
             type: "button",
-            onClick: () => { setComposing((v) => !v); setBulkResult(null); },
+            onClick: () => { if (composing) { closeComposer(); } else { setComposing(true); setBulkResult(null); } },
             style: composing
               ? { ...styles.goalChip, background: C.brand, color: C.brandInk, border: "none", cursor: "pointer" }
               : { ...styles.goalChip, background: withAlpha(C.brand, 0.12), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}`, cursor: "pointer" }
-          }, e(Icon, { name: "chat", size: 10 }), ` Message ${visibleRoster.length}`),
+          }, e(Icon, { name: "chat", size: 10 }), ` Message ${composing ? recipients.length : visibleRoster.length}`),
           e("span", { style: styles.rosterCount }, visibleRoster.length, "/", roster.length)
         )
       ),
       composing && roster.length > 0 && e("div", { style: { ...styles.sessionForm, marginBottom: 14 } },
-        e("label", { style: { ...styles.formLabel, marginTop: 0 } },
-          `Message ${visibleRoster.length} member${visibleRoster.length === 1 ? "" : "s"}`),
+        e("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" } },
+          e("label", { style: { ...styles.formLabel, marginTop: 0 } },
+            `Message ${recipients.length} member${recipients.length === 1 ? "" : "s"}`),
+          // Only worth showing once there is something to undo.
+          excluded.size > 0 && e("button", {
+            type: "button",
+            onClick: () => { setExcluded(new Set()); setBulkResult(null); },
+            style: { ...styles.demoLinkBtn, padding: 0, marginTop: 0, fontSize: 12, width: "auto", background: "none", border: "none" }
+          }, `Select all ${visibleRoster.length}`)
+        ),
+        // Tap a name to drop them from this message. Capped height so a long
+        // roster scrolls here instead of pushing the textarea off screen.
+        e("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, margin: "2px 0 10px", maxHeight: 148, overflowY: "auto" } },
+          visibleRoster.map((r) => {
+            const on = !excluded.has(r.id);
+            return e("button", {
+              key: r.id, type: "button",
+              onClick: () => toggleRecipient(r.id),
+              title: on ? "Tap to leave them out" : "Tap to include them",
+              style: on
+                ? { ...styles.goalChip, background: withAlpha(C.brand, 0.14), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.42)}`, cursor: "pointer" }
+                : { ...styles.goalChip, background: C.subtleFill, color: C.ink3, border: `1px dashed ${C.cardBorder}`, cursor: "pointer" }
+            }, e(Icon, { name: on ? "check" : "x", size: 10 }), " ", r.name || r.clientEmail || "Member");
+          })
+        ),
         e("textarea", {
           style: { ...styles.input, minHeight: 78, resize: "vertical", fontFamily: "'Inter', sans-serif" },
           value: bulkMsg, maxLength: 400,
@@ -10923,7 +10968,7 @@
         // a failure afterwards — a member added by a trainer who never signed
         // up has no login to deliver to, and that is normal, not an error.
         (() => {
-          const noLogin = visibleRoster.filter((r) => !(r.profile && r.profile.user_id)).length;
+          const noLogin = recipients.filter((r) => !(r.profile && r.profile.user_id)).length;
           return noLogin > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 11.5, marginTop: 6, color: C.ink3 } },
             `${noLogin} of them ${noLogin === 1 ? "has" : "have"} no login yet and will be skipped.`);
         })(),
@@ -10933,20 +10978,20 @@
             : `Sent to ${bulkResult.sent} member${bulkResult.sent === 1 ? "" : "s"}.${bulkResult.skipped ? ` ${bulkResult.skipped} skipped.` : ""}`),
         e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
           e("button", {
-            style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...((bulkSending || !bulkMsg.trim()) ? styles.btnDisabled : {}) },
-            disabled: bulkSending || !bulkMsg.trim(),
+            style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...((bulkSending || !bulkMsg.trim() || recipients.length === 0) ? styles.btnDisabled : {}) },
+            disabled: bulkSending || !bulkMsg.trim() || recipients.length === 0,
             onClick: async () => {
               setBulkSending(true);
               setBulkResult(null);
-              const res = await sendBulkClientMessage(visibleRoster, bulkMsg.trim());
+              const res = await sendBulkClientMessage(recipients, bulkMsg.trim());
               setBulkSending(false);
               setBulkResult(res);
               // Keep the text on a partial failure so it can be retried as-is;
               // only clear it once everyone reachable actually got it.
               if (res.failed === 0) setBulkMsg("");
             }
-          }, bulkSending ? "Sending…" : `Send to ${visibleRoster.length}`),
-          e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: () => { setComposing(false); setBulkResult(null); } }, "Cancel")
+          }, bulkSending ? "Sending…" : recipients.length === 0 ? "Pick someone" : `Send to ${recipients.length}`),
+          e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: closeComposer }, "Cancel")
         )
       ),
       roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
