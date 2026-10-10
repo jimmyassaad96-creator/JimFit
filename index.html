@@ -10958,7 +10958,7 @@
             type: "button", onClick: () => setSearch(""), style: styles.rosterSearchClear, "aria-label": "Clear search"
           }, e(Icon, { name: "x", size: 12, color: C.ink3 }))
         ),
-        e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        e("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
           needsPaymentCount > 0 && e("button", {
             type: "button",
             onClick: () => setNeedsPaymentOnly((v) => !v),
@@ -12846,7 +12846,7 @@
                     )
                   : e("button", { style: { ...styles.saveBtn, marginTop: 0, marginBottom: 14 }, onClick: () => setShowAddTrainer(true) }, "+ Add trainer"),
                 browsableTrainers.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText }, "No trainers added yet.")),
-                browsableTrainers.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+                browsableTrainers.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 } },
                   e("div", { style: styles.rosterSearchWrap },
                     e(Icon, { name: "search", size: 14, color: C.ink3 }),
                     e("input", {
@@ -19719,6 +19719,14 @@
     // (not persisted) — switching tabs and coming back to a fresh search
     // is the expected reset, same as any other in-page filter in this app.
     const [clientSearch, setClientSearch] = useState("");
+    // Oct 10 2026: a trainer's own bulk composer. Same excluded-not-included
+    // shape as the manager's, so the default audience is everyone currently
+    // listed and a filter change never silently drops somebody.
+    const [cComposing, setCComposing] = useState(false);
+    const [cMsg, setCMsg] = useState("");
+    const [cSending, setCSending] = useState(false);
+    const [cResult, setCResult] = useState(null);
+    const [cExcluded, setCExcluded] = useState(() => new Set());
     // Sept 18 2026: the manager's own client list has a one-tap "Needs
     // payment" filter (ClientRosterList) — but that one's actually built on
     // renewalFor (self-train trial/subscription lapses), which by design
@@ -19982,6 +19990,19 @@
       }
       return list;
     }, [roster, clientSearch, needsPaymentOnly, attentionOnly, attentionById]);
+    const cRecipients = useMemo(
+      () => visibleRoster.filter((r) => !cExcluded.has(r.id)),
+      [visibleRoster, cExcluded]
+    );
+    function toggleCRecipient(id) {
+      setCExcluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+      setCResult(null);
+    }
+    function closeCComposer() { setCComposing(false); setCResult(null); setCExcluded(new Set()); }
     const needsPaymentCount = useMemo(() => roster.filter((r) => { const b = balanceFor(r.profile); return b != null && b > 0; }).length, [roster]);
 
     function resolveClientById(id) {
@@ -20536,7 +20557,7 @@
               // of having to count cards, and doubles as visible proof the
               // search box is actually filtering rather than just sitting
               // there unused.
-              roster.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+              roster.length > 0 && e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 } },
                 e("div", { style: styles.rosterSearchWrap },
                   e(Icon, { name: "search", size: 14, color: C.ink3 }),
                   e("input", {
@@ -20548,7 +20569,7 @@
                     type: "button", onClick: () => setClientSearch(""), style: styles.rosterSearchClear, "aria-label": "Clear search"
                   }, e(Icon, { name: "x", size: 12, color: C.ink3 }))
                 ),
-                e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                e("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
                   // Sept 18 2026: same one-tap filter the manager's client
                   // list has (see the note on needsPaymentOnly above).
                   needsPaymentCount > 0 && e("button", {
@@ -20565,7 +20586,72 @@
                       ? { ...styles.goalChip, background: C.brand, color: C.brandInk, cursor: "pointer", border: "none" }
                       : { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}`, cursor: "pointer" }
                   }, e(Icon, { name: "bell", size: 10 }), ` Needs attention (${attentionCount})`),
+                  // Oct 10 2026, Jimmy: trainers can reach their own members
+                  // now. The filters above double as the picker, same as on
+                  // the manager's roster — tap "Needs attention", then message
+                  // exactly those.
+                  visibleRoster.length > 0 && e("button", {
+                    type: "button",
+                    onClick: () => { if (cComposing) { closeCComposer(); } else { setCComposing(true); setCResult(null); } },
+                    style: cComposing
+                      ? { ...styles.goalChip, background: C.brand, color: C.brandInk, border: "none", cursor: "pointer" }
+                      : { ...styles.goalChip, background: withAlpha(C.brand, 0.12), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}`, cursor: "pointer" }
+                  }, e(Icon, { name: "chat", size: 10 }), ` Message ${cComposing ? cRecipients.length : visibleRoster.length}`),
                   e("span", { style: styles.rosterCount }, visibleRoster.length, "/", roster.length)
+                )
+              ),
+              cComposing && roster.length > 0 && e("div", { style: { ...styles.sessionForm, marginBottom: 14 } },
+                e("div", { style: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" } },
+                  e("label", { style: { ...styles.formLabel, marginTop: 0 } },
+                    `Message ${cRecipients.length} member${cRecipients.length === 1 ? "" : "s"}`),
+                  cExcluded.size > 0 && e("button", {
+                    type: "button",
+                    onClick: () => { setCExcluded(new Set()); setCResult(null); },
+                    style: { ...styles.demoLinkBtn, padding: 0, marginTop: 0, fontSize: 12, width: "auto", background: "none", border: "none" }
+                  }, `Select all ${visibleRoster.length}`)
+                ),
+                e("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, margin: "2px 0 10px", maxHeight: 148, overflowY: "auto" } },
+                  visibleRoster.map((r) => {
+                    const on = !cExcluded.has(r.id);
+                    return e("button", {
+                      key: r.id, type: "button",
+                      onClick: () => toggleCRecipient(r.id),
+                      title: on ? "Tap to leave them out" : "Tap to include them",
+                      style: on
+                        ? { ...styles.goalChip, background: withAlpha(C.brand, 0.14), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.42)}`, cursor: "pointer" }
+                        : { ...styles.goalChip, background: C.subtleFill, color: C.ink3, border: `1px dashed ${C.cardBorder}`, cursor: "pointer" }
+                    }, e(Icon, { name: on ? "check" : "x", size: 10 }), " ", r.name || r.clientEmail || "Member");
+                  })
+                ),
+                e("textarea", {
+                  style: { ...styles.input, minHeight: 78, resize: "vertical", fontFamily: "'Inter', sans-serif" },
+                  value: cMsg, maxLength: 400,
+                  placeholder: "e.g. Moving our Tuesday session to 7pm — see you then.",
+                  onChange: (ev) => { setCMsg(ev.target.value); setCResult(null); }
+                }),
+                (() => {
+                  const noLogin = cRecipients.filter((r) => !(r.profile && r.profile.user_id)).length;
+                  return noLogin > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 11.5, marginTop: 6, color: C.ink3 } },
+                    `${noLogin} of them ${noLogin === 1 ? "has" : "have"} no login yet and will be skipped.`);
+                })(),
+                cResult && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 8, color: cResult.failed > 0 ? C.warning : C.good } },
+                  cResult.failed > 0
+                    ? `Sent to ${cResult.sent}. Couldn't reach ${cResult.failed}${cResult.failedNames.length ? ` (${cResult.failedNames.join(", ")})` : ""} — try those again.`
+                    : `Sent to ${cResult.sent} member${cResult.sent === 1 ? "" : "s"}.${cResult.skipped ? ` ${cResult.skipped} skipped.` : ""}`),
+                e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+                  e("button", {
+                    style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...((cSending || !cMsg.trim() || cRecipients.length === 0) ? styles.btnDisabled : {}) },
+                    disabled: cSending || !cMsg.trim() || cRecipients.length === 0,
+                    onClick: async () => {
+                      setCSending(true);
+                      setCResult(null);
+                      const res = await sendBulkClientMessage(cRecipients, cMsg.trim());
+                      setCSending(false);
+                      setCResult(res);
+                      if (res.failed === 0) setCMsg("");
+                    }
+                  }, cSending ? "Sending…" : cRecipients.length === 0 ? "Pick someone" : `Send to ${cRecipients.length}`),
+                  e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: closeCComposer }, "Cancel")
                 )
               ),
               roster.length > 0 && visibleRoster.length === 0 && e("div", { style: styles.empty },
@@ -27514,7 +27600,7 @@
     // tab) — same rounded-pill treatment as the rest of this app's inputs,
     // just inline with a leading search icon and a clear (x) button instead
     // of the usual boxed label+input.
-    rosterSearchWrap: { flex: 1, display: "flex", alignItems: "center", gap: 8, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "9px 12px" },
+    rosterSearchWrap: { flex: "1 1 170px", minWidth: 0, display: "flex", alignItems: "center", gap: 8, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: "9px 12px" },
     rosterSearchInput: { flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.ink, fontFamily: "'Inter', sans-serif", fontSize: 13.5 },
     rosterSearchClear: { display: "flex", background: "transparent", border: "none", cursor: "pointer", padding: 2, flexShrink: 0 },
     rosterCount: { fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.ink3, flexShrink: 0, marginLeft: 10 },
