@@ -1356,6 +1356,30 @@
     } catch (err) {}
   }
 
+  // Oct 10 2026: one shared "already sent today" ledger in the database
+  // (payment_alert_log + claim_payment_alert), because the nightly server
+  // sweep now sends these same two alerts. localStorage could only ever see
+  // what THIS device had sent, so the server would push at 9:10am and the
+  // phone would push the same thing again at noon. Whoever claims the day's
+  // slot first sends; everyone else skips.
+  async function claimPaymentAlert(trainerId, kind) {
+    if (!trainerId || !kind) return false;
+    if (sb) {
+      try {
+        const { data, error: rpcErr } = await sb.rpc("claim_payment_alert", { target_trainer_id: trainerId, alert_kind: kind });
+        if (!rpcErr) return data === true;
+      } catch (err) {}
+    }
+    // RPC missing or offline - fall back to the per-device daily mark, so the
+    // reminder still goes out rather than being lost entirely.
+    const key = `jf_alert_${kind}_${trainerId}`;
+    try {
+      if (localStorage.getItem(key) === todayISO()) return false;
+      localStorage.setItem(key, todayISO());
+    } catch (err) { /* private mode - send anyway, better than silence */ }
+    return true;
+  }
+
   // Sept 18 2026, Jimmy: "the owner see the request" — new sign-ups, program/
   // diet-plan requests, and trainer requests should also reach the gym owner,
   // not just the specific trainer involved. JimFit is multi-tenant (see
@@ -8953,15 +8977,18 @@
     // it starts showing.
     useEffect(() => {
       if (!show || !trainer || !trainer.id) return;
-      const key = `jf_renewal_notified_${trainer.id}`;
-      try {
-        if (localStorage.getItem(key) === todayISO()) return;
-        localStorage.setItem(key, todayISO());
-      } catch (err) { /* private mode - remind anyway */ }
-      const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
-      try {
-        notifyTrainer(trainer.id, `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
-      } catch (err) {}
+      let cancelled = false;
+      (async () => {
+        // Shared ledger, not this device's localStorage - the server sweep may
+        // already have sent this morning's reminder.
+        const mine = await claimPaymentAlert(trainer.id, "trainer_renewal");
+        if (!mine || cancelled) return;
+        const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+        try {
+          notifyTrainer(trainer.id, `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
+        } catch (err) {}
+      })();
+      return () => { cancelled = true; };
     }, [show, trainer && trainer.id, daysLeft]);
 
     if (!show) return null;
@@ -9000,15 +9027,20 @@
     // reopening the app five times must not send five pushes.
     useEffect(() => {
       if (!trainer || !trainer.id) return;
-      const key = `jf_overdue_notified_${trainer.id}`;
-      try {
-        if (localStorage.getItem(key) === todayISO()) return;
-        localStorage.setItem(key, todayISO());
-      } catch (err) { /* private mode - notify anyway, better than silence */ }
-      const due = trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently";
-      try {
-        notifyOwner(`${trainer.name || trainer.email} is locked out — payment was due ${due}. Mark it received in JimFit to unlock them.`);
-      } catch (err) {}
+      let cancelled = false;
+      (async () => {
+        // Shared ledger - the nightly sweep raises this the morning a trainer
+        // goes overdue, so by the time they hit this screen Jimmy usually
+        // already knows. This stays as the belt: it fires for anyone the
+        // sweep missed (added mid-day, date edited by hand).
+        const mine = await claimPaymentAlert(trainer.id, "owner_overdue");
+        if (!mine || cancelled) return;
+        const due = trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently";
+        try {
+          notifyOwner(`${trainer.name || trainer.email} is locked out — payment was due ${due}. Mark it received in JimFit to unlock them.`);
+        } catch (err) {}
+      })();
+      return () => { cancelled = true; };
     }, [trainer && trainer.id]);
 
     // Sept 15 2026, Jimmy: "and the payment" — same GateDecor + staggered
