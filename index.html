@@ -9196,7 +9196,11 @@
   // before landing in the app. Same handleSave/handleSkip logic and the
   // same client_profiles payload as before — only how the answers are
   // collected changed.
-  const PROFILE_WIZARD_STEPS = ["age", "birthday", "gender", "phone", "heightWeight", "days", "medical", "goal"];
+  // Oct 10 2026: "age" removed. It was the FIRST question and the next one
+  // discarded it — commitBirthday derives the real age from the birthday and
+  // calls setAge with it, so whatever was picked on the age stepper never
+  // survived to the database. Eight questions, one of them pointless.
+  const PROFILE_WIZARD_STEPS = ["birthday", "gender", "phone", "heightWeight", "days", "medical", "goal"];
   const GENDER_CHIPS = ["Male", "Female", "Prefer not to say", "Other"];
   const GOAL_CHIPS = ["Build muscle", "Lose fat", "Get stronger", "Feel better"];
 
@@ -9254,7 +9258,15 @@
     // Sept 10 2026: pre-filled from the phone number now collected at
     // client signup (see deriveClientPhone) — still editable right here.
     const [phone, setPhone] = useState(initialPhone || "");
-    const [phoneDigits, setPhoneDigits] = useState((initialPhone || "").replace(/^\+961\s*/, ""));
+    const [phoneDigits, setPhoneDigits] = useState((initialPhone || "").replace(/^\+\d{1,4}\s*/, ""));
+    // Oct 10 2026, Jimmy: the country code was a fixed "+961" label, so a
+    // signup from anywhere else was impossible — not awkward, impossible.
+    // Defaults to Lebanon because that is still almost everyone, but it is
+    // now just a default.
+    const [countryCode, setCountryCode] = useState(() => {
+      const m = (initialPhone || "").match(/^\+(\d{1,4})/);
+      return m ? m[1] : "961";
+    });
     const [height, setHeight] = useState("170");
     const [weight, setWeight] = useState("70");
     const [daysPerWeek, setDaysPerWeek] = useState("3");
@@ -9339,18 +9351,28 @@
 
     function commitPhone() {
       const digits = phoneDigits.trim();
-      if (!digits) { setError("Enter your phone number."); return false; }
+      const cc = countryCode.trim();
+      // Oct 10 2026: a phone number is not needed to start using JimFit, and
+      // demanding one before the app has shown anything costs more signups
+      // than the number is worth. Empty is allowed through and can be added
+      // later from My info; the trainer-facing side already handles a member
+      // with no phone.
+      if (!digits) { setPhone(""); return true; }
+      if (!cc) { setError("Enter your country code."); return false; }
       // Sept 26 2026, round-8 audit finding: this only checked the field
       // wasn't empty — a single stray digit would pass and save as a "phone
       // number" no trainer could ever actually reach. The input already
       // strips non-digits as you type, so this just checks a realistic
       // length: Lebanese mobile numbers are 7-8 digits after the +961
       // country code shown as the fixed prefix above.
-      if (digits.length < 7 || digits.length > 8) {
-        setError("Enter a valid phone number (7-8 digits after +961).");
+      // E.164 allows at most 15 digits including the country code. Anything
+      // tighter means guessing at per-country rules, which vary far too much
+      // to hard-code — this still catches a stray digit or a pasted mess.
+      if (digits.length < 5 || cc.length + digits.length > 15) {
+        setError("Enter a valid phone number, or leave it blank for now.");
         return false;
       }
-      setPhone(`+961${digits}`);
+      setPhone(`+${cc}${digits}`);
       return true;
     }
 
@@ -9378,10 +9400,6 @@
       if (!inRange(Number(age), AGE_RANGE)) { setError(`Age should be between ${AGE_RANGE[0]} and ${AGE_RANGE[1]}.`); return; }
       if (!inRange(Number(height), HEIGHT_CM_RANGE)) { setError(`Height should be between ${HEIGHT_CM_RANGE[0]} and ${HEIGHT_CM_RANGE[1]} cm.`); return; }
       if (!inRange(Number(weight), WEIGHT_KG_RANGE)) { setError(`Weight should be between ${WEIGHT_KG_RANGE[0]} and ${WEIGHT_KG_RANGE[1]} kg.`); return; }
-      if (!phone.trim()) {
-        setError("Enter your phone number.");
-        return;
-      }
       if (!birthday) {
         setError("Enter your birthday.");
         return;
@@ -9530,8 +9548,9 @@
       // null rather than saving a placeholder default as if it were real.
       const heightOk = inRange(Number(height), HEIGHT_CM_RANGE);
       const weightOk = inRange(Number(weight), WEIGHT_KG_RANGE);
-      const heightAnswered = (step > 4 || bodyConfirmed || heightTouched) && heightOk;
-      const weightAnswered = (step > 4 || bodyConfirmed || weightTouched) && weightOk;
+      // "heightWeight" is index 3 now that the age step is gone.
+      const heightAnswered = (step > 3 || bodyConfirmed || heightTouched) && heightOk;
+      const weightAnswered = (step > 3 || bodyConfirmed || weightTouched) && weightOk;
       const ageOk = age && inRange(Number(age), AGE_RANGE);
       // Bare-minimum fields (name/phone/birthday) are always filled in; the
       // rest carries forward real answers and only nulls out what was
@@ -9546,8 +9565,11 @@
         trainer_id: trainerId,
         age: ageOk ? Number(age) : null,
         birthday: birthday || null,
-        gender,
-        phone: phone.trim(),
+        // Null, not "" — an empty string reads as an answered-but-blank
+        // field everywhere downstream, which is how you get a roster showing
+        // a member with a phone number that is zero characters long.
+        gender: gender || null,
+        phone: phone.trim() || null,
         height_cm: heightAnswered ? Number(height) : null,
         weight_kg: weightAnswered ? Number(weight) : null,
         days_per_week: daysPerWeekTouched ? Number(daysPerWeek) : null,
@@ -9570,11 +9592,12 @@
       setSavedProfile(data[0]);
     }
 
-    // Both hard-required fields (phone, birthday) are answered by the time
-    // the "Height & weight?" step (index 4) is reached — "Skip for now"
-    // only shows up from there on, so it never fails validation the moment
-    // it's tapped.
-    const canSkip = step >= 4;
+    // Oct 10 2026: birthday is now the ONLY hard-required answer — it is the
+    // 18+ check, which is a policy, not a preference — and it is step 0. So
+    // "Skip for now" is offered from step 1 onward instead of step 4.
+    // Everything it skips can be filled in later from My info, and every
+    // screen that reads these fields already copes with them being null.
+    const canSkip = step >= 1;
 
     if (savedProfile) {
       return e(WizardShell, { step: PROFILE_WIZARD_STEPS.length - 1, totalSteps: PROFILE_WIZARD_STEPS.length, hideBack: true, direction: "next" },
@@ -9590,32 +9613,6 @@
     const stepName = PROFILE_WIZARD_STEPS[step];
 
     return e(WizardShell, { step, totalSteps: PROFILE_WIZARD_STEPS.length, onBack: goBack, direction },
-      stepName === "age" && e(React.Fragment, null,
-        e("h1", { style: styles.wizardQuestion }, "How old are you?"),
-        e("div", { style: styles.stepperRow },
-          e("button", { type: "button", style: styles.stepperBtn, onClick: () => { setAge((a) => String(Math.max(AGE_RANGE[0], Number(a || 0) - 1))); setAgeTouched(true); setAgeConfirmed(false); } }, e(Icon, { name: "minus", size: 15 })),
-          // Sept 22 2026, Jimmy: same fix as height/weight — tap the number
-          // and type the exact age instead of only tapping +/- one at a time.
-          e("div", { style: styles.stepperValueWrap }, e("input", {
-            type: "text", inputMode: "numeric", maxLength: 3, placeholder: "—",
-            style: { ...styles.stepperValue, border: "none", borderBottom: `2px solid ${C.brand}`, background: "transparent", outline: "none", padding: "0 2px 4px", appearance: "none", width: 64, textAlign: "center" },
-            value: age,
-            onChange: (ev) => { setAge(ev.target.value.replace(/\D/g, "").slice(0, 3)); setAgeTouched(true); setAgeConfirmed(false); },
-            onFocus: (ev) => ev.target.select()
-          })),
-          e("button", { type: "button", style: styles.stepperBtn, onClick: () => { setAge((a) => String(Math.min(AGE_RANGE[1], Number(a || 0) + 1))); setAgeTouched(true); setAgeConfirmed(false); } }, e(Icon, { name: "plus", size: 15 }))
-        ),
-        e("div", { style: { marginTop: 16 } }, e(VoiceMicButton, { title: "Say your age", onTranscribed: (text) => { setAge(extractSpokenNumber(text) || age); setAgeTouched(true); setAgeConfirmed(false); } })),
-        error && e("span", { style: { ...styles.inlineError, marginTop: 10 } }, error),
-        e("button", {
-          style: styles.wizardActionBtn,
-          onClick: () => {
-            if (!age || !inRange(Number(age), AGE_RANGE)) { setError(`Age should be between ${AGE_RANGE[0]} and ${AGE_RANGE[1]}.`); return; }
-            if (!ageTouched && !ageConfirmed) { setAgeConfirmed(true); setError(`Still showing the starting value, ${age} — tap "Next" again to confirm that's really your age.`); return; }
-            goNext();
-          }
-        }, "Next")
-      ),
       stepName === "birthday" && e(React.Fragment, null,
         e("h1", { style: styles.wizardQuestion }, "When's your birthday?"),
         e("div", { style: styles.wizardDateRow },
@@ -9641,13 +9638,27 @@
       ),
       stepName === "phone" && e(React.Fragment, null,
         e("h1", { style: styles.wizardQuestion }, "What's your phone number?"),
-        e("p", { style: styles.wizardSub }, "So your coach can reach you"),
+        e("p", { style: styles.wizardSub }, "So your coach can reach you — optional"),
         e("div", { style: styles.wizardPhoneRow },
-          e("span", { style: styles.wizardPhonePrefix }, "+961"),
-          e("input", { style: styles.wizardPhoneInput, inputMode: "tel", value: phoneDigits, onChange: (ev) => setPhoneDigits(ev.target.value.replace(/\D/g, "")) })
+          e("span", { style: styles.wizardPhonePrefix }, "+"),
+          // Narrow fixed-width field so the country code reads as a prefix
+          // rather than a second question.
+          e("input", {
+            style: { ...styles.wizardPhoneInput, width: 46, flexShrink: 0 },
+            inputMode: "numeric", maxLength: 4, value: countryCode, "aria-label": "Country code",
+            onChange: (ev) => { setCountryCode(ev.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }
+          }),
+          e("span", { style: { ...styles.wizardPhonePrefix, opacity: 0.35 } }, "|"),
+          e("input", {
+            style: styles.wizardPhoneInput, inputMode: "tel", value: phoneDigits, "aria-label": "Phone number",
+            onChange: (ev) => { setPhoneDigits(ev.target.value.replace(/\D/g, "")); setError(""); }
+          })
         ),
         error && e("span", { style: { ...styles.inlineError, marginTop: 10 } }, error),
-        e("button", { style: styles.wizardActionBtn, onClick: () => { if (commitPhone()) goNext(); } }, "Next")
+        // One button, not two: it says what it will actually do, so leaving
+        // the field blank is an obvious choice rather than a hidden one.
+        e("button", { style: styles.wizardActionBtn, onClick: () => { if (commitPhone()) goNext(); } },
+          phoneDigits.trim() ? "Next" : "Skip for now")
       ),
       stepName === "heightWeight" && e(React.Fragment, null,
         e("h1", { style: styles.wizardQuestion }, "Height & weight?"),
