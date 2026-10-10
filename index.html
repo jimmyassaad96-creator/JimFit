@@ -8921,6 +8921,70 @@
   // routine "your month is up," not a manager forcibly locking someone out,
   // so it stays logged in and just explains what's needed and how to pay,
   // rather than booting them with no explanation.
+  // Oct 10 2026, Jimmy: the heads-up before the lockout, not after it.
+  // Shows for the last three days of a trainer's paid period - "tomorrow"
+  // was the ask, but a single day's notice is no notice at all if they
+  // happen not to open the app that day, and the copy still says exactly
+  // how long is left either way.
+  //
+  // Deliberately carries PaymentStatusStepper, the same control the locked
+  // screen uses. Flagging a payment early is what stops the lockout ever
+  // happening, and submitPaymentClaim already pushes Jimmy, so the warning
+  // and the fix are one step apart rather than on either side of a lockout.
+  function TrainerRenewalNotice({ trainer }) {
+    const due = trainer && trainer.next_payment_date ? trainer.next_payment_date : null;
+    let daysLeft = null;
+    if (due) {
+      // Calendar days, not elapsed hours. Subtracting timestamps and
+      // rounding up is off by one all day: at 9am on the day access ends it
+      // returns 1, so the banner reads "ends tomorrow" on the day it ends,
+      // and an already-overdue trainer scores 0 and gets shown a warning
+      // while they are in fact locked out. Verified against both.
+      const d = new Date(due + "T00:00:00");
+      const n = new Date();
+      const dueMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const todayMidnight = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+      daysLeft = Math.round((dueMidnight - todayMidnight) / 86400000);
+    }
+    const show = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+
+    // Hook before any early return - this component renders nothing most
+    // days, and a conditional hook would change the hook count on the day
+    // it starts showing.
+    useEffect(() => {
+      if (!show || !trainer || !trainer.id) return;
+      const key = `jf_renewal_notified_${trainer.id}`;
+      try {
+        if (localStorage.getItem(key) === todayISO()) return;
+        localStorage.setItem(key, todayISO());
+      } catch (err) { /* private mode - remind anyway */ }
+      const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+      try {
+        notifyTrainer(trainer.id, `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
+      } catch (err) {}
+    }, [show, trainer && trainer.id, daysLeft]);
+
+    if (!show) return null;
+    const headline = daysLeft === 0
+      ? "Your access ends today"
+      : daysLeft === 1
+      ? "Your access ends tomorrow"
+      : `Your access ends in ${daysLeft} days`;
+    return e("div", { style: { padding: 14, borderRadius: 12, marginBottom: 14, background: withAlpha(C.warning, 0.1), border: `1px solid ${withAlpha(C.warning, 0.38)}` } },
+      e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        e(Icon, { name: "alert", size: 15, color: C.warning }),
+        e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
+      ),
+      e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
+        `Your paid period runs to ${fmtDateMed(due)}. Send your payment and mark it below — your manager confirms it and nothing gets interrupted.`),
+      e(PaymentStatusStepper, {
+        email: trainer && trainer.email, context: "trainer_monthly",
+        amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
+        approvedCopy: "Confirmed — you're renewed"
+      })
+    );
+  }
+
   function TrainerPaymentOverdueScreen({ trainer, onLogout }) {
     // Oct 10 2026, Jimmy: "i need to recieve a notification when a trainer
     // needs attention or needs to pay". Bugz went overdue Oct 6 and Hussein
@@ -20066,6 +20130,9 @@
         )
       ),
       e("main", { style: styles.feed },
+        // Above the notification list on purpose: this one is time-critical
+        // and self-clearing, the list below is general and dismissible.
+        e(TrainerRenewalNotice, { trainer }),
         // Sept 18 2026 inspection fix: same dismissible in-app notification
         // list the client app already has (TrainingLog, same styles.setupNotice
         // pattern) — shown above everything else, on whatever tab a trainer
