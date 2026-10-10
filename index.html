@@ -10244,8 +10244,13 @@
     }
 
     async function handleDeleteSession(id) {
+      // Oct 10 2026: screen-before-database. A cancelled session that
+      // quietly came back is worse than one that never cancelled: the
+      // trainer has already told the client they are free.
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("scheduled_sessions").delete().eq("id", id);
+      if (delErr) { setError("Couldn't cancel that session. Try again."); return; }
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      if (sb) await sb.from("scheduled_sessions").delete().eq("id", id);
       if (editingId === id) handleCancelEdit();
     }
 
@@ -14389,13 +14394,19 @@
     }
 
     async function handleDeletePhoto(photo) {
+      // Oct 10 2026: screen-before-database. Someone deleting a
+      // progress photo usually means it, so a failure that looks like a
+      // success is the worst possible outcome here.
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("progress_photos").delete().eq("id", photo.id);
+      if (delErr) { setError("Couldn't delete that photo. Try again."); return; }
       setConfirmDeletePhotoId(null);
       setZoomedPhotoId((id) => (id === photo.id ? null : id));
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-      if (sb) {
-        await sb.from("progress_photos").delete().eq("id", photo.id);
-        await sb.storage.from("progress-photos").remove([photo.path]);
-      }
+      // Row first, file second, and the file is best-effort: an orphaned
+      // blob in storage costs a few KB, whereas a deleted file with a
+      // surviving row renders as a broken image in their history forever.
+      try { await sb.storage.from("progress-photos").remove([photo.path]); } catch (err) {}
     }
 
     if (!loaded) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading photos…"));
@@ -14810,9 +14821,12 @@
     // window.confirm pattern already used for a diet plan request/switch
     // elsewhere in the app.
     async function handleDelete(id) {
+      // Oct 10 2026: screen-before-database. 
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("body_assessments").delete().eq("id", id);
+      if (delErr) { setError("Couldn't delete that reading. Try again."); return; }
       setConfirmDeleteId(null);
       setAssessments((prev) => prev.filter((a) => a.id !== id));
-      if (sb) await sb.from("body_assessments").delete().eq("id", id);
     }
 
     if (!loaded) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading assessments…"));
@@ -15034,9 +15048,12 @@
     // Sept 6 2026: same accidental-tap risk as the assessment/payment
     // deletes fixed today — no confirmation, no undo.
     async function handleDelete(id) {
+      // Oct 10 2026: screen-before-database. 
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("body_measurements").delete().eq("id", id);
+      if (delErr) { setError("Couldn't delete that measurement. Try again."); return; }
       setConfirmDeleteId(null);
       setMeasurements((prev) => prev.filter((a) => a.id !== id));
-      if (sb) await sb.from("body_measurements").delete().eq("id", id);
     }
 
     if (!loaded) return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "Loading measurements…"));
@@ -15610,8 +15627,14 @@
       // supabase_trainer_payment_rollback.sql).
       const deleted = payments.find((p) => p.id === id);
       const isMostRecent = payments.length > 0 && payments[0].id === id;
+      // Oct 10 2026: the worst of the thirteen. The row left the screen AND
+      // the rollback below moved the trainer's next_payment_date — both
+      // before anyone checked the delete had happened. A failure here took
+      // away a trainer's access over a payment that is still on the books.
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from(table).delete().eq("id", id);
+      if (delErr) { setError("Couldn't delete that payment. Try again."); return; }
       setPayments((prev) => prev.filter((p) => p.id !== id));
-      if (sb) await sb.from(table).delete().eq("id", id);
       if (onDeleted && deleted && isMostRecent && deleted.prevNextPaymentDate !== undefined) {
         onDeleted({ prevNextPaymentDate: deleted.prevNextPaymentDate });
       }
@@ -16731,8 +16754,13 @@
     }
 
     async function handleDeleteMealItem(id) {
+      // Oct 10 2026: screen-before-database. setMealItemError is the
+      // error line this form already shows, so the message lands where the
+      // person is looking.
+      if (!sb) { setMealItemError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("diet_meal_items").delete().eq("id", id);
+      if (delErr) { setMealItemError("Couldn't remove that item. Try again."); return; }
       setMealItems((prev) => prev.filter((r) => r.id !== id));
-      if (sb) await sb.from("diet_meal_items").delete().eq("id", id);
     }
 
     const today = todayISO();
@@ -21121,7 +21149,14 @@
       if (!sb) { setError("Backend not configured yet."); return false; }
       setSaving(true);
       setError("");
-      if (assignment) await sb.from("client_program_assignments").delete().eq("id", assignment.id);
+      // Oct 10 2026: unchecked, and this one did not just lie to the
+      // screen — the insert below ran regardless, so a failed delete left
+      // the client holding TWO assignments and the loader picking between
+      // them arbitrarily.
+      if (assignment) {
+        const { error: swapErr } = await sb.from("client_program_assignments").delete().eq("id", assignment.id);
+        if (swapErr) { setSaving(false); setError("Couldn't switch programs just now. Try again."); return false; }
+      }
       const payload = { client_name: clientName, client_id: clientId, program_id: id };
       // Self-train clients only need to pay once per program — if
       // client_payments already has a row for this exact client + program_id
@@ -21177,8 +21212,10 @@
       if (!assignment || !sb) return;
       setConfirmUnassign(false);
       setSaving(true);
-      await sb.from("client_program_assignments").delete().eq("id", assignment.id);
+      // Oct 10 2026: screen-before-database. 
+      const { error: delErr } = await sb.from("client_program_assignments").delete().eq("id", assignment.id);
       setSaving(false);
+      if (delErr) { setError("Couldn't remove that program. Try again."); return; }
       loadAssignment();
       if (onAssignmentChange) onAssignmentChange();
     }
@@ -21839,8 +21876,12 @@
       if (!program || !sb) return;
       setConfirmDeleteProgram(false);
       setSaving(true);
-      await sb.from("client_custom_programs").delete().eq("id", program.id);
+      // Oct 10 2026: screen-before-database. Cascade risk too — the
+      // program's items hang off this row, so a half-done delete is not
+      // something to paper over with an optimistic screen update.
+      const { error: delErr } = await sb.from("client_custom_programs").delete().eq("id", program.id);
       setSaving(false);
+      if (delErr) { setError("Couldn't delete that program. Try again."); return; }
       setProgram(null);
       setItems([]);
       if (onProgramChange) onProgramChange(null);
@@ -21952,8 +21993,11 @@
     }
 
     async function handleDeleteItem(id) {
+      // Oct 10 2026: screen-before-database. 
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("client_program_items").delete().eq("id", id);
+      if (delErr) { setError("Couldn't remove that exercise. Try again."); return; }
       setItems((prev) => prev.filter((r) => r.id !== id));
-      if (sb) await sb.from("client_program_items").delete().eq("id", id);
     }
 
     // Kept to the same onDelete(id) contract ProgramExerciseRow already uses
@@ -23226,8 +23270,11 @@
     }
 
     async function handleDeleteExercise(programId, id) {
+      // Oct 10 2026: screen-before-database. 
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("program_exercises").delete().eq("id", id);
+      if (delErr) { setError("Couldn't remove that exercise. Try again."); return; }
       setExercisesByProgram((prev) => ({ ...prev, [programId]: (prev[programId] || []).filter((r) => r.id !== id) }));
-      if (sb) await sb.from("program_exercises").delete().eq("id", id);
     }
 
     // Sept 9 2026, Jimmy: a quick way to clone a single exercise, same
@@ -23384,10 +23431,14 @@
     }
 
     async function handleDeleteProgram(id) {
+      // Oct 10 2026: screen-before-database. The other cascade
+      // risk: every program_exercises row hangs off this one.
+      if (!sb) { setError("Backend not configured yet."); return; }
+      const { error: delErr } = await sb.from("training_programs").delete().eq("id", id);
+      if (delErr) { setError("Couldn't delete that program. Try again."); return; }
       setConfirmDeleteProgramId(null);
       setPrograms((prev) => prev.filter((p) => p.id !== id));
       setExercisesByProgram((prev) => { const next = { ...prev }; delete next[id]; return next; });
-      if (sb) await sb.from("training_programs").delete().eq("id", id);
     }
 
     // Copies a whole program (same style) into a brand-new program — every day and
