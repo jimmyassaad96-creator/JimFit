@@ -4192,6 +4192,12 @@
         recording ? e(TalkingTrainerEmoji, { level: talkLevel, size: 19 }) : busy ? e(VoiceLoadingDots, { size: 6, color: C.brand }) : e(Icon, { name: "mic", size: 17 }),
         recording ? "Stop — I'm done" : busy ? "Got it — working out the details…" : label
       ),
+      // Oct 13 2026: the voice note genuinely handles English, Arabic and
+      // Lebanese dialect, including code-switching mid-sentence (see the
+      // voice-log-entry Edge Function). Nothing in the UI said so, so nobody
+      // tried it. Hidden while recording or thinking, so it never competes
+      // with the live state.
+      !recording && !busy && e("div", { style: { fontSize: 11.5, color: C.ink3, marginTop: 6, textAlign: "center" } }, "English or Lebanese Arabic — mixing them is fine"),
       error && e("div", { style: { ...styles.inlineError, marginTop: 6 } }, error),
       heardText && !error && e("div", { style: { fontSize: 11.5, color: C.ink3, marginTop: 6, fontStyle: "italic" } }, `Heard: "${heardText}"`)
     );
