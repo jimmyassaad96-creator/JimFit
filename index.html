@@ -538,6 +538,14 @@
     // gets its own amber token instead of borrowing critical/good.
     warning: "#4C86FF",
     warningSoft: "rgba(76,134,255,0.18)",
+    // Oct 15 2026: a genuine amber, for "running out but not out yet" —
+    // packages near their last session or their end date. `warning` above
+    // reads blue despite its comment (and already backs the pending-request
+    // chip), so a low package styled with it looked like ordinary brand
+    // furniture rather than something to act on. New token, nothing existing
+    // changes.
+    caution: "#E0A449",
+    cautionSoft: "rgba(224,164,73,0.16)",
     subtleFill: "rgba(255,255,255,0.045)",
     // Sept 11 2026, Jimmy: brand pass, step 2 — cards were flat (border
     // only, no depth), unlike the "floating card" look in the reference
@@ -583,6 +591,9 @@
     criticalSoft: "rgba(193,68,58,0.10)",
     warning: "#2C5BC7",
     warningSoft: "rgba(44,91,199,0.10)",
+    // Light-mode amber — pulled darker so it still holds against white.
+    caution: "#A96D13",
+    cautionSoft: "rgba(169,109,19,0.14)",
     subtleFill: "rgba(15,23,42,0.035)",
     cardShadow: "0 4px 16px rgba(15,23,42,0.10)"
   };
@@ -2977,6 +2988,27 @@
       score += 95;
     }
     if (bal != null && bal > 0) { reasons.push(`owes $${bal}`); score += 70; }
+
+    // Oct 15 2026: the package running out. Scored just under an unpaid
+    // balance and above going quiet — a member two sessions from the end of
+    // a block is the moment the renewal conversation actually happens, and
+    // it is worth more than a nudge after they have already drifted away.
+    // Only fires for members who HAVE a package; packageStateFor returns
+    // null for everyone else, which is most of the roster.
+    const pk = packageStateFor(cp, r.entries);
+    if (pk) {
+      if (pk.expired) {
+        reasons.push(pk.left === 0 ? `${pk.name} — no sessions left` : `${pk.name} — expired`);
+        score += 65;
+      } else if (pk.low) {
+        if (pk.left !== null && pk.left <= PACKAGE_LOW_SESSIONS) {
+          reasons.push(`${pk.left} session${pk.left === 1 ? "" : "s"} left on ${pk.name}`);
+        } else {
+          reasons.push(`${pk.name} ends in ${pk.daysLeft} day${pk.daysLeft === 1 ? "" : "s"}`);
+        }
+        score += 60;
+      }
+    }
 
     // Gone quiet — the churn signal. AT_RISK_DAYS is already 10 everywhere
     // else in this file, so this reuses it rather than inventing a second
@@ -11102,6 +11134,7 @@
         const cats = categoriesFor ? categoriesFor(r.profile) : null;
         const hasCats = cats && (cats.subscription > 0 || cats.diet > 0 || cats.programs > 0 || cats.other > 0);
         const renewal = renewalFor ? renewalFor(r.profile) : null;
+        const pkg = packageStateFor(r.profile, r.entries);
         const att = attentionOnly ? (attentionById[r.id] || null) : null;
         return e("div", { key: r.id, style: styles.rosterRowFlat, onClick: () => onSelect(r.id), role: "button", tabIndex: 0, onKeyDown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onSelect(r.id); } } },
         e("div", { style: styles.clientCardLeft },
@@ -11127,6 +11160,7 @@
                 cats.other > 0 ? `Other $${cats.other.toLocaleString()}` : null
               ].filter(Boolean).join(" · ")
             ),
+            e(PackageChip, { pkg }),
             renewal && e("span", { style: { ...styles.goalChip, ...(renewal.ok ? styles.goalChipGood : styles.goalChipBad), alignSelf: "flex-start", marginTop: 2 } }, renewal.label),
             bday && e(BirthdayBadge, { style: { marginTop: 2 } }),
             risk && e("span", { style: { ...styles.goalChip, ...styles.goalChipBad, alignSelf: "flex-start", marginTop: 2 } }, e(Icon, { name: "alert", size: 10 }), " ", risk)
@@ -12338,6 +12372,26 @@
       if (sb) await sb.from("client_profiles").update({ total_due: totalDue }).eq("id", cp.id);
     }
 
+    // Oct 15 2026: packages. Optimistic like every other profile edit here,
+    // but this one hands the error back instead of swallowing it — PackageCard
+    // keeps its form open and says so when a save doesn't land, rather than
+    // closing on a value that never reached the database.
+    async function handleSavePackage(id, patch) {
+      const cp = resolveClientById(id);
+      if (!cp) return { error: true };
+      const prevValues = {};
+      Object.keys(patch).forEach((k) => { prevValues[k] = cp[k]; });
+      setProfiles((list) => list.map((p) => (p.id === cp.id ? { ...p, ...patch } : p)));
+      if (!sb) return {};
+      const { error: err } = await sb.from("client_profiles").update(patch).eq("id", cp.id);
+      if (err) {
+        console.error("[package-save] failed:", err);
+        setProfiles((list) => list.map((p) => (p.id === cp.id ? { ...p, ...prevValues } : p)));
+        return { error: err };
+      }
+      return {};
+    }
+
     // Sept 18 2026 inspection fix: the onUnlockDietPlan callback below used
     // to compute "current total_due (from local state) + amount" and hand
     // that absolute number to handleUpdateTotalDue above — two near-
@@ -12549,7 +12603,9 @@
               e(PaymentsPanel, {
                 userId: clientProfile ? clientProfile.user_id : null, clientName: client.name, canManage: true,
                 totalDue: clientProfile ? clientProfile.total_due : null,
-                onUpdateTotalDue: (v) => handleUpdateTotalDue(client.id, v)
+                onUpdateTotalDue: (v) => handleUpdateTotalDue(client.id, v),
+                profile: clientProfile, clientEntries: client.entries,
+                onSavePackage: (patch) => handleSavePackage(client.id, patch)
               }),
               clientIsSelfTrain && e(AppAccessCard, {
                 clientProfile,
@@ -15721,7 +15777,7 @@
 
   // ---- payments ----
 
-  function PaymentsPanel({ userId, clientName, canManage = false, totalDue, onUpdateTotalDue, table = "client_payments", idField = "user_id", nameField = "client_name", onDeleted = null }) {
+  function PaymentsPanel({ userId, clientName, canManage = false, totalDue, onUpdateTotalDue, table = "client_payments", idField = "user_id", nameField = "client_name", onDeleted = null, profile = null, clientEntries = null, onSavePackage = null }) {
     const [payments, setPayments] = useState([]);
     const [loaded, setLoaded] = useState(false);
     const [date, setDate] = useState(todayISO());
@@ -15852,6 +15908,13 @@
     const balanceTint = balance == null ? C.ink3 : (isPaidUp ? C.good : C.critical);
 
     return e("div", null,
+      // Oct 15 2026: what they bought sits above what they owe, because the
+      // package is the thing a trainer actually talks to the member about —
+      // the balance is the consequence of it. Only rendered where a profile
+      // is passed, so a trainer's OWN payments panel (trainer_payments) is
+      // untouched.
+      profile && onSavePackage && e(PackageCard, { profile, entries: clientEntries, canManage, onSave: onSavePackage }),
+      profile && !onSavePackage && e(PackageCard, { profile, entries: clientEntries, canManage: false, onSave: async () => ({ error: true }) }),
       e("div", { style: styles.paymentSummaryCard },
         e("div", { style: styles.assessmentSummaryGrid },
           e("div", { style: { ...styles.assessmentMetricCard, display: "flex", alignItems: "center", gap: 10 } },
@@ -19640,6 +19703,238 @@
   // list: sessions in the chosen window, when they last came, and the actual
   // dates. Anyone past ATTENDANCE_QUIET_DAYS without a session is flagged,
   // because that is the number that makes someone pick up the phone.
+  // ---- member packages (Oct 15 2026) ----
+  // Jimmy, on being asked how a package works at his gym: "its not
+  // neccesary in fitness zone! its not only fitness zone" — fair. Every gym
+  // that installs JimFit sells differently, so a package here is three
+  // independent, optional parts: a name, a session count, an end date. A gym
+  // selling blocks fills the count; a gym selling months fills the date; a
+  // gym that just says "PT with Hussein" and settles up fills neither.
+  // Whatever is blank simply doesn't render, so nobody stares at a form
+  // shaped around somebody else's business.
+  //
+  // The price is NOT stored here on purpose — client_profiles.total_due is
+  // already "Total package" in PaymentsPanel, and a second price column
+  // would let the two drift apart. (A package_price column was added and
+  // then couldn't be dropped — destructive DDL is blocked on this
+  // connection — so it exists, unused. Never write to it.)
+  const PACKAGE_LOW_SESSIONS = 2;
+  const PACKAGE_LOW_DAYS = 7;
+
+  // Sessions used = distinct dates trained since the package started, the
+  // same one-session-per-day rule the Attendance view and the dashboard
+  // totals use. Counting rows instead would make someone who logs four
+  // exercises burn four sessions off their block.
+  function packageUsedSessions(entries, startISO) {
+    const dates = new Set();
+    (entries || []).forEach((x) => {
+      if (!x || !x.date) return;
+      if (startISO && x.date < startISO) return;
+      dates.add(x.date);
+    });
+    return dates.size;
+  }
+
+  function packageStateFor(cp, entries) {
+    if (!cp) return null;
+    const name = (cp.package_name || "").trim();
+    const rawTotal = cp.package_sessions;
+    const total = rawTotal === null || rawTotal === undefined || rawTotal === "" ? null : Number(rawTotal);
+    const endsOn = cp.package_ends_on || null;
+    const startsOn = cp.package_starts_on || null;
+    // Nothing filled in at all — this member has no package, which is a
+    // perfectly normal state and must render as nothing, not as an empty card.
+    if (!name && (total === null || Number.isNaN(total)) && !endsOn) return null;
+    const used = packageUsedSessions(entries, startsOn);
+    const left = total !== null && !Number.isNaN(total) ? Math.max(0, total - used) : null;
+    let daysLeft = null;
+    if (endsOn) {
+      const end = new Date(endsOn + "T23:59:59");
+      if (!isNaN(end)) daysLeft = Math.ceil((end - new Date()) / 86400000);
+    }
+    const expired = left === 0 || (daysLeft !== null && daysLeft < 0);
+    const low = !expired && ((left !== null && left <= PACKAGE_LOW_SESSIONS) || (daysLeft !== null && daysLeft <= PACKAGE_LOW_DAYS));
+    const bits = [];
+    if (left !== null) bits.push(`${left} of ${total} left`);
+    if (endsOn) bits.push(daysLeft !== null && daysLeft < 0 ? `ended ${fmtDateMed(endsOn)}` : `ends ${fmtDateMed(endsOn)}`);
+    return {
+      name: name || "Package", total, used, left, startsOn, endsOn, daysLeft,
+      expired, low, detail: bits.join(" · ")
+    };
+  }
+
+  // The one-line version, for a roster card. Green while there's room, amber
+  // when it's nearly out, red once it is — the whole point is that a trainer
+  // scanning the list sees the renewal conversation coming.
+  function PackageChip({ pkg, style }) {
+    if (!pkg) return null;
+    const tone = pkg.expired ? C.critical : pkg.low ? C.caution : C.good;
+    const text = pkg.detail ? `${pkg.name} · ${pkg.detail}` : pkg.name;
+    return e("span", {
+      style: {
+        ...styles.goalChip, alignSelf: "flex-start", marginTop: 2,
+        color: tone, background: withAlpha(tone, 0.13),
+        textTransform: "none", letterSpacing: "0.01em", fontSize: 11,
+        ...(style || {})
+      }
+    }, pkg.expired ? "⚠ " : pkg.low ? "⏳ " : "", text);
+  }
+
+  // The editable version, at the top of the Payments tab. Read-only for the
+  // client looking at their own account (canManage false) — they should see
+  // what they bought and what's left of it, not be able to grant themselves
+  // another ten sessions.
+  function PackageCard({ profile, entries, canManage, onSave }) {
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const [draft, setDraft] = useState({ name: "", sessions: "", startsOn: "", endsOn: "" });
+
+    const pkg = useMemo(() => packageStateFor(profile, entries), [profile, entries]);
+
+    function startEdit() {
+      setDraft({
+        name: (profile && profile.package_name) || "",
+        sessions: profile && profile.package_sessions != null ? String(profile.package_sessions) : "",
+        startsOn: (profile && profile.package_starts_on) || "",
+        endsOn: (profile && profile.package_ends_on) || ""
+      });
+      setError("");
+      setEditing(true);
+    }
+
+    async function commit() {
+      const name = draft.name.trim();
+      const sessionsRaw = draft.sessions.trim();
+      let sessions = null;
+      if (sessionsRaw) {
+        const n = Number(sessionsRaw);
+        if (!Number.isFinite(n) || n < 0 || Math.floor(n) !== n) { setError("Sessions has to be a whole number, or left blank."); return; }
+        sessions = n;
+      }
+      // A package that is only an end date in the past, or only a start date,
+      // is almost always a half-finished entry rather than an intention.
+      if (draft.startsOn && draft.endsOn && draft.endsOn < draft.startsOn) {
+        setError("The end date is before the start date.");
+        return;
+      }
+      setSaving(true);
+      setError("");
+      const patch = {
+        package_name: name || null,
+        package_sessions: sessions,
+        package_starts_on: draft.startsOn || null,
+        package_ends_on: draft.endsOn || null
+      };
+      const res = await onSave(patch);
+      setSaving(false);
+      if (res && res.error) { setError("Couldn't save that. Try again."); return; }
+      setEditing(false);
+    }
+
+    async function clearPackage() {
+      setSaving(true);
+      const res = await onSave({ package_name: null, package_sessions: null, package_starts_on: null, package_ends_on: null });
+      setSaving(false);
+      if (!res || !res.error) setEditing(false);
+    }
+
+    if (editing) {
+      return e("div", { style: { ...styles.paymentSummaryCard, marginBottom: 10 } },
+        e("span", { style: { ...styles.profileLabel, display: "block", marginBottom: 8 } }, "Package"),
+        e("label", { style: styles.formLabel }, "What they bought"),
+        e("input", {
+          style: styles.input, type: "text", maxLength: 60, value: draft.name,
+          placeholder: "e.g. 12 PT sessions, Monthly unlimited, Online coaching",
+          onChange: (ev) => setDraft((d) => ({ ...d, name: ev.target.value }))
+        }),
+        e("label", { style: { ...styles.formLabel, marginTop: 10 } }, "Number of sessions (leave blank if it isn't counted)"),
+        e("input", {
+          style: styles.input, type: "number", min: "0", step: "1", value: draft.sessions,
+          placeholder: "e.g. 12",
+          onChange: (ev) => setDraft((d) => ({ ...d, sessions: ev.target.value }))
+        }),
+        e("label", { style: { ...styles.formLabel, marginTop: 10 } }, "Started on (sessions are counted from here)"),
+        e("input", {
+          style: { ...styles.input, colorScheme: C.colorScheme }, type: "date", value: draft.startsOn,
+          onChange: (ev) => setDraft((d) => ({ ...d, startsOn: ev.target.value }))
+        }),
+        e("label", { style: { ...styles.formLabel, marginTop: 10 } }, "Ends on (leave blank if it doesn't expire)"),
+        e("input", {
+          style: { ...styles.input, colorScheme: C.colorScheme }, type: "date", value: draft.endsOn,
+          onChange: (ev) => setDraft((d) => ({ ...d, endsOn: ev.target.value }))
+        }),
+        error && e("div", { style: { ...styles.errorBanner, marginTop: 12 } }, e(Icon, { name: "x", size: 13, color: C.critical }), error),
+        e("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
+          e("button", {
+            style: { ...styles.saveBtn, flex: 1, marginTop: 0, ...(saving ? styles.btnDisabled : {}) },
+            disabled: saving, onClick: commit
+          }, e(Icon, { name: "check", size: 15 }), saving ? "Saving…" : "Save package"),
+          e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: () => setEditing(false) }, "Cancel")
+        ),
+        pkg && e("button", {
+          style: { ...styles.demoLinkBtn, width: "100%", marginTop: 8, color: C.critical },
+          disabled: saving, onClick: clearPackage
+        }, "Remove package")
+      );
+    }
+
+    if (!pkg) {
+      if (!canManage) return null;
+      return e("div", { style: { ...styles.paymentSummaryCard, marginBottom: 10 } },
+        e("span", { style: { ...styles.profileLabel, display: "block", marginBottom: 6 } }, "Package"),
+        e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" } },
+          e("span", { style: { ...styles.profileValue, fontWeight: 500, fontStyle: "italic", color: C.ink3 } }, "No package set"),
+          e("button", { style: { ...styles.demoLinkBtn, marginTop: 0 }, onClick: startEdit }, e(Icon, { name: "edit", size: 13 }), " Add one")
+        )
+      );
+    }
+
+    const tone = pkg.expired ? C.critical : pkg.low ? C.caution : C.good;
+    const statusText = pkg.expired
+      ? (pkg.left === 0 ? "No sessions left" : "Expired")
+      : pkg.low
+      ? (pkg.left !== null && pkg.left <= PACKAGE_LOW_SESSIONS ? `Only ${pkg.left} session${pkg.left === 1 ? "" : "s"} left` : `Ends in ${pkg.daysLeft} day${pkg.daysLeft === 1 ? "" : "s"}`)
+      : "Active";
+
+    return e("div", { style: { ...styles.paymentSummaryCard, marginBottom: 10 } },
+      e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 } },
+        e("span", { style: styles.profileLabel }, "Package"),
+        canManage && e("button", { style: { ...styles.demoLinkBtn, marginTop: 0 }, onClick: startEdit }, e(Icon, { name: "edit", size: 13 }), " Edit")
+      ),
+      e("div", { style: { ...styles.profileValue, fontSize: 16, marginBottom: 2 } }, pkg.name),
+      pkg.startsOn && e("div", { style: styles.muscleSubText }, "Started ", fmtDateMed(pkg.startsOn)),
+      (pkg.total !== null || pkg.endsOn) && e("div", { style: { ...styles.assessmentSummaryGrid, marginTop: 10 } },
+        pkg.total !== null && e("div", { style: { ...styles.assessmentMetricCard, display: "flex", alignItems: "center", gap: 10 } },
+          e("span", { style: styles.assessmentMetricIcon }, "🏋️"),
+          e("div", { style: { minWidth: 0 } },
+            e("span", { style: styles.profileLabel }, "Sessions left"),
+            e("span", { style: { ...styles.profileValue, color: tone } }, `${pkg.left} of ${pkg.total}`)
+          )
+        ),
+        pkg.endsOn && e("div", { style: { ...styles.assessmentMetricCard, display: "flex", alignItems: "center", gap: 10 } },
+          e("span", { style: styles.assessmentMetricIcon }, "📆"),
+          e("div", { style: { minWidth: 0 } },
+            e("span", { style: styles.profileLabel }, pkg.daysLeft !== null && pkg.daysLeft < 0 ? "Ended" : "Ends"),
+            e("span", { style: { ...styles.profileValue, color: tone } }, fmtDateMed(pkg.endsOn))
+          )
+        )
+      ),
+      e("div", {
+        style: {
+          marginTop: 10, borderRadius: 14, padding: "10px 13px", display: "flex", alignItems: "center", gap: 10,
+          background: withAlpha(tone, 0.12), border: `1px solid ${withAlpha(tone, 0.35)}`
+        }
+      },
+        e("span", { style: { fontSize: 18, flexShrink: 0 } }, pkg.expired ? "⚠️" : pkg.low ? "⏳" : "✅"),
+        e("div", { style: { minWidth: 0 } },
+          e("div", { style: { ...styles.profileValue, fontSize: 14, color: tone } }, statusText),
+          pkg.total !== null && e("div", { style: styles.muscleSubText }, `${pkg.used} used since ${pkg.startsOn ? fmtDateMed(pkg.startsOn) : "the start"}`)
+        )
+      )
+    );
+  }
+
   const ATTENDANCE_QUIET_DAYS = 10;
   const ATTENDANCE_RANGES = [7, 30, 90];
 
@@ -20234,6 +20529,26 @@
       if (sb) await sb.from("client_profiles").update({ total_due: totalDue }).eq("id", cp.id);
     }
 
+    // Oct 15 2026: packages. Optimistic like every other profile edit here,
+    // but this one hands the error back instead of swallowing it — PackageCard
+    // keeps its form open and says so when a save doesn't land, rather than
+    // closing on a value that never reached the database.
+    async function handleSavePackage(id, patch) {
+      const cp = resolveClientById(id);
+      if (!cp) return { error: true };
+      const prevValues = {};
+      Object.keys(patch).forEach((k) => { prevValues[k] = cp[k]; });
+      setProfiles((list) => list.map((p) => (p.id === cp.id ? { ...p, ...patch } : p)));
+      if (!sb) return {};
+      const { error: err } = await sb.from("client_profiles").update(patch).eq("id", cp.id);
+      if (err) {
+        console.error("[package-save] failed:", err);
+        setProfiles((list) => list.map((p) => (p.id === cp.id ? { ...p, ...prevValues } : p)));
+        return { error: err };
+      }
+      return {};
+    }
+
     // Sept 18 2026 inspection fix: the onUnlockDietPlan callback below used
     // to compute "current total_due (from local state) + amount" and hand
     // that absolute number to handleUpdateTotalDue above — two near-
@@ -20478,7 +20793,9 @@
           ? e("div", { style: { padding: "0 18px" } }, e(PaymentsPanel, {
               userId: clientProfile ? clientProfile.user_id : null, clientName: client.name, canManage: true,
               totalDue: clientProfile ? clientProfile.total_due : null,
-              onUpdateTotalDue: (v) => handleUpdateTotalDue(client.id, v)
+              onUpdateTotalDue: (v) => handleUpdateTotalDue(client.id, v),
+              profile: clientProfile, clientEntries: client.entries,
+              onSavePackage: (patch) => handleSavePackage(client.id, patch)
             }))
           : e("div", { style: { padding: "0 18px" } },
               // Sept 14 2026, Jimmy: "two sections one for energy balance
@@ -20869,6 +21186,10 @@
                 const balance = balanceFor(r.profile);
                 const paidUp = balance != null && balance <= 0;
                 const prog = r.profile ? clientPrograms[r.profile.id] : null;
+                // Oct 15 2026: what they bought, and how much of it is left.
+                // Renders nothing at all for a member with no package set,
+                // which is most of them until someone fills one in.
+                const pkg = packageStateFor(r.profile, r.entries);
                 return e("div", { key: r.id, style: styles.rosterRowFlat, onClick: () => setSelectedClient(r.id), role: "button", tabIndex: 0, onKeyDown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setSelectedClient(r.id); } } },
                   e("div", { style: styles.clientCardLeft },
                     e("div", { style: styles.avatar }, r.name.slice(0, 1).toUpperCase()),
@@ -20906,7 +21227,8 @@
                           fontStyle: prog ? "normal" : "italic",
                           ...(prog ? { color: C.brand } : {})
                         }
-                      }, prog ? `📋 ${prog.title}` : "No program written yet")
+                      }, prog ? `📋 ${prog.title}` : "No program written yet"),
+                      e(PackageChip, { pkg })
                     )
                   ),
                   e("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 } },
@@ -26491,7 +26813,7 @@
             )
           ),
           e("div", { style: { ...styles.sectionHead, marginTop: 28 } }, e("span", { style: styles.sectionTitle }, "Payments")),
-          e(PaymentsPanel, { userId, clientName, canManage: false, totalDue: profile ? profile.total_due : null }),
+          e(PaymentsPanel, { userId, clientName, canManage: false, totalDue: profile ? profile.total_due : null, profile, clientEntries: entries }),
           // Sept 16 2026: "Delete my account" — see handleDeleteMyAccount's
           // own comment for why this exists (Apple's account-deletion
           // requirement) and how it actually deletes data. Not shown to a
