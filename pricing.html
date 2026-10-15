@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pricing for trainers — JimFit</title>
+<meta name="description" content="JimFit for personal trainers: Starter $12.99/month up to 5 clients, Pro $24.99/month for 6 or more. 14 days free once approved.">
+<meta property="og:title" content="JimFit pricing for trainers">
+<meta property="og:description" content="Starter $12.99/month up to 5 clients. Pro $24.99/month for 6 or more. 14 days free once approved.">
+<meta property="og:image" content="https://jimfit.app/og-image.png">
+<meta property="og:url" content="https://jimfit.app/pricing.html">
+<meta name="theme-color" content="#0B1526">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+  :root {
+    --ink: #16202E;
+    --ink2: #4B5568;
+    --ink3: #7C889C;
+    --bg: #F6F7FA;
+    --card: #FFFFFF;
+    --border: #E4E8EF;
+    --brand: #3E7BFA;
+    --brandInk: #FFFFFF;
+    --brandSoft: #EAF1FF;
+    --brandLine: #CFE0FF;
+    --good: #1F9D6B;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #EEF2F8;
+      --ink2: #B4BED0;
+      --ink3: #8592A6;
+      --bg: #0B1526;
+      --card: #111E33;
+      --border: #1F2E47;
+      --brand: #5B8FFF;
+      --brandInk: #0B1526;
+      --brandSoft: #14274A;
+      --brandLine: #24406F;
+      --good: #3CC58E;
+      color-scheme: dark;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 72px; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+  header { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--brand); color: var(--brandInk);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.5px; flex-shrink: 0;
+  }
+  header .name { font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.3px; }
+  .eyebrow { margin-top: 44px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+  h1 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: clamp(30px, 6vw, 42px); line-height: 1.1; font-weight: 700; letter-spacing: -0.8px; margin-top: 8px; text-wrap: balance; }
+  .lede { color: var(--ink2); font-size: 17px; margin-top: 12px; max-width: 58ch; }
+
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 32px; }
+  .plan { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .plan.pro { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
+  .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .plan-name { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 20px; font-weight: 700; }
+  .tag { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--brandSoft); color: var(--brand); border: 1px solid var(--brandLine); white-space: nowrap; }
+  .price { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+  .price .amt { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 40px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+  .price .per { color: var(--ink3); font-size: 15px; }
+  .fit { font-size: 15px; font-weight: 600; }
+  .plan ul { list-style: none; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .plan li { display: flex; gap: 10px; color: var(--ink2); font-size: 14.5px; }
+  .plan li::before { content: ""; flex: 0 0 auto; width: 16px; height: 16px; margin-top: 3px; border-radius: 50%; background: var(--brandSoft); border: 1px solid var(--brandLine);
+    background-image: linear-gradient(var(--brand), var(--brand)); background-size: 6px 6px; background-position: center; background-repeat: no-repeat; }
+
+  .trial { margin-top: 16px; background: var(--brandSoft); border: 1px solid var(--brandLine); border-radius: 18px; padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .trial strong { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 22px; letter-spacing: -0.3px; }
+  .trial p { color: var(--ink2); font-size: 15px; flex: 1 1 280px; min-width: 0; }
+
+  h2 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; margin-top: 48px; margin-bottom: 14px; }
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .rule { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; min-width: 0; }
+  .rule h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .rule p { color: var(--ink2); font-size: 14.5px; }
+
+  .steps { counter-reset: s; display: flex; flex-direction: column; gap: 10px; list-style: none; }
+  .steps li { counter-increment: s; display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; color: var(--ink2); font-size: 15px; }
+  .steps li::before { content: counter(s); flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--brand); color: var(--brandInk); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .steps strong { color: var(--ink); font-weight: 600; }
+
+  .contact { margin-top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 22px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+  .contact .label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink3); }
+  .contact .num { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; user-select: all; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--brand); color: var(--brandInk); text-decoration: none; font-weight: 700; font-size: 15px; padding: 12px 18px; border-radius: 12px; }
+  .btn:hover { filter: brightness(1.06); }
+  .btn svg { width: 18px; height: 18px; }
+
+  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; color: var(--ink3); font-size: 13px; }
+  footer a { color: var(--ink2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">JF</div>
+      <div class="name">JimFit</div>
+    </header>
+
+    <p class="eyebrow">For personal trainers</p>
+    <h1>Simple pricing that follows your client list</h1>
+    <p class="lede">Clients, workouts, programs, diet and attendance in one app. You don't pick a plan: it's set by how many clients you train.</p>
+
+    <section class="plans" aria-label="Plans">
+      <article class="plan">
+        <div class="plan-head">
+          <span class="plan-name">Starter</span>
+          <span class="tag">Up to 5 clients</span>
+        </div>
+        <div class="price"><span class="amt">$12.99</span><span class="per">/ month</span></div>
+        <p class="fit">For trainers building their client list.</p>
+        <ul>
+          <li>Up to 5 clients</li>
+          <li>Every feature in the app</li>
+          <li>Moves to Pro only if you take a 6th client</li>
+        </ul>
+      </article>
+      <article class="plan pro">
+        <div class="plan-head">
+          <span class="plan-name">Pro</span>
+          <span class="tag">6+ clients</span>
+        </div>
+        <div class="price"><span class="amt">$24.99</span><span class="per">/ month</span></div>
+        <p class="fit">For a full roster.</p>
+        <ul>
+          <li>Unlimited clients</li>
+          <li>Every feature in the app</li>
+          <li>Back to Starter if you drop to 5 or fewer</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="trial">
+      <strong>14 days free</strong>
+      <p>Your trial starts when your account is approved. Nothing to pay to get started.</p>
+    </div>
+
+    <h2>How your plan is set</h2>
+    <div class="rules">
+      <div class="rule">
+        <h3>Clients only</h3>
+        <p>We count the members assigned to you. Your own training log doesn't count.</p>
+      </div>
+      <div class="rule">
+        <h3>Never blocked</h3>
+        <p>Take on a 6th client any time. Pro applies from your next payment.</p>
+      </div>
+      <div class="rule">
+        <h3>Always visible</h3>
+        <p>Your plan, client count and next payment date are in the app under Profile → My billing.</p>
+      </div>
+    </div>
+
+    <h2>How to pay</h2>
+    <ol class="steps">
+      <li><span>Message us on WhatsApp before your trial or month ends.</span></li>
+      <li><span>Pay by <strong>Whish Money</strong>, <strong>neo</strong> or <strong>cash</strong>. We'll send you the details.</span></li>
+      <li><span>In the app, tap <strong>I've arranged payment</strong>. We confirm it, usually within a day.</span></li>
+    </ol>
+    <div class="contact">
+      <div>
+        <div class="label">WhatsApp</div>
+        <div class="num">+961 71 107 437</div>
+      </div>
+      <a class="btn" href="https://wa.me/96171107437" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg>
+        Message us
+      </a>
+    </div>
+
+    <footer>
+      <span>Billed monthly, in US dollars.</span>
+      <span><a href="privacy.html">Privacy policy</a></span>
+    </footer>
+  </div>
+</body>
+</html>

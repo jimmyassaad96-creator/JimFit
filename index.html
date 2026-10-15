@@ -9138,7 +9138,7 @@
         const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
         try {
           notifyTrainer(trainer.id, inTrial
-            ? `Your free trial ends ${when}.${plan.known ? ` Plan: ${plan.name}, ${fmtPrice(plan.rate)}/month.` : ""}`
+            ? `Your free trial ends ${when}.`
             : `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
         } catch (err) {}
       })();
@@ -9157,7 +9157,7 @@
         e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
       ),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
-        [fmtDateMed(due), trainerPlanLine(plan)].filter(Boolean).join(" · ")),
+        [fmtDateMed(due), plan.countKnown && !plan.custom ? `${plan.name} plan` : null].filter(Boolean).join(" · ")),
       e(PaymentStatusStepper, {
         email: trainer && trainer.email, context: inTrial ? "trainer_first_payment" : "trainer_monthly",
         amount: plan.known ? plan.rate : null,
@@ -9211,7 +9211,7 @@
         // they stand instead, and leaves the doing to the stepper below.
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your JimFit month has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Your clients and data are saved. ${(() => { const line = trainerPlanLine(trainerPlanFor(trainer, trainer ? trainer._clientCount : null)); return line ? `Plan: ${line}. ` : ""; })()}You'll be back in as soon as payment is confirmed.`
+          "Your clients and data are saved. You'll be back in as soon as payment is confirmed."
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
@@ -9249,7 +9249,6 @@
     // payment. So the copy says where they stand, and quotes the plan their
     // real client count puts them on rather than a flat number.
     const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : null);
-    const planLine = trainerPlanLine(plan);
     const ended = trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : null;
     return e("div", { style: { ...styles.gateWrap, position: "relative" } },
       e(GateDecor, {}),
@@ -9257,7 +9256,7 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your free trial has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Your clients and data are saved.${ended ? ` Trial ended ${ended}.` : ""}${planLine ? ` Plan: ${planLine}.` : ""}`
+          `Your clients and data are saved.${ended ? ` Trial ended ${ended}.` : ""}`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
@@ -19434,7 +19433,6 @@
             }
             return [
               e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, !plan.countKnown && !plan.custom ? "—" : plan.custom ? (plan.countKnown ? `${plan.name} · custom price` : "Custom price") : plan.name)),
-              e("div", { key: "rate" }, e("span", { style: styles.profileLabel }, "Monthly price"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.known ? `${fmtPrice(plan.rate)}/mo` : "—")),
               clientsCell
             ];
           })(),
@@ -19479,8 +19477,8 @@
           if (trial) lines.push(`Free trial until ${fmtDateMed(trainer.next_payment_date)}.`);
           if (!plan.custom) {
             lines.push(plan.tier === "starter"
-              ? `Up to ${STARTER_CLIENT_LIMIT} clients. Pro (${fmtPrice(B2B_FLAT_RATE_MONTHLY)}) applies from ${STARTER_CLIENT_LIMIT + 1}.`
-              : `Unlimited clients. Starter (${fmtPrice(STARTER_RATE_MONTHLY)}) applies at ${STARTER_CLIENT_LIMIT} or fewer.`);
+              ? `Up to ${STARTER_CLIENT_LIMIT} clients. Moves to Pro from ${STARTER_CLIENT_LIMIT + 1}.`
+              : `Unlimited clients. Back to Starter at ${STARTER_CLIENT_LIMIT} or fewer.`);
           }
           return e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, lines.join(" "));
         })(),
@@ -19488,7 +19486,11 @@
         // "Payment pending" read as a warning to a trainer who owes nothing.
         // Inside the app they are either on trial or paid up, so this is
         // simply how to pay.
-        !isBillingExempt(trainer) && e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { title: "How to pay", note: "Message us on WhatsApp. Billed monthly." })),
+        // Oct 15 2026, Jimmy: prices and "how to pay" live on the website
+        // (jimfit.app/pricing.html), not in the app — back in line with the Sept 28
+        // store-compliance decision (no amount, no payment instructions in-app).
+        // Trainer screens name the plan and the client count only.
+        !isBillingExempt(trainer) && e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { title: "Billing questions", note: "Message us on WhatsApp." })),
         trainer.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, trainer.billing_note),
         trainer.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your account is frozen — contact JimFit to reactivate.")
       ),
@@ -23660,7 +23662,7 @@
     // same underlying payment_claims data/flow as before, just no in-app
     // purchase instructions surfaced alongside it.
     return e("div", { style: { width: "100%", marginTop: 4 } },
-      e(WhishPayBox, { title: "How to pay", note: "Message us on WhatsApp." }),
+      e(WhishPayBox, { title: "Need help?", note: "Message us on WhatsApp." }),
       e("button", {
         style: { ...styles.saveBtn, marginTop: 10, width: "100%", ...((isFresh || submitting || !loaded) ? styles.btnDisabled : {}) },
         disabled: isFresh || submitting || !loaded,
@@ -23679,7 +23681,7 @@
       e("p", { style: { ...styles.stepperHintLine, ...(isFresh ? { color: C.warning } : {}) } },
         isFresh
           ? `Sent ${fmtDateTimeMed(claim.submitted_at)}. Usually confirmed within a day.`
-          : "Pay via WhatsApp, then tap the button above."
+          : "Already arranged it with us? Tap the button above."
       ),
       isFresh && e("p", { style: { ...styles.stepperHintLine, marginTop: 4, color: C.ink3, fontSize: 11 } }, approvedCopy || "We'll notify you the moment it's approved.")
     );
