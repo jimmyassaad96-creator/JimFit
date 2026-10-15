@@ -1587,6 +1587,67 @@
   // claude/jimfit-competitor-tracklete.md for the full comparison.
   const B2B_FLAT_RATE_MONTHLY = 24.99;
 
+  // Oct 15 2026, Jimmy: a cheaper plan for a trainer who only coaches two or
+  // three people. Two plans, and NOBODY picks between them — the price
+  // follows the trainer's real client count, so it can't be set wrong and a
+  // trainer can't end up on a plan that no longer fits:
+  //   Starter — up to STARTER_CLIENT_LIMIT clients — STARTER_RATE_MONTHLY
+  //   Pro     — more than that                   — B2B_FLAT_RATE_MONTHLY
+  // No client is ever blocked for being the 6th: the plan just becomes Pro
+  // and the next payment reflects it.
+  //
+  // A capped flat plan rather than per-client pricing on purpose: $5 a
+  // client punishes a trainer for growing (at five clients they'd already
+  // pay the unlimited price), and the cheapest move for them becomes leaving
+  // clients off the app.
+  //
+  // The manager's manual price (trainers.rate_override) still wins over
+  // both — every paid thing in JimFit keeps a manual override. rate_monthly
+  // is legacy and is no longer read for pricing anywhere.
+  const STARTER_RATE_MONTHLY = 12.99;
+  const STARTER_CLIENT_LIMIT = 5;
+  // Oct 15 2026, Jimmy: trainers get two weeks free after he approves them
+  // (replaces the Sept 6 "pay first, then approve" rule, at his say-so).
+  const TRAINER_TRIAL_DAYS = 14;
+
+  function fmtPrice(n) {
+    const v = Number(n) || 0;
+    return "$" + (Math.round(v) === v ? String(v) : v.toFixed(2));
+  }
+
+  function trainerPlanFor(t, clientCount) {
+    const n = Math.max(0, Number(clientCount) || 0);
+    const starter = n <= STARTER_CLIENT_LIMIT;
+    const standardRate = starter ? STARTER_RATE_MONTHLY : B2B_FLAT_RATE_MONTHLY;
+    const ov = t ? t.rate_override : null;
+    const custom = ov !== null && ov !== undefined && ov !== "" && !Number.isNaN(Number(ov));
+    return {
+      tier: starter ? "starter" : "pro",
+      name: starter ? "Starter" : "Pro",
+      clients: n,
+      limit: starter ? STARTER_CLIENT_LIMIT : null,
+      standardRate,
+      custom,
+      rate: custom ? Number(ov) : standardRate
+    };
+  }
+
+  // Accounts JimFit never bills or locks: the Google Play reviewer's demo
+  // login first of all (locked out for nine days in Oct 2026 because its
+  // date passed — a reviewer hitting a paywall fails the review), and any
+  // comp the manager flips on. Set per trainer in Trainer billing.
+  function isBillingExempt(t) {
+    return !!(t && t.billing_exempt);
+  }
+
+  // Approved, never paid, and the trial date still ahead. Never-paid alone
+  // is not enough — that is also a trainer whose trial has run out.
+  function isTrainerInTrial(t, hasEverPaid) {
+    if (!t || hasEverPaid || t.is_approved === false || isBillingExempt(t)) return false;
+    if (!t.next_payment_date) return false;
+    return new Date(t.next_payment_date + "T23:59:59") >= new Date();
+  }
+
   // Ready-made diet plan templates are tagged with one of these goals so
   // clients can tell them apart while browsing — same idea as TRAINING_STYLES
   // for programs, just a different fixed list.
@@ -8965,7 +9026,7 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Almost there!"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. You'll be able to log in and see your assigned members as soon as it's approved.`
+          `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. Once it's approved you get ${TRAINER_TRIAL_DAYS} days free, nothing to pay until then.`
         ),
         e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" }, onClick: onLogout }, "Log out")
       )
@@ -8981,6 +9042,7 @@
   // billing and must never be caught by this even via a stray date.
   function isTrainerPaymentOverdue(t) {
     if (!t || t.email === OWNER_TRAINER_EMAIL || t.email === SELF_TRAIN_EMAIL) return false;
+    if (isBillingExempt(t)) return false;
     if (!t.next_payment_date) return false;
     return new Date(t.next_payment_date + "T23:59:59") < new Date();
   }
@@ -9041,7 +9103,13 @@
       const todayMidnight = new Date(n.getFullYear(), n.getMonth(), n.getDate());
       daysLeft = Math.round((dueMidnight - todayMidnight) / 86400000);
     }
-    const show = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+    const show = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3 && !isBillingExempt(trainer);
+    // Oct 15 2026: a trainer who has never paid and still has days left is on
+    // the free trial — same banner, but it says so, and the payment it asks
+    // for is their first one (so it lands in the manager's first-payment
+    // queue rather than the monthly-renewal one).
+    const inTrial = !!trainer && trainer._hasEverPaid === false;
+    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0);
 
     // Hook before any early return - this component renders nothing most
     // days, and a conditional hook would change the hook count on the day
@@ -9056,7 +9124,9 @@
         if (!mine || cancelled) return;
         const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
         try {
-          notifyTrainer(trainer.id, `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
+          notifyTrainer(trainer.id, inTrial
+            ? `Your free JimFit trial ends ${when} (${fmtDateMed(due)}). Your plan after that: ${plan.name}, ${fmtPrice(plan.rate)}/month.`
+            : `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
         } catch (err) {}
       })();
       return () => { cancelled = true; };
@@ -9066,22 +9136,25 @@
     // Same tone pass as the member banner — this said "Your access ends" and
     // "Send your payment", which reads like an invoice to somebody who has
     // been on the team for months.
+    const period = inTrial ? "free trial" : "JimFit month";
     const headline = daysLeft === 0
-      ? "Last day of your JimFit month"
+      ? `Last day of your ${period}`
       : daysLeft === 1
-      ? "One day left on your JimFit month"
-      : `${daysLeft} days left on your JimFit month`;
+      ? `One day left on your ${period}`
+      : `${daysLeft} days left on your ${period}`;
     return e("div", { style: { padding: 14, borderRadius: 12, marginBottom: 14, background: withAlpha(C.warning, 0.1), border: `1px solid ${withAlpha(C.warning, 0.38)}` } },
       e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
         e(Icon, { name: "alert", size: 15, color: C.warning }),
         e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
       ),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
-        `Runs to ${fmtDateMed(due)}. Everything you've logged stays — let Jimmy know below whenever you've sorted it and he'll confirm.`),
+        inTrial
+          ? `Runs to ${fmtDateMed(due)}. With ${plan.clients} client${plan.clients === 1 ? "" : "s"} you're on ${plan.name} — ${fmtPrice(plan.rate)}/month. Everything you've set up stays.`
+          : `Runs to ${fmtDateMed(due)}. Everything you've logged stays — let Jimmy know below whenever you've sorted it and he'll confirm.`),
       e(PaymentStatusStepper, {
-        email: trainer && trainer.email, context: "trainer_monthly",
-        amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
-        approvedCopy: "Confirmed — you're renewed"
+        email: trainer && trainer.email, context: inTrial ? "trainer_first_payment" : "trainer_monthly",
+        amount: plan.rate,
+        approvedCopy: inTrial ? "Confirmed — you're all set" : "Confirmed — you're renewed"
       })
     );
   }
@@ -9131,12 +9204,12 @@
         // they stand instead, and leaves the doing to the stepper below.
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your JimFit month has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your month ran to ${trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently"}. Your clients, programs and history are all exactly where you left them. Let Jimmy know below once you've sorted it and he'll switch you straight back on.`
+          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your month ran to ${trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently"}. Your clients, programs and history are all exactly where you left them. ${(() => { const p = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0); return `With ${p.clients} client${p.clients === 1 ? "" : "s"} you're on ${p.name}: ${fmtPrice(p.rate)}/month.`; })()} Let Jimmy know below once you've sorted it and he'll switch you straight back on.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
             email: trainer && trainer.email, context: "trainer_monthly",
-            amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
+            amount: trainerPlanFor(trainer, trainer ? trainer._clientCount : 0).rate,
             approvedCopy: "Confirmed — welcome back"
           })
         ),
@@ -9163,19 +9236,26 @@
   // jimfit-flow_1.html, which was missing the GateDecor background and the
   // staggered entrance the other gate screens already got.
   function TrainerFirstPaymentDueScreen({ trainer, onLogout }) {
+    // Oct 15 2026: with the free trial, the only trainer who lands here is
+    // one whose trial has run out without a first payment — approval now
+    // comes BEFORE the trial (TrainerPendingApprovalScreen), not after a
+    // payment. So the copy says where they stand, and quotes the plan their
+    // real client count puts them on rather than a flat number.
+    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0);
+    const ended = trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : null;
     return e("div", { style: { ...styles.gateWrap, position: "relative" } },
       e(GateDecor, {}),
       e("div", { style: { ...styles.gateCard, position: "relative", zIndex: 1 } },
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
-        e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "One more step"),
+        e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your free trial has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — send your first month's payment below, then JimFit will confirm it and approve your account. You'll be able to log in and get started as soon as it's confirmed.`
+          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your ${TRAINER_TRIAL_DAYS} days ran${ended ? ` to ${ended}` : " out"}. Your clients and everything you set up are exactly where you left them. With ${plan.clients} client${plan.clients === 1 ? "" : "s"} you're on ${plan.name}: ${fmtPrice(plan.rate)}/month. Send it below and you'll be switched straight back on.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
             email: trainer && trainer.email, context: "trainer_first_payment",
-            amount: (trainer && Number(trainer.rate_monthly)) || B2B_FLAT_RATE_MONTHLY,
-            approvedCopy: "Approved — you're in"
+            amount: plan.rate,
+            approvedCopy: "Confirmed — you're in"
           })
         ),
         e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.54s forwards" }, onClick: onLogout }, "Log out")
@@ -11736,13 +11816,19 @@
     // Now it buckets on the rule that actually governs access. If the app
     // says someone is locked out, this screen says they're pending — by
     // construction, because it is the same function.
+    // Oct 15 2026: two more buckets, each only shown when it has someone in
+    // it. A trainer on their free trial has never paid but isn't late — they
+    // used to land in Pending, which said the opposite of the truth. And a
+    // billing-exempt account (the Play reviewer) isn't paid or pending at all.
     const trainerPaymentSplit = useMemo(() => {
-      const paid = [], pending = [];
+      const paid = [], pending = [], trial = [], exempt = [];
       visibleBrowsableTrainers.forEach((t) => {
         const neverPaid = !paidByTrainerId[t.id];
-        (isTrainerPaymentOverdue(t) || neverPaid ? pending : paid).push(t);
+        if (isBillingExempt(t)) exempt.push(t);
+        else if (isTrainerInTrial(t, !neverPaid)) trial.push(t);
+        else (isTrainerPaymentOverdue(t) || neverPaid ? pending : paid).push(t);
       });
-      return { paid, pending };
+      return { paid, pending, trial, exempt };
     }, [visibleBrowsableTrainers, paidByTrainerId, trainers]);
     // Same as browsableTrainers but also drops the Self-Training bucket — used
     // anywhere trainers are treated as real people with real stats (the
@@ -12037,7 +12123,7 @@
     function openUnlock(t) {
       setUnlockError("");
       setUnlockTrainerId(t.id);
-      setUnlockAmount(String(t.rate_monthly != null ? t.rate_monthly : B2B_FLAT_RATE_MONTHLY));
+      setUnlockAmount(String(trainerPlanFor(t, trainerClientCounts[t.id] || 0).rate));
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setUnlockDate(d.toISOString().slice(0, 10));
@@ -12258,7 +12344,7 @@
     function openApprove(t) {
       setApproveError("");
       setApprovingId(t.id);
-      setApproveAmount(String(Number(t.rate_monthly) || B2B_FLAT_RATE_MONTHLY));
+      setApproveAmount(String(trainerPlanFor(t, trainerClientCounts[t.id] || 0).rate));
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setApproveDate(d.toISOString().slice(0, 10));
@@ -12292,6 +12378,34 @@
       }
       setApproveSaving(false);
       setApprovingId(null);
+    }
+
+    // Oct 15 2026, Jimmy: "2 weeks free, after I approve". The default way
+    // to approve now: no payment, a next_payment_date TRAINER_TRIAL_DAYS out,
+    // and the trainer is in. "Approve & confirm payment" stays beside it for
+    // someone who has already sent money.
+    const [trialApproveError, setTrialApproveError] = useState(null);
+    const [trialApprovingId, setTrialApprovingId] = useState(null);
+    async function handleApproveTrial(trainerId) {
+      const t = trainers.find((x) => x.id === trainerId);
+      if (!t) return;
+      setTrialApproveError(null);
+      if (!sb) { setTrialApproveError({ id: trainerId, msg: "Backend not configured yet." }); return; }
+      setTrialApprovingId(trainerId);
+      const d = new Date();
+      d.setDate(d.getDate() + TRAINER_TRIAL_DAYS);
+      const updates = { is_approved: true, next_payment_date: d.toISOString().slice(0, 10) };
+      const { error: updErr } = await sb.from("trainers").update(updates).eq("id", trainerId);
+      setTrialApprovingId(null);
+      if (updErr) {
+        console.error("[approve-trial] failed:", updErr);
+        setTrialApproveError({ id: trainerId, msg: "Couldn't approve that. Try again." });
+        return;
+      }
+      setTrainers((prev) => prev.map((x) => (x.id === trainerId ? { ...x, ...updates } : x)));
+      try {
+        notifyTrainer(trainerId, `You're approved — your ${TRAINER_TRIAL_DAYS}-day free JimFit trial has started. Nothing to pay until ${fmtDateMed(updates.next_payment_date)}.`);
+      } catch (err) {}
     }
 
     // Sept 13 2026, Jimmy: inline "are you sure" instead of window.confirm()
@@ -12836,7 +12950,7 @@
                 pendingTrainers.length > 0 && e("div", { style: { marginBottom: 14 } },
                   e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, `Pending trainer signups (${pendingTrainers.length})`)),
                   e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: -4, marginBottom: 8 } },
-                    "Match their phone number to the incoming Whish transfer, then approve and confirm the payment together."
+                    `Approve to start their ${TRAINER_TRIAL_DAYS}-day free trial — nothing to collect yet. If someone has already sent money, use "Already paid?" to approve and log it together.`
                   ),
                   // Sept 13 2026: trainerStatCard is a shared single-row
                   // (space-between) style used all over the app for simple
@@ -12871,8 +12985,14 @@
                       // to still not leave room for both buttons.
                       approvingId !== t.id && confirmRejectId !== t.id && e("div", { style: { display: "flex", justifyContent: "flex-end", flexWrap: "wrap", gap: 8 } },
                         e("button", { style: { ...styles.waterAddBtn, padding: "0 12px" }, onClick: () => setConfirmRejectId(t.id) }, "Reject"),
-                        e("button", { style: { ...styles.saveBtn, marginTop: 0, padding: "0 14px" }, onClick: () => openApprove(t) }, "Approve & confirm payment")
-                      )
+                        e("button", { style: { ...styles.demoLinkBtn, marginTop: 0, padding: "0 12px", width: "auto" }, onClick: () => openApprove(t) }, "Already paid?"),
+                        e("button", {
+                          style: { ...styles.saveBtn, marginTop: 0, padding: "0 14px", ...(trialApprovingId === t.id ? styles.btnDisabled : {}) },
+                          disabled: trialApprovingId === t.id,
+                          onClick: () => handleApproveTrial(t.id)
+                        }, trialApprovingId === t.id ? "Approving…" : `Approve · ${TRAINER_TRIAL_DAYS} days free`)
+                      ),
+                      trialApproveError && trialApproveError.id === t.id && e("span", { style: styles.inlineError }, trialApproveError.msg)
                     ),
                     // Sept 13 2026, Jimmy: "i didnt see the request even" —
                     // the trainer's own "I've sent the payment" button
@@ -13060,6 +13180,9 @@
                     // can show "says they paid" for a monthly renewal too.
                     const overdue = isTrainerPaymentOverdue(t);
                     const monthlyClaim = overdue ? freshClaimFor(allClaimsByEmail, t.email) : null;
+                    const exempt = isBillingExempt(t);
+                    const inTrial = isTrainerInTrial(t, !neverPaid);
+                    const plan = trainerPlanFor(t, trainerClientCounts[t.id] || 0);
                     return e("div", { key: t.id, style: { ...styles.trainerStatCard, cursor: "pointer", ...(unlockTrainerId === t.id || overdue || neverPaid ? { flexDirection: "column", alignItems: "stretch" } : {}) }, onClick: () => setSelectedTrainerId(t.id) },
                       e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minWidth: 0 } },
                       // minWidth 0 so a long "Says they paid - confirm" chip
@@ -13078,16 +13201,21 @@
                           // quietly contradicting it.
                           e("span", { style: styles.muscleSubText },
                             trainerClientCounts[t.id] || 0, " client", (trainerClientCounts[t.id] || 0) === 1 ? "" : "s",
-                            t.next_payment_date
+                            !exempt && e("span", { style: { color: C.ink3 } }, ` · ${plan.name} ${fmtPrice(plan.rate)}`),
+                            exempt
+                              ? e("span", { style: { color: C.ink3 } }, " · Never billed")
+                              : t.next_payment_date
                               ? e("span", { style: { color: overdue ? C.critical : C.ink3 } },
-                                  ` · ${overdue ? "Was due" : "Next payment"} ${fmtDateMed(t.next_payment_date)}`)
+                                  ` · ${inTrial ? "Trial ends" : overdue ? "Was due" : "Next payment"} ${fmtDateMed(t.next_payment_date)}`)
                               : e("span", { style: { color: C.ink3 } }, " · No payment date set")
                           ),
                           isBirthdayToday(t.birthday) && e(BirthdayBadge, { style: { marginTop: 2 } })
                         )
                       ),
                       e("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
-                        neverPaid && e("span", { style: { ...styles.goalChip, ...styles.goalChipBad } }, claimFresh ? "Payment claimed" : "No payment yet"),
+                        exempt && e("span", { style: { ...styles.goalChip, background: C.subtleFill, color: C.ink2, border: `1px solid ${C.cardBorder}` } }, "Not billed"),
+                        !exempt && inTrial && e("span", { style: { ...styles.goalChip, background: withAlpha(C.brand, 0.14), color: C.brand, border: `1px solid ${withAlpha(C.brand, 0.4)}` } }, claimFresh ? "Trial · says they paid" : "Free trial"),
+                        !exempt && !inTrial && neverPaid && e("span", { style: { ...styles.goalChip, ...styles.goalChipBad } }, claimFresh ? "Payment claimed" : t.next_payment_date ? "Trial ended" : "No payment yet"),
                         // Oct 6 2026: the state that matters most — they are
                         // locked out of the app right now and only Jimmy can
                         // let them back in. Amber when they have said they
@@ -13111,7 +13239,7 @@
                       // problem. stopPropagation throughout - the card itself
                       // opens the trainer, and a mis-tap here must not throw
                       // the confirm away mid-edit.
-                      (overdue || neverPaid) && unlockTrainerId !== t.id && e("button", {
+                      !exempt && (overdue || neverPaid) && unlockTrainerId !== t.id && e("button", {
                         type: "button",
                         onClick: (ev) => { ev.stopPropagation(); openUnlock(t); },
                         style: { ...styles.goalChip, background: withAlpha(C.good, 0.14), color: C.good, border: `1px solid ${withAlpha(C.good, 0.42)}`, cursor: "pointer", marginTop: 10, alignSelf: "flex-start" }
@@ -13161,7 +13289,21 @@
                     ),
                     trainerPaymentSplit.paid.length === 0
                       ? e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "No paid-up trainers yet."))
-                      : e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, trainerPaymentSplit.paid.map(renderTrainerCard))
+                      : e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, trainerPaymentSplit.paid.map(renderTrainerCard)),
+                    trainerPaymentSplit.trial.length > 0 && e(React.Fragment, null,
+                      e("div", { style: { ...styles.sectionHead, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24 } },
+                        e("span", { style: styles.sectionTitle }, "🎁 Free trial"),
+                        e("span", { style: { ...styles.rosterCount, marginLeft: 0 } }, trainerPaymentSplit.trial.length)
+                      ),
+                      e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, trainerPaymentSplit.trial.map(renderTrainerCard))
+                    ),
+                    trainerPaymentSplit.exempt.length > 0 && e(React.Fragment, null,
+                      e("div", { style: { ...styles.sectionHead, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24 } },
+                        e("span", { style: styles.sectionTitle }, "Not billed"),
+                        e("span", { style: { ...styles.rosterCount, marginLeft: 0 } }, trainerPaymentSplit.exempt.length)
+                      ),
+                      e("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, trainerPaymentSplit.exempt.map(renderTrainerCard))
+                    )
                   );
                 })()
               ))
@@ -14124,7 +14266,7 @@
       // their whole operation, separate from any individual trainer's own
       // $B2B_FLAT_RATE_MONTHLY/month (Trainer billing screen), which every
       // real trainer pays regardless of which gym (if any) they belong to.
-      gyms.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4 } }, `Two separate revenue streams, on purpose — this gym's flat rate is what its owner pays you for the whole gym (a white-label customer). Its individual trainers still each pay their own $${B2B_FLAT_RATE_MONTHLY}/month on the Trainer billing screen too — that's not double-counted here, it's simply a different customer relationship. Freezing a gym here signs out its owner and every trainer in it, regardless of whether they individually show Active on Trainer billing.`),
+      gyms.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4 } }, `Two separate revenue streams, on purpose — this gym's flat rate is what its owner pays you for the whole gym (a white-label customer). Its individual trainers still each pay their own plan price (Starter or Pro) on the Trainer billing screen too — that's not double-counted here, it's simply a different customer relationship. Freezing a gym here signs out its owner and every trainer in it, regardless of whether they individually show Active on Trainer billing.`),
       gyms.length === 0 && e("div", { style: styles.empty }, e(GymsEmptyArt, {}), e("p", { style: styles.emptyText }, "No self-serve gyms have signed up yet.")),
       e("div", { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: gyms.length > 0 ? 18 : 0 } }, gyms.map((g) => {
         const stats = clientStats[g.id] || { count: 0, totalDue: 0 };
@@ -14196,6 +14338,9 @@
     const [loading, setLoading] = useState(true);
     const [trainersList, setTrainersList] = useState([]);
     const [clientCounts, setClientCounts] = useState({});
+    // Oct 15 2026: which trainers have ever paid — a never-paid trainer with
+    // a future date is on their free trial, not "Active".
+    const [everPaidIds, setEverPaidIds] = useState(() => new Set());
     const [freezingId, setFreezingId] = useState(null);
     const [saveError, setSaveError] = useState("");
     // Sept 13 2026, Jimmy: inline "are you sure" instead of window.confirm().
@@ -14241,6 +14386,9 @@
     // "Needs attention" filters, so there is nothing new to learn.
     const [billingFilter, setBillingFilter] = useState("");
     function billingStateOf(t) {
+      // Not yet approved = not yet a customer: nothing is owed, so they
+      // must not count as "hasn't paid".
+      if (isBillingExempt(t) || t.is_approved === false) return "ok";
       const due = t.next_payment_date ? new Date(t.next_payment_date + "T23:59:59") : null;
       if (due && due > new Date()) return "ok";
       return freshClaimFor(trainerClaimsByEmail, t.email) ? "waiting" : "overdue";
@@ -14249,10 +14397,12 @@
     useEffect(() => {
       if (!sb) { setLoading(false); return; }
       (async () => {
-        const [trainersRes, clientsRes] = await Promise.all([
+        const [trainersRes, clientsRes, paidRes] = await Promise.all([
           sb.from("trainers").select("*").order("name", { ascending: true }),
-          sb.from("client_profiles").select("trainer_id").not("trainer_id", "is", null).eq("is_trainer_self_log", false)
+          sb.from("client_profiles").select("trainer_id").not("trainer_id", "is", null).eq("is_trainer_self_log", false),
+          sb.from("trainer_payments").select("trainer_id")
         ]);
+        if (!paidRes.error && paidRes.data) setEverPaidIds(new Set(paidRes.data.map((r) => r.trainer_id)));
         const list = (!trainersRes.error && trainersRes.data ? trainersRes.data : [])
           .filter((t) => t.email !== OWNER_TRAINER_EMAIL && t.email !== SELF_TRAIN_EMAIL);
         setTrainersList(list);
@@ -14267,10 +14417,10 @@
         // next_payment_date already set and skips them. Pending (not yet
         // approved) trainers are deliberately excluded — they can't log in
         // yet, so there's nothing to bill.
-        const needsBackfill = list.filter((t) => t.is_approved !== false && t.next_payment_date == null);
+        const needsBackfill = list.filter((t) => t.is_approved !== false && t.next_payment_date == null && !isBillingExempt(t));
         if (needsBackfill.length > 0 && sb) {
           const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 30);
+          dueDate.setDate(dueDate.getDate() + TRAINER_TRIAL_DAYS);
           const dueDateStr = dueDate.toISOString().slice(0, 10);
           const backfillUpdates = {};
           needsBackfill.forEach((t) => {
@@ -14314,7 +14464,7 @@
     function openMarkPaid(t) {
       setPayError("");
       setMarkPayingId(t.id);
-      setPayAmount(String(Number(t.rate_monthly) || B2B_FLAT_RATE_MONTHLY));
+      setPayAmount(String(trainerPlanFor(t, clientCounts[t.id] || 0).rate));
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setPayDate(d.toISOString().slice(0, 10));
@@ -14371,9 +14521,14 @@
     // already frozen for non-payment — same issue as GymsBillingPanel's
     // total just above. Frozen trainers still show their rate on their own
     // card, they just don't inflate the headline "coming in" number.
-    const activeTrainersForTotal = trainersList.filter((t) => !t.is_frozen);
-    const totalMonthly = activeTrainersForTotal.reduce((sum, t) => sum + (Number(t.rate_monthly) || 0), 0);
-    const frozenTrainerCount = trainersList.length - activeTrainersForTotal.length;
+    // Oct 15 2026: each trainer's real plan price, and only trainers actually
+    // paying — frozen, never-billed, and free-trial trainers are left out and
+    // named underneath, so the headline is money that is genuinely coming in.
+    const trialIds = new Set(trainersList.filter((t) => isTrainerInTrial(t, everPaidIds.has(t.id))).map((t) => t.id));
+    const activeTrainersForTotal = trainersList.filter((t) => !t.is_frozen && t.is_approved !== false && !isBillingExempt(t) && !trialIds.has(t.id));
+    const totalMonthly = activeTrainersForTotal.reduce((sum, t) => sum + trainerPlanFor(t, clientCounts[t.id] || 0).rate, 0);
+    const frozenTrainerCount = trainersList.filter((t) => t.is_frozen && !isBillingExempt(t)).length;
+    const trialTrainerCount = trialIds.size;
     const q = search.trim().toLowerCase();
     const billingStates = {};
     trainersList.forEach((t) => { billingStates[t.id] = billingStateOf(t); });
@@ -14390,9 +14545,10 @@
 
     return e("div", null,
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
-      trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: Math.round(totalMonthly), unit: "", size: "lg" }),
+      trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: Math.round(totalMonthly * 100) / 100, unit: "", size: "lg" }),
+      trainersList.length > 0 && trialTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.brand } }, `Excludes ${trialTrainerCount} trainer${trialTrainerCount === 1 ? "" : "s"} on their free trial — counted once they pay.`),
       trainersList.length > 0 && frozenTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, `Excludes ${frozenTrainerCount} frozen trainer${frozenTrainerCount === 1 ? "" : "s"} — not counted as revenue until unfrozen.`),
-      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Standard rate is $${B2B_FLAT_RATE_MONTHLY}/month per trainer, unlimited members — every trainer on the platform pays this, including your own. Adjust a rate below if you negotiate a different one.`),
+      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Two plans, set automatically by client count: Starter ${fmtPrice(STARTER_RATE_MONTHLY)}/month for up to ${STARTER_CLIENT_LIMIT} clients, Pro ${fmtPrice(B2B_FLAT_RATE_MONTHLY)}/month above that. New trainers get ${TRAINER_TRIAL_DAYS} days free after you approve them. Set a custom price on a trainer below only if you've agreed a different one.`),
       // Sept 18 2026, Jimmy: same clarification added to GymsBillingPanel —
       // spelling out these are two intentionally separate revenue streams so
       // this doesn't read as a double-billing bug.
@@ -14447,7 +14603,9 @@
       ),
       e("div", { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: trainersList.length > 0 ? 0 : 0 } }, visibleTrainersList.map((t) => {
         const clientCount = clientCounts[t.id] || 0;
-        const charge = Number(t.rate_monthly) || 0;
+        const plan = trainerPlanFor(t, clientCount);
+        const exempt = isBillingExempt(t);
+        const inTrial = trialIds.has(t.id);
         return e("div", { key: t.id, style: styles.profileSummary },
           e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } },
             e("div", null,
@@ -14456,7 +14614,7 @@
             ),
             e("span", { style: { ...styles.goalChip, ...(t.is_frozen ? styles.goalChipBad : styles.goalChipGood) } }, t.is_frozen ? "Frozen" : "Active")
           ),
-          e("div", { style: styles.muscleSubText }, `${clientCount} member${clientCount === 1 ? "" : "s"} (unlimited)${t.gym_id ? " · in a gym" : ""}`),
+          e("div", { style: styles.muscleSubText }, `${clientCount} client${clientCount === 1 ? "" : "s"} · ${exempt ? "never billed" : plan.limit ? `${plan.name} (up to ${plan.limit})` : `${plan.name} (unlimited)`}${t.gym_id ? " · in a gym" : ""}`),
           t.gym_id && e("p", { style: { ...styles.profileGoalText, fontSize: 11, marginTop: 2, marginBottom: 6 } }, "This trainer is also under a gym — if they can't log in despite showing Active here, check whether their gym is frozen on the Gyms screen."),
           // Sept 6 2026, Jimmy: "no phone number for trainer! i need this for
           // trainers" — every trainer was added with just name + email, no
@@ -14467,17 +14625,26 @@
           // can also set it at Add-trainer time below.
           e(EditableStat, { label: "Phone", value: t.phone, type: "text", block: true, placeholder: "Add phone number", onCommit: (v) => updateField(t.id, "phone", v || null) }),
           e("div", { style: styles.profileSummaryGrid },
-            e(EditableStat, { label: "Rate ($/mo)", value: t.rate_monthly, suffix: "$", onCommit: (v) => updateField(t.id, "rate_monthly", v != null ? v : 0) }),
             e("div", null,
-              e("span", { style: styles.profileLabel }, "Monthly charge"),
-              e("p", { style: styles.profileValue }, `$${Math.round(charge).toLocaleString()}`)
-            )
+              e("span", { style: styles.profileLabel }, "Monthly price"),
+              e("p", { style: styles.profileValue }, exempt ? "Not billed" : `${fmtPrice(plan.rate)}${plan.custom ? " · custom" : ` · ${plan.name}`}`)
+            ),
+            // Blank = automatic (the plan price). A number here overrides it
+            // for this one trainer — the manual override every paid thing in
+            // JimFit keeps.
+            e(EditableStat, { label: "Custom price ($/mo)", value: t.rate_override, suffix: "$", placeholder: "Automatic", onCommit: (v) => updateField(t.id, "rate_override", v) })
           ),
           (() => {
             const now = new Date();
             const due = t.next_payment_date ? new Date(t.next_payment_date + "T23:59:59") : null;
-            const upToDate = due && due > now;
-            const statusText = upToDate
+            const upToDate = exempt || (due && due > now);
+            const statusText = exempt
+              ? "Not billed — never locked out"
+              : t.is_approved === false
+              ? "Waiting for your approval — nothing owed yet"
+              : inTrial
+              ? `Free trial — first payment due ${fmtDateMed(t.next_payment_date)}`
+              : upToDate
               ? `Active — next payment due ${fmtDateMed(t.next_payment_date)}`
               : t.next_payment_date
               ? `Overdue since ${fmtDateMed(t.next_payment_date)}`
@@ -14511,7 +14678,7 @@
                       e("button", { style: { ...styles.demoLinkBtn, flex: 1 }, onClick: () => setMarkPayingId(null) }, "Cancel")
                     )
                   )
-                : e("button", { style: { ...styles.demoLinkBtn, marginTop: 8 }, onClick: () => openMarkPaid(t) }, "Mark this month's payment received →")
+                : !exempt && e("button", { style: { ...styles.demoLinkBtn, marginTop: 8 }, onClick: () => openMarkPaid(t) }, "Mark this month's payment received →")
             );
           })(),
           e("details", { style: { marginTop: 10 } },
@@ -14519,6 +14686,12 @@
             e(EditableStat, { label: "Next payment due", value: t.next_payment_date, type: "date", block: true, onCommit: (v) => updateField(t.id, "next_payment_date", v) })
           ),
           e(EditableStat, { label: "Billing note", value: t.billing_note, type: "text", block: true, placeholder: "e.g. Paid through August", onCommit: (v) => updateField(t.id, "billing_note", v) }),
+          // Oct 15 2026: for the Play reviewer's demo login and any comp —
+          // never charged, never locked out, left out of revenue.
+          e("label", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 12, cursor: "pointer" } },
+            e("input", { type: "checkbox", checked: exempt, onChange: () => updateField(t.id, "billing_exempt", !exempt) }),
+            e("span", { style: { ...styles.profileGoalText, fontSize: 12.5, margin: 0 } }, "Never bill this account (test or free account)")
+          ),
           confirmFreezeId === t.id
             ? e("div", { style: { ...styles.deleteConfirmBar, flexDirection: "column", alignItems: "stretch", gap: 10, marginTop: 12 } },
                 e("span", { style: styles.deleteConfirmText },
@@ -18927,7 +19100,7 @@
   // this is the one settings screen every trainer gets (not just gym owners)
   // to set it themselves. Name/email stay read-only here; those are still the
   // manager's to change from the Trainers tab.
-  function TrainerMyProfilePanel({ trainer, birthday, selfUserId, selfProfile, onSaved, personalFields, onPersonalFieldSaved, onLogout }) {
+  function TrainerMyProfilePanel({ trainer, birthday, selfUserId, selfProfile, onSaved, personalFields, onPersonalFieldSaved, onLogout, clientCount = null }) {
     const [notice, setNotice] = useState("");
     // Local mirror of the coaching-profile fields so a save shows up
     // immediately without waiting on a full trainer-row refetch — same
@@ -19173,12 +19346,18 @@
           // payment" instead, in the same red the roster's own "No
           // payment yet" chip already uses — only actually-active,
           // confirmed billing gets the green pill.
-          e("span", {
-            style: {
-              ...styles.goalChip,
-              ...((trainer.is_frozen || !trainer.next_payment_date) ? styles.goalChipBad : { color: "#34D399", background: "rgba(52,211,153,0.16)" })
-            }
-          }, trainer.is_frozen ? "Frozen" : !trainer.next_payment_date ? "Pending payment" : "Active")
+          (() => {
+            const exempt = isBillingExempt(trainer);
+            const trial = isTrainerInTrial(trainer, trainer._hasEverPaid !== false);
+            const bad = !exempt && (trainer.is_frozen || !trainer.next_payment_date);
+            const label = exempt ? "Not billed" : trainer.is_frozen ? "Frozen" : !trainer.next_payment_date ? "Pending payment" : trial ? "Free trial" : "Active";
+            return e("span", {
+              style: {
+                ...styles.goalChip,
+                ...(bad ? styles.goalChipBad : trial ? { color: C.brand, background: withAlpha(C.brand, 0.16) } : { color: "#34D399", background: "rgba(52,211,153,0.16)" })
+              }
+            }, label);
+          })()
         ),
         // Sept 13 2026, Jimmy (jimfit-trainer-profile.html mockup): "Next
         // payment" now sits inside the same 2-col grid as a third cell
@@ -19186,8 +19365,23 @@
         // separate block below — reads as one consistent set of stats
         // instead of two stats plus an oddly detached third.
         e("div", { style: styles.profileSummaryGrid },
-          e("div", null, e("span", { style: styles.profileLabel }, "Monthly rate"), e("span", { style: { ...styles.profileValue, display: "block" } }, `$${Number(trainer.rate_monthly) || B2B_FLAT_RATE_MONTHLY}/mo`)),
-          e("div", null, e("span", { style: styles.profileLabel }, "Members included"), e("span", { style: { ...styles.profileValue, display: "block" } }, "Unlimited")),
+          // Oct 15 2026: the plan follows the real client count (see
+          // trainerPlanFor). Shown as plan + price + how full it is, so a
+          // trainer can see exactly why they pay what they pay.
+          ...(() => {
+            const plan = trainerPlanFor(trainer, clientCount != null ? clientCount : trainer._clientCount);
+            if (isBillingExempt(trainer)) {
+              return [
+                e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, "Free account")),
+                e("div", { key: "clients" }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: { ...styles.profileValue, display: "block" } }, `${plan.clients} · unlimited`))
+              ];
+            }
+            return [
+              e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.custom ? `${plan.name} · custom price` : plan.name)),
+              e("div", { key: "rate" }, e("span", { style: styles.profileLabel }, "Monthly price"), e("span", { style: { ...styles.profileValue, display: "block" } }, `${fmtPrice(plan.rate)}/mo`)),
+              e("div", { key: "clients" }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.limit ? `${plan.clients} of ${plan.limit}` : `${plan.clients} · unlimited`))
+            ];
+          })(),
           // Set by the manager (Trainers list → "Next payment due") —
           // purely informational, not tied to an actual in-app charge. Red +
           // "Overdue" once the date's in the past so it reads the same way
@@ -19199,7 +19393,7 @@
           // anything, just saw the $24.99 and that's it, not even when is his
           // next payment" — there was no Whish info shown at all, and no due
           // date until a manager happened to set one by hand.
-          trainer.next_payment_date
+          trainer.next_payment_date && !isBillingExempt(trainer)
             ? (() => {
                 const due = new Date(trainer.next_payment_date + "T23:59:59");
                 const overdue = due < new Date();
@@ -19212,8 +19406,21 @@
               })()
             : null
         ),
-        !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Your first payment date hasn't been confirmed yet — pay below, then message JimFit to confirm."),
-        e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Tap WhatsApp at the top to confirm your payment — it renews monthly." })),
+        // One plain sentence on how the plan works, so nobody has to ask.
+        !isBillingExempt(trainer) && (() => {
+          const plan = trainerPlanFor(trainer, clientCount != null ? clientCount : trainer._clientCount);
+          const trial = isTrainerInTrial(trainer, trainer._hasEverPaid !== false);
+          const lines = [];
+          if (trial) lines.push(`Free trial until ${fmtDateMed(trainer.next_payment_date)} — nothing to pay until then.`);
+          if (!plan.custom) {
+            lines.push(plan.tier === "starter"
+              ? `Starter covers up to ${STARTER_CLIENT_LIMIT} clients. With a ${STARTER_CLIENT_LIMIT + 1}th you move to Pro (${fmtPrice(B2B_FLAT_RATE_MONTHLY)}/month, unlimited) from your next payment — nobody gets blocked.`
+              : `Pro covers unlimited clients. At ${STARTER_CLIENT_LIMIT} or fewer you'd drop back to Starter (${fmtPrice(STARTER_RATE_MONTHLY)}/month) from your next payment.`);
+          }
+          return e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, lines.join(" "));
+        })(),
+        !isBillingExempt(trainer) && !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Your first payment date hasn't been confirmed yet — pay below, then message JimFit to confirm."),
+        !isBillingExempt(trainer) && e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Tap WhatsApp at the top to confirm your payment — it renews monthly." })),
         trainer.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, trainer.billing_note),
         trainer.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your account is frozen — contact JimFit to reactivate.")
       ),
@@ -20916,7 +21123,10 @@
       e("main", { style: styles.feed },
         // Above the notification list on purpose: this one is time-critical
         // and self-clearing, the list below is general and dismissible.
-        e(TrainerRenewalNotice, { trainer }),
+        // Live client count so the quoted plan price matches this moment.
+        // Until the roster has loaded, profiles is [] — fall back to the
+        // login-time count rather than briefly quoting a Pro trainer Starter.
+        e(TrainerRenewalNotice, { trainer: loading ? trainer : { ...trainer, _clientCount: profiles.length } }),
         // Sept 18 2026 inspection fix: same dismissible in-app notification
         // list the client app already has (TrainingLog, same styles.setupNotice
         // pattern) — shown above everything else, on whatever tab a trainer
@@ -21061,7 +21271,10 @@
           // every other tab, no wrapper.
           ? e(TrainerMyProfilePanel, {
               trainer, birthday: trainerBirthday, onSaved: setTrainerBirthday, selfUserId, selfProfile,
-              personalFields: trainerProfileFields, onPersonalFieldSaved: setTrainerProfileFields, onLogout
+              personalFields: trainerProfileFields, onPersonalFieldSaved: setTrainerProfileFields, onLogout,
+              // Live, not the login-time snapshot on trainer._clientCount —
+              // the plan line should move the moment a 6th client arrives.
+              clientCount: loading ? null : profiles.length
             })
           : trainerTab === "clients" && rosterView === "attendance"
           ? e(React.Fragment, null,
@@ -25519,10 +25732,14 @@
         // we did for clients"). One-time per trainer, best-effort — mutate
         // the local copy immediately so this same login sees the fresh date
         // (rather than needing a second reload to pick it up).
+        // Oct 15 2026: TRAINER_TRIAL_DAYS, not 30 — a trainer with no date
+        // yet is one the manager added by hand and who is logging in for the
+        // first time, so this is the start of their free trial.
         if (trainerRow && trainerRow.is_approved !== false && trainerRow.next_payment_date == null
+          && !isBillingExempt(trainerRow)
           && trainerRow.email !== OWNER_TRAINER_EMAIL && trainerRow.email !== SELF_TRAIN_EMAIL) {
           const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 30);
+          dueDate.setDate(dueDate.getDate() + TRAINER_TRIAL_DAYS);
           const dueDateStr = dueDate.toISOString().slice(0, 10);
           const backfill = { next_payment_date: dueDateStr, ...(trainerRow.rate_monthly == null ? { rate_monthly: B2B_FLAT_RATE_MONTHLY } : {}) };
           trainerRow.next_payment_date = backfill.next_payment_date;
@@ -25566,9 +25783,18 @@
         // two built-in system rows (no real billing) — everyone else starts
         // assumed unpaid until proven otherwise, so a query failure here
         // fails closed (locked out, not free access) rather than open.
+        // Oct 15 2026: also counts their clients, because the price they are
+        // quoted on every billing screen now depends on it (Starter vs Pro).
+        // Both ride on the trainer object as _-prefixed local fields — never
+        // written back to the trainers table.
         if (trainerRow && trainerRow.email !== OWNER_TRAINER_EMAIL && trainerRow.email !== SELF_TRAIN_EMAIL) {
-          const { data: paidRows, error: paidErr } = await sb.from("trainer_payments").select("id").eq("trainer_id", trainerRow.id).limit(1);
-          setTrainerHasEverPaid(!paidErr && !!(paidRows && paidRows.length));
+          const [paidRes, countRes] = await Promise.all([
+            sb.from("trainer_payments").select("id").eq("trainer_id", trainerRow.id).limit(1),
+            sb.from("client_profiles").select("id", { count: "exact", head: true }).eq("trainer_id", trainerRow.id).eq("is_trainer_self_log", false)
+          ]);
+          const everPaid = isBillingExempt(trainerRow) || (!paidRes.error && !!(paidRes.data && paidRes.data.length));
+          setTrainerHasEverPaid(everPaid);
+          setTrainerInfo({ ...trainerRow, _hasEverPaid: everPaid, _clientCount: countRes.error ? 0 : (countRes.count || 0) });
         } else {
           setTrainerHasEverPaid(true);
         }
@@ -26316,8 +26542,14 @@
     // approval status. TrainerPendingApprovalScreen below is now just a
     // rare fallback for a trainer who has paid before but is somehow still
     // unapproved — shouldn't normally happen with the combined action above.
-    if (trainerInfo && !trainerHasEverPaid) return e(TrainerFirstPaymentDueScreen, { trainer: trainerInfo, onLogout: handleLogout });
+    // Oct 15 2026, Jimmy: free trial for trainers. The order changed with it:
+    // approval now comes FIRST (a new trainer waits for him, then gets
+    // TRAINER_TRIAL_DAYS free), and the first-payment screen only appears
+    // once a never-paid trainer's trial date has passed. Billing-exempt
+    // accounts (the Play reviewer) skip every billing gate.
     if (trainerInfo && trainerInfo.is_approved === false) return e(TrainerPendingApprovalScreen, { trainer: trainerInfo, onLogout: handleLogout });
+    if (trainerInfo && isBillingExempt(trainerInfo)) return e(TrainerView, { trainer: trainerInfo, onLogout: handleLogout, theme, onToggleTheme: toggleTheme });
+    if (trainerInfo && !trainerHasEverPaid && !isTrainerInTrial(trainerInfo, false)) return e(TrainerFirstPaymentDueScreen, { trainer: trainerInfo, onLogout: handleLogout });
     if (trainerInfo && isTrainerPaymentOverdue(trainerInfo)) return e(TrainerPaymentOverdueScreen, { trainer: trainerInfo, onLogout: handleLogout });
     if (trainerInfo) return e(TrainerView, { trainer: trainerInfo, onLogout: handleLogout, theme, onToggleTheme: toggleTheme });
     if (!profileChecked) return null;
