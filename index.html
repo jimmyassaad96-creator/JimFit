@@ -1615,7 +1615,13 @@
     return "$" + (Math.round(v) === v ? String(v) : v.toFixed(2));
   }
 
+  // Oct 15 2026, Jimmy: "what if they have 5 but the app read it wrong?"
+  // A count that failed to load is passed as null and stays unknown: the
+  // plan is then not quoted at all and the manager's amount field is left
+  // empty, rather than silently falling back to 0 clients = Starter.
+  // known = the price can be stated (a custom price is known regardless).
   function trainerPlanFor(t, clientCount) {
+    const countKnown = clientCount !== null && clientCount !== undefined && clientCount !== "" && !Number.isNaN(Number(clientCount));
     const n = Math.max(0, Number(clientCount) || 0);
     const starter = n <= STARTER_CLIENT_LIMIT;
     const standardRate = starter ? STARTER_RATE_MONTHLY : B2B_FLAT_RATE_MONTHLY;
@@ -1628,8 +1634,15 @@
       limit: starter ? STARTER_CLIENT_LIMIT : null,
       standardRate,
       custom,
+      countKnown,
+      known: custom || countKnown,
       rate: custom ? Number(ov) : standardRate
     };
+  }
+
+  // "Starter · $12.99/month", or null when the price can't be stated.
+  function trainerPlanLine(plan) {
+    return plan && plan.known ? `${plan.name} · ${fmtPrice(plan.rate)}/month` : null;
   }
 
   // Accounts JimFit never bills or locks: the Google Play reviewer's demo
@@ -9109,7 +9122,7 @@
     // for is their first one (so it lands in the manager's first-payment
     // queue rather than the monthly-renewal one).
     const inTrial = !!trainer && trainer._hasEverPaid === false;
-    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0);
+    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : null);
 
     // Hook before any early return - this component renders nothing most
     // days, and a conditional hook would change the hook count on the day
@@ -9125,7 +9138,7 @@
         const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
         try {
           notifyTrainer(trainer.id, inTrial
-            ? `Your free trial ends ${when}. Plan: ${plan.name}, ${fmtPrice(plan.rate)}/month.`
+            ? `Your free trial ends ${when}.${plan.known ? ` Plan: ${plan.name}, ${fmtPrice(plan.rate)}/month.` : ""}`
             : `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
         } catch (err) {}
       })();
@@ -9144,10 +9157,10 @@
         e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
       ),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
-        `${fmtDateMed(due)} · ${plan.name} · ${fmtPrice(plan.rate)}/month`),
+        [fmtDateMed(due), trainerPlanLine(plan)].filter(Boolean).join(" · ")),
       e(PaymentStatusStepper, {
         email: trainer && trainer.email, context: inTrial ? "trainer_first_payment" : "trainer_monthly",
-        amount: plan.rate,
+        amount: plan.known ? plan.rate : null,
         approvedCopy: inTrial ? "Confirmed — you're all set" : "Confirmed — you're renewed"
       })
     );
@@ -9198,12 +9211,12 @@
         // they stand instead, and leaves the doing to the stepper below.
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your JimFit month has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Your clients and data are saved. ${(() => { const p = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0); return `Plan: ${p.name} · ${fmtPrice(p.rate)}/month.`; })()} You'll be back in as soon as payment is confirmed.`
+          `Your clients and data are saved. ${(() => { const line = trainerPlanLine(trainerPlanFor(trainer, trainer ? trainer._clientCount : null)); return line ? `Plan: ${line}. ` : ""; })()}You'll be back in as soon as payment is confirmed.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
             email: trainer && trainer.email, context: "trainer_monthly",
-            amount: trainerPlanFor(trainer, trainer ? trainer._clientCount : 0).rate,
+            amount: (() => { const p = trainerPlanFor(trainer, trainer ? trainer._clientCount : null); return p.known ? p.rate : null; })(),
             approvedCopy: "Confirmed — welcome back"
           })
         ),
@@ -9235,7 +9248,8 @@
     // comes BEFORE the trial (TrainerPendingApprovalScreen), not after a
     // payment. So the copy says where they stand, and quotes the plan their
     // real client count puts them on rather than a flat number.
-    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0);
+    const plan = trainerPlanFor(trainer, trainer ? trainer._clientCount : null);
+    const planLine = trainerPlanLine(plan);
     const ended = trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : null;
     return e("div", { style: { ...styles.gateWrap, position: "relative" } },
       e(GateDecor, {}),
@@ -9243,12 +9257,12 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your free trial has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Your clients and data are saved.${ended ? ` Trial ended ${ended}.` : ""} Plan: ${plan.name} · ${fmtPrice(plan.rate)}/month.`
+          `Your clients and data are saved.${ended ? ` Trial ended ${ended}.` : ""}${planLine ? ` Plan: ${planLine}.` : ""}`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
             email: trainer && trainer.email, context: "trainer_first_payment",
-            amount: plan.rate,
+            amount: plan.known ? plan.rate : null,
             approvedCopy: "Confirmed — you're in"
           })
         ),
@@ -11528,6 +11542,7 @@
         if (!error && data) {
           setProfiles(data.filter((p) => !p.is_trainer_self_log));
           setSelfLogClientIds(new Set(data.filter((p) => p.is_trainer_self_log).map((p) => p.id)));
+          setProfilesOk(true);
         }
       });
       Promise.all([ensureOwnerTrainerRow(), ensureSelfTrainRow()]).then(([ownerRow]) => {
@@ -11867,11 +11882,15 @@
     const subscriptionPaidClients = useMemo(() => roster.filter((r) => { const c = categoriesFor(r.profile); return c && c.subscription > 0; }), [roster]);
     const dietPaidClients = useMemo(() => roster.filter((r) => { const c = categoriesFor(r.profile); return c && c.diet > 0; }), [roster]);
     const programPaidClients = useMemo(() => roster.filter((r) => { const c = categoriesFor(r.profile); return c && c.programs > 0; }), [roster]);
+    // Oct 15 2026: false until client_profiles has really loaded, so an
+    // empty or failed load is never read as "0 clients" (= Starter).
+    const [profilesOk, setProfilesOk] = useState(false);
     const trainerClientCounts = useMemo(() => {
       const counts = {};
       profiles.forEach((p) => { if (p.trainer_id) counts[p.trainer_id] = (counts[p.trainer_id] || 0) + 1; });
       return counts;
     }, [profiles]);
+    function trainerCountOf(id) { return profilesOk ? (trainerClientCounts[id] || 0) : null; }
     // trainers, not browsableTrainers — the Self-Training bucket is
     // deliberately excluded from browsableTrainers now (see above) but its
     // own card still opens this same detail view by id.
@@ -12117,7 +12136,8 @@
     function openUnlock(t) {
       setUnlockError("");
       setUnlockTrainerId(t.id);
-      setUnlockAmount(String(trainerPlanFor(t, trainerClientCounts[t.id] || 0).rate));
+      // Left empty when the count isn't known, so a wrong price is never prefilled.
+      setUnlockAmount((() => { const p = trainerPlanFor(t, trainerCountOf(t.id)); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setUnlockDate(d.toISOString().slice(0, 10));
@@ -12338,7 +12358,7 @@
     function openApprove(t) {
       setApproveError("");
       setApprovingId(t.id);
-      setApproveAmount(String(trainerPlanFor(t, trainerClientCounts[t.id] || 0).rate));
+      setApproveAmount((() => { const p = trainerPlanFor(t, trainerCountOf(t.id)); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setApproveDate(d.toISOString().slice(0, 10));
@@ -12564,6 +12584,7 @@
           if (!error && data) {
             setProfiles(data.filter((p) => !p.is_trainer_self_log));
             setSelfLogClientIds(new Set(data.filter((p) => p.is_trainer_self_log).map((p) => p.id)));
+            setProfilesOk(true);
           }
         });
         sb.from("client_payments").select("*").then(({ data, error }) => { if (!error && data) setAllPayments(data); });
@@ -13176,7 +13197,7 @@
                     const monthlyClaim = overdue ? freshClaimFor(allClaimsByEmail, t.email) : null;
                     const exempt = isBillingExempt(t);
                     const inTrial = isTrainerInTrial(t, !neverPaid);
-                    const plan = trainerPlanFor(t, trainerClientCounts[t.id] || 0);
+                    const plan = trainerPlanFor(t, trainerCountOf(t.id));
                     return e("div", { key: t.id, style: { ...styles.trainerStatCard, cursor: "pointer", ...(unlockTrainerId === t.id || overdue || neverPaid ? { flexDirection: "column", alignItems: "stretch" } : {}) }, onClick: () => setSelectedTrainerId(t.id) },
                       e("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minWidth: 0 } },
                       // minWidth 0 so a long "Says they paid - confirm" chip
@@ -13194,8 +13215,8 @@
                           // passed, matching the chip on the right rather than
                           // quietly contradicting it.
                           e("span", { style: styles.muscleSubText },
-                            trainerClientCounts[t.id] || 0, " client", (trainerClientCounts[t.id] || 0) === 1 ? "" : "s",
-                            !exempt && e("span", { style: { color: C.ink3 } }, ` · ${plan.name} ${fmtPrice(plan.rate)}`),
+                            plan.countKnown ? plan.clients : "—", " client", plan.clients === 1 && plan.countKnown ? "" : "s",
+                            !exempt && plan.known && e("span", { style: { color: C.ink3 } }, ` · ${plan.custom && !plan.countKnown ? "Custom" : plan.name} ${fmtPrice(plan.rate)}`),
                             exempt
                               ? e("span", { style: { color: C.ink3 } }, " · Never billed")
                               : t.next_payment_date
@@ -14332,6 +14353,11 @@
     const [loading, setLoading] = useState(true);
     const [trainersList, setTrainersList] = useState([]);
     const [clientCounts, setClientCounts] = useState({});
+    // Oct 15 2026: the names behind each count, and whether the counts loaded
+    // at all. On a failed load nothing is quoted and amounts are left empty.
+    const [clientNamesByTrainer, setClientNamesByTrainer] = useState({});
+    const [countsOk, setCountsOk] = useState(false);
+    const [namesOpenId, setNamesOpenId] = useState(null);
     // Oct 15 2026: which trainers have ever paid — a never-paid trainer with
     // a future date is on their free trial, not "Active".
     const [everPaidIds, setEverPaidIds] = useState(() => new Set());
@@ -14393,7 +14419,7 @@
       (async () => {
         const [trainersRes, clientsRes, paidRes] = await Promise.all([
           sb.from("trainers").select("*").order("name", { ascending: true }),
-          sb.from("client_profiles").select("trainer_id").not("trainer_id", "is", null).eq("is_trainer_self_log", false),
+          sb.from("client_profiles").select("trainer_id, client_name").not("trainer_id", "is", null).eq("is_trainer_self_log", false),
           sb.from("trainer_payments").select("trainer_id")
         ]);
         if (!paidRes.error && paidRes.data) setEverPaidIds(new Set(paidRes.data.map((r) => r.trainer_id)));
@@ -14425,8 +14451,14 @@
         }
         if (!clientsRes.error && clientsRes.data) {
           const counts = {};
-          clientsRes.data.forEach((c) => { counts[c.trainer_id] = (counts[c.trainer_id] || 0) + 1; });
+          const names = {};
+          clientsRes.data.forEach((c) => {
+            counts[c.trainer_id] = (counts[c.trainer_id] || 0) + 1;
+            (names[c.trainer_id] = names[c.trainer_id] || []).push(c.client_name || "Unnamed member");
+          });
           setClientCounts(counts);
+          setClientNamesByTrainer(names);
+          setCountsOk(true);
         }
         setLoading(false);
       })();
@@ -14458,7 +14490,7 @@
     function openMarkPaid(t) {
       setPayError("");
       setMarkPayingId(t.id);
-      setPayAmount(String(trainerPlanFor(t, clientCounts[t.id] || 0).rate));
+      setPayAmount((() => { const p = trainerPlanFor(t, countsOk ? (clientCounts[t.id] || 0) : null); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
       setPayDate(d.toISOString().slice(0, 10));
@@ -14520,7 +14552,8 @@
     // named underneath, so the headline is money that is genuinely coming in.
     const trialIds = new Set(trainersList.filter((t) => isTrainerInTrial(t, everPaidIds.has(t.id))).map((t) => t.id));
     const activeTrainersForTotal = trainersList.filter((t) => !t.is_frozen && t.is_approved !== false && !isBillingExempt(t) && !trialIds.has(t.id));
-    const totalMonthly = activeTrainersForTotal.reduce((sum, t) => sum + trainerPlanFor(t, clientCounts[t.id] || 0).rate, 0);
+    const totalMonthly = activeTrainersForTotal.reduce((sum, t) => sum + trainerPlanFor(t, countsOk ? (clientCounts[t.id] || 0) : null).rate, 0);
+    const totalKnown = activeTrainersForTotal.every((t) => trainerPlanFor(t, countsOk ? (clientCounts[t.id] || 0) : null).known);
     const frozenTrainerCount = trainersList.filter((t) => t.is_frozen && !isBillingExempt(t)).length;
     const trialTrainerCount = trialIds.size;
     const q = search.trim().toLowerCase();
@@ -14539,7 +14572,8 @@
 
     return e("div", null,
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
-      trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: Math.round(totalMonthly * 100) / 100, unit: "", size: "lg" }),
+      trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: totalKnown ? Math.round(totalMonthly * 100) / 100 : "—", unit: "", size: "lg" }),
+      trainersList.length > 0 && !countsOk && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, "Client counts didn't load, so plans can't be shown. Reopen this screen."),
       trainersList.length > 0 && trialTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.brand } }, `Excludes ${trialTrainerCount} on free trial.`),
       trainersList.length > 0 && frozenTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, `Excludes ${frozenTrainerCount} frozen trainer${frozenTrainerCount === 1 ? "" : "s"} — not counted as revenue until unfrozen.`),
       trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Starter ${fmtPrice(STARTER_RATE_MONTHLY)} (up to ${STARTER_CLIENT_LIMIT} clients) · Pro ${fmtPrice(B2B_FLAT_RATE_MONTHLY)} (${STARTER_CLIENT_LIMIT + 1}+). Set automatically. ${TRAINER_TRIAL_DAYS} days free after approval.`),
@@ -14596,10 +14630,12 @@
           : `No trainers match "${search.trim()}".`)
       ),
       e("div", { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: trainersList.length > 0 ? 0 : 0 } }, visibleTrainersList.map((t) => {
-        const clientCount = clientCounts[t.id] || 0;
+        const clientCount = countsOk ? (clientCounts[t.id] || 0) : null;
         const plan = trainerPlanFor(t, clientCount);
         const exempt = isBillingExempt(t);
         const inTrial = trialIds.has(t.id);
+        const countedNames = (clientNamesByTrainer[t.id] || []).slice().sort((a, b) => a.localeCompare(b));
+        const namesOpen = namesOpenId === t.id;
         return e("div", { key: t.id, style: styles.profileSummary },
           e("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } },
             e("div", null,
@@ -14608,7 +14644,20 @@
             ),
             e("span", { style: { ...styles.goalChip, ...(t.is_frozen ? styles.goalChipBad : styles.goalChipGood) } }, t.is_frozen ? "Frozen" : "Active")
           ),
-          e("div", { style: styles.muscleSubText }, `${clientCount} client${clientCount === 1 ? "" : "s"} · ${exempt ? "never billed" : plan.limit ? `${plan.name} (up to ${plan.limit})` : `${plan.name} (unlimited)`}${t.gym_id ? " · in a gym" : ""}`),
+          !countsOk
+            ? e("div", { style: styles.muscleSubText }, `— clients · ${exempt ? "never billed" : plan.custom ? "custom price" : "plan unknown"}${t.gym_id ? " · in a gym" : ""}`)
+            : e("button", {
+                type: "button", onClick: () => setNamesOpenId(namesOpen ? null : t.id), "aria-expanded": namesOpen,
+                style: { ...styles.muscleSubText, display: "block", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }
+              },
+                `${clientCount} client${clientCount === 1 ? "" : "s"} · ${exempt ? "never billed" : plan.limit ? `${plan.name} (up to ${plan.limit})` : `${plan.name} (unlimited)`}${t.gym_id ? " · in a gym" : ""}`,
+                clientCount > 0 && e("span", { style: { color: C.brand, fontWeight: 600 } }, namesOpen ? " · Hide" : " · See who")),
+          namesOpen && countsOk && e("div", { style: { margin: "6px 0 8px", padding: "8px 12px", borderRadius: 10, background: C.subtleFill, border: `1px solid ${C.cardBorder}` } },
+            countedNames.length === 0
+              ? e("span", { style: { fontSize: 12.5, color: C.ink3 } }, "No clients counted.")
+              : e("ol", { style: { margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 2 } },
+                  countedNames.map((n, i) => e("li", { key: i, style: { fontSize: 12.5, color: C.ink } }, n)))
+          ),
           t.gym_id && e("p", { style: { ...styles.profileGoalText, fontSize: 11, marginTop: 2, marginBottom: 6 } }, "This trainer is also under a gym — if they can't log in despite showing Active here, check whether their gym is frozen on the Gyms screen."),
           // Sept 6 2026, Jimmy: "no phone number for trainer! i need this for
           // trainers" — every trainer was added with just name + email, no
@@ -14621,7 +14670,7 @@
           e("div", { style: styles.profileSummaryGrid },
             e("div", null,
               e("span", { style: styles.profileLabel }, "Monthly price"),
-              e("p", { style: styles.profileValue }, exempt ? "Not billed" : `${fmtPrice(plan.rate)}${plan.custom ? " · custom" : ` · ${plan.name}`}`)
+              e("p", { style: styles.profileValue }, exempt ? "Not billed" : !plan.known ? "—" : `${fmtPrice(plan.rate)}${plan.custom ? " · custom" : ` · ${plan.name}`}`)
             ),
             // Blank = automatic (the plan price). A number here overrides it
             // for this one trainer — the manual override every paid thing in
@@ -19094,8 +19143,10 @@
   // this is the one settings screen every trainer gets (not just gym owners)
   // to set it themselves. Name/email stay read-only here; those are still the
   // manager's to change from the Trainers tab.
-  function TrainerMyProfilePanel({ trainer, birthday, selfUserId, selfProfile, onSaved, personalFields, onPersonalFieldSaved, onLogout, clientCount = null }) {
+  function TrainerMyProfilePanel({ trainer, birthday, selfUserId, selfProfile, onSaved, personalFields, onPersonalFieldSaved, onLogout, clientCount = null, countedClientNames = null }) {
     const [notice, setNotice] = useState("");
+    // Oct 15 2026: tap the client count on My billing to see who is counted.
+    const [showCounted, setShowCounted] = useState(false);
     // Local mirror of the coaching-profile fields so a save shows up
     // immediately without waiting on a full trainer-row refetch — same
     // reasoning as the birthday mirror above.
@@ -19364,16 +19415,27 @@
           // trainer can see exactly why they pay what they pay.
           ...(() => {
             const plan = trainerPlanFor(trainer, clientCount != null ? clientCount : trainer._clientCount);
+            const clientsText = !plan.countKnown ? "—" : (plan.limit && !isBillingExempt(trainer)) ? `${plan.clients} of ${plan.limit}` : `${plan.clients} · unlimited`;
+            // Tappable only when the names are actually loaded.
+            const canList = plan.countKnown && Array.isArray(countedClientNames);
+            const clientsCell = e("div", { key: "clients" },
+              e("span", { style: styles.profileLabel }, "Clients"),
+              canList
+                ? e("button", {
+                    type: "button", onClick: () => setShowCounted((v) => !v), "aria-expanded": showCounted,
+                    style: { ...styles.profileValue, display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, cursor: "pointer", color: C.brand, fontFamily: "inherit", textAlign: "left" }
+                  }, clientsText, e("span", { style: { fontSize: 11, color: C.ink3, fontWeight: 500 } }, showCounted ? "Hide" : "See who"))
+                : e("span", { style: { ...styles.profileValue, display: "block" } }, clientsText));
             if (isBillingExempt(trainer)) {
               return [
                 e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, "Free account")),
-                e("div", { key: "clients" }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: { ...styles.profileValue, display: "block" } }, `${plan.clients} · unlimited`))
+                clientsCell
               ];
             }
             return [
-              e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.custom ? `${plan.name} · custom price` : plan.name)),
-              e("div", { key: "rate" }, e("span", { style: styles.profileLabel }, "Monthly price"), e("span", { style: { ...styles.profileValue, display: "block" } }, `${fmtPrice(plan.rate)}/mo`)),
-              e("div", { key: "clients" }, e("span", { style: styles.profileLabel }, "Clients"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.limit ? `${plan.clients} of ${plan.limit}` : `${plan.clients} · unlimited`))
+              e("div", { key: "plan" }, e("span", { style: styles.profileLabel }, "Plan"), e("span", { style: { ...styles.profileValue, display: "block" } }, !plan.countKnown && !plan.custom ? "—" : plan.custom ? (plan.countKnown ? `${plan.name} · custom price` : "Custom price") : plan.name)),
+              e("div", { key: "rate" }, e("span", { style: styles.profileLabel }, "Monthly price"), e("span", { style: { ...styles.profileValue, display: "block" } }, plan.known ? `${fmtPrice(plan.rate)}/mo` : "—")),
+              clientsCell
             ];
           })(),
           // Set by the manager (Trainers list → "Next payment due") —
@@ -19400,9 +19462,18 @@
               })()
             : null
         ),
+        showCounted && Array.isArray(countedClientNames) && e("div", { style: { marginTop: 10, padding: "10px 12px", borderRadius: 10, background: C.subtleFill, border: `1px solid ${C.cardBorder}` } },
+          e("span", { style: styles.profileLabel }, countedClientNames.length === 0 ? "No clients counted yet" : `Counted (${countedClientNames.length})`),
+          countedClientNames.length > 0 && e("ol", { style: { margin: "6px 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 } },
+            countedClientNames.slice().sort((a, b) => a.localeCompare(b)).map((n, i) => e("li", { key: i, style: { fontSize: 13, color: C.ink } }, n))),
+          e("p", { style: { ...styles.profileGoalText, fontSize: 11, marginTop: 6, marginBottom: 0 } }, "Your own log isn't counted. Something wrong? Message us.")
+        ),
         // One plain sentence on how the plan works, so nobody has to ask.
         !isBillingExempt(trainer) && (() => {
           const plan = trainerPlanFor(trainer, clientCount != null ? clientCount : trainer._clientCount);
+          if (!plan.countKnown && !plan.custom) {
+            return e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Couldn't load your client count. Reopen the app to refresh.");
+          }
           const trial = isTrainerInTrial(trainer, trainer._hasEverPaid !== false);
           const lines = [];
           if (trial) lines.push(`Free trial until ${fmtDateMed(trainer.next_payment_date)}.`);
@@ -20294,6 +20365,9 @@
     const [loading, setLoading] = useState(true);
     const [allEntries, setAllEntries] = useState([]);
     const [profiles, setProfiles] = useState([]);
+    // Oct 15 2026: false until the roster has really loaded. A failed load
+    // leaves profiles [], which must not be read as "0 clients" (= Starter).
+    const [profilesOk, setProfilesOk] = useState(false);
     // Sept 13 2026, Jimmy: "what if later i want to check for every client
     // the program we are working on" — { [clientId]: { title, updatedAt } }
     // for whichever custom program (client_custom_programs, the same table
@@ -20550,7 +20624,7 @@
         const profileRows = (!profilesRes.error && profilesRes.data) ? profilesRes.data : [];
         const ids = profileRows.map((p) => p.id).filter(Boolean);
         const userIds = profileRows.map((p) => p.user_id).filter(Boolean);
-        if (!profilesRes.error && profilesRes.data) setProfiles(profilesRes.data);
+        if (!profilesRes.error && profilesRes.data) { setProfiles(profilesRes.data); setProfilesOk(true); }
         if (ids.length === 0) { setAllEntries([]); setAllPayments([]); setLoading(false); return; }
         // userIds can still be empty here even though ids isn't — a client
         // added by a trainer who hasn't signed up/claimed their account yet
@@ -20857,6 +20931,7 @@
         sb.from("client_profiles").select("*").eq("trainer_id", trainer.id).eq("is_trainer_self_log", false).then(({ data, error }) => {
           if (error || !data) return;
           setProfiles(data);
+          setProfilesOk(true);
           const userIds = data.map((p) => p.user_id).filter(Boolean);
           if (userIds.length === 0) { setAllPayments([]); return; }
           sb.from("client_payments").select("*").in("user_id", userIds).then(({ data: pData, error: pErr }) => { if (!pErr && pData) setAllPayments(pData); });
@@ -21123,7 +21198,9 @@
         // Live client count so the quoted plan price matches this moment.
         // Until the roster has loaded, profiles is [] — fall back to the
         // login-time count rather than briefly quoting a Pro trainer Starter.
-        e(TrainerRenewalNotice, { trainer: loading ? trainer : { ...trainer, _clientCount: profiles.length } }),
+        // A failed roster load also keeps the login count (null if that
+        // failed too), never profiles.length on an empty list.
+        e(TrainerRenewalNotice, { trainer: (loading || !profilesOk) ? trainer : { ...trainer, _clientCount: profiles.length } }),
         // Sept 18 2026 inspection fix: same dismissible in-app notification
         // list the client app already has (TrainingLog, same styles.setupNotice
         // pattern) — shown above everything else, on whatever tab a trainer
@@ -21271,7 +21348,9 @@
               personalFields: trainerProfileFields, onPersonalFieldSaved: setTrainerProfileFields, onLogout,
               // Live, not the login-time snapshot on trainer._clientCount —
               // the plan line should move the moment a 6th client arrives.
-              clientCount: loading ? null : profiles.length
+              clientCount: (loading || !profilesOk) ? null : profiles.length,
+              // The names behind that count, so a trainer can check it.
+              countedClientNames: (loading || !profilesOk) ? null : profiles.map((p) => p.client_name || "Unnamed member")
             })
           : trainerTab === "clients" && rosterView === "attendance"
           ? e(React.Fragment, null,
@@ -25791,7 +25870,7 @@
           ]);
           const everPaid = isBillingExempt(trainerRow) || (!paidRes.error && !!(paidRes.data && paidRes.data.length));
           setTrainerHasEverPaid(everPaid);
-          setTrainerInfo({ ...trainerRow, _hasEverPaid: everPaid, _clientCount: countRes.error ? 0 : (countRes.count || 0) });
+          setTrainerInfo({ ...trainerRow, _hasEverPaid: everPaid, _clientCount: countRes.error ? null : (countRes.count || 0) });
         } else {
           setTrainerHasEverPaid(true);
         }
