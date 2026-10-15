@@ -12608,6 +12608,7 @@
     }
 
     const headerLabel = coachTab === "sessions" ? "Rota"
+      : coachTab === "attendance" ? "Attendance"
       : coachTab === "dashboard" ? "Dashboard"
       : coachTab === "myClients" ? "My members"
       : coachTab === "gyms" ? "Gyms"
@@ -12678,6 +12679,8 @@
             clientOptions: roster.filter((r) => r.profile).map((r) => ({ id: r.id, name: r.name, email: r.clientEmail, phone: r.profile.phone })),
             onViewClient: setSelectedClient
           })
+        : coachTab === "attendance"
+        ? e(AttendancePanel, { roster, trainerNameFor, onSelect: setSelectedClient })
         : coachTab === "dashboard"
         ? e(ManagerDashboard, { entries: dashboardEntries, payments: allPayments, trainerPayments: allTrainerPayments, trainers: realTrainersOnly, profiles })
         : coachTab === "gyms"
@@ -13211,6 +13214,7 @@
             items: [
               { label: "Members", active: coachTab === "clients", onClick: () => { setCoachTab("clients"); setMenuOpen(false); } },
               { label: "Dashboard", active: coachTab === "dashboard", onClick: () => { setCoachTab("dashboard"); setMenuOpen(false); } },
+              { label: "Attendance", active: coachTab === "attendance", onClick: () => { setCoachTab("attendance"); setMenuOpen(false); } },
               { label: "Rota", active: coachTab === "sessions", onClick: () => { setCoachTab("sessions"); setMenuOpen(false); } }
             ]
           },
@@ -19628,6 +19632,165 @@
     );
   }
 
+  // Oct 15 2026, Jimmy: "a pro dashboard to see each client how many
+  // sessions he did and when he came". TrainingHeatmap already existed on a
+  // client's Progress tab, but it answers "how consistent is this ONE
+  // person", one tap at a time — it never answers "who on my roster is
+  // drifting". This reads the same entries and puts the whole roster in one
+  // list: sessions in the chosen window, when they last came, and the actual
+  // dates. Anyone past ATTENDANCE_QUIET_DAYS without a session is flagged,
+  // because that is the number that makes someone pick up the phone.
+  const ATTENDANCE_QUIET_DAYS = 10;
+  const ATTENDANCE_RANGES = [7, 30, 90];
+
+  function attendanceShortDate(iso) {
+    const d = new Date(iso + "T00:00:00");
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function RosterViewToggle({ value, onChange }) {
+    return e("div", { style: { display: "flex", gap: 8, padding: "0 18px", marginBottom: 14 } },
+      [{ id: "list", label: "Members" }, { id: "attendance", label: "Attendance" }].map((t) => e("button", {
+        key: t.id, type: "button", onClick: () => onChange(t.id),
+        style: {
+          flexGrow: 1, fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 700,
+          padding: "9px 0", borderRadius: 10, cursor: "pointer",
+          border: `1px solid ${value === t.id ? C.brand : C.cardBorder}`,
+          background: value === t.id ? C.brandSoft : C.card,
+          color: value === t.id ? C.brand : C.ink3
+        }
+      }, t.label))
+    );
+  }
+
+  function AttendancePanel({ roster, trainerNameFor, onSelect }) {
+    const [range, setRange] = useState(30);
+
+    const view = useMemo(() => {
+      const today = todayISO();
+      const start = new Date(today + "T00:00:00");
+      start.setDate(start.getDate() - (range - 1));
+      const startISO = dateToISO(start);
+
+      const rows = (roster || []).map((r) => {
+        // One session per DAY, not per logged exercise — three exercises on
+        // Tuesday is one visit, which is what "how many sessions" means to a
+        // trainer standing on the floor.
+        const dates = Array.from(new Set((r.entries || []).map((x) => x.date).filter(Boolean))).sort().reverse();
+        const inRange = dates.filter((d) => d >= startISO);
+        const last = dates[0] || null;
+        let ago = null;
+        if (last) {
+          const a = new Date(last + "T00:00:00");
+          const b = new Date(today + "T00:00:00");
+          ago = Math.round((b - a) / 86400000);
+        }
+        return {
+          id: r.id,
+          name: r.name,
+          trainerName: trainerNameFor && r.trainerId ? trainerNameFor(r.trainerId) : null,
+          count: inRange.length,
+          recent: inRange.slice(0, 4),
+          last, ago,
+          never: ago === null,
+          quiet: ago === null || ago > ATTENDANCE_QUIET_DAYS
+        };
+      });
+
+      rows.sort((a, b) => {
+        if (a.last && b.last) return a.last < b.last ? 1 : -1;
+        if (a.last) return -1;
+        if (b.last) return 1;
+        return String(a.name).localeCompare(String(b.name));
+      });
+
+      const trained = rows.filter((r) => r.count > 0).length;
+      return { rows, total: rows.reduce((n, r) => n + r.count, 0), trained, quiet: rows.length - trained };
+    }, [roster, range, trainerNameFor]);
+
+    if (!roster || roster.length === 0) {
+      return e("div", { style: styles.empty }, e("p", { style: styles.emptyText }, "No members yet — attendance shows up here once you have some."));
+    }
+
+    return e("div", { style: { padding: "0 18px 10px" } },
+      e("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+        ATTENDANCE_RANGES.map((n) => e("button", {
+          key: n, type: "button", onClick: () => setRange(n),
+          style: {
+            flexGrow: 1, fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 700,
+            padding: "9px 0", borderRadius: 10, cursor: "pointer",
+            border: `1px solid ${range === n ? C.brand : C.cardBorder}`,
+            background: range === n ? C.brandSoft : C.card,
+            color: range === n ? C.brand : C.ink3
+          }
+        }, `${n} days`))
+      ),
+
+      e("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 9, marginBottom: 16 } },
+        [
+          { v: view.total, label: "Sessions", color: C.ink },
+          { v: view.trained, label: "Trained", color: C.good },
+          { v: view.quiet, label: "Didn't", color: C.critical }
+        ].map((b) => e("div", { key: b.label, style: { background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 13, padding: "13px 12px" } },
+          e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 25, fontWeight: 700, lineHeight: 1, color: b.color } }, b.v),
+          e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 10.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 } }, b.label)
+        ))
+      ),
+
+      e("div", { style: { display: "flex", flexDirection: "column", gap: 9 } },
+        view.rows.map((r) => e("button", {
+          key: r.id, type: "button",
+          onClick: () => { if (onSelect) onSelect(r.id); },
+          style: {
+            textAlign: "left", width: "100%", cursor: onSelect ? "pointer" : "default",
+            fontFamily: "inherit", background: C.card,
+            border: `1px solid ${r.quiet ? withAlpha(C.critical, 0.35) : C.cardBorder}`,
+            borderRadius: 14, padding: "13px 13px 12px"
+          }
+        },
+          e("div", { style: { display: "flex", alignItems: "flex-start", gap: 10 } },
+            e("div", { style: {
+              width: 34, height: 34, flexShrink: 0, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontWeight: 800,
+              background: r.quiet ? withAlpha(C.critical, 0.14) : C.brandSoft,
+              color: r.quiet ? C.critical : C.brand,
+              border: `1px solid ${withAlpha(r.quiet ? C.critical : C.brand, 0.3)}`
+            } }, String(r.name || "?").charAt(0).toUpperCase()),
+
+            e("div", { style: { flexGrow: 1, minWidth: 0 } },
+              e("div", { style: { display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" } },
+                e("span", { style: { fontSize: 15, fontWeight: 800, color: C.ink } }, r.name),
+                r.quiet && e("span", { style: {
+                  fontFamily: "'Inter', sans-serif", fontSize: 9.5, fontWeight: 800, color: C.critical,
+                  border: `1px solid ${withAlpha(C.critical, 0.45)}`, background: withAlpha(C.critical, 0.12),
+                  borderRadius: 999, padding: "2px 7px", textTransform: "uppercase", letterSpacing: 0.5
+                } }, r.never ? "never" : "quiet")
+              ),
+              r.trainerName && e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 11.5, color: C.ink3, marginTop: 2 } }, r.trainerName)
+            ),
+
+            e("div", { style: { textAlign: "right", flexShrink: 0 } },
+              e("div", { style: { fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700, lineHeight: 1, color: r.count > 0 ? C.ink : C.ink3 } }, r.count),
+              e("div", { style: { fontFamily: "'Inter', sans-serif", fontSize: 9.5, fontWeight: 700, color: C.ink3, textTransform: "uppercase", letterSpacing: 0.4, marginTop: 4 } }, "sessions")
+            )
+          ),
+
+          e("div", { style: { display: "flex", alignItems: "center", gap: 7, marginTop: 11, flexWrap: "wrap" } },
+            e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 700, color: r.quiet ? C.critical : C.good } },
+              r.never ? "Never trained" : r.ago === 0 ? "Today" : r.ago === 1 ? "Yesterday" : `${r.ago} days ago`),
+            r.recent.length > 0 && e("span", { style: { color: C.cardBorder, fontSize: 11 } }, "·"),
+            r.recent.map((d) => e("span", { key: d, style: {
+              fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: C.ink2,
+              background: C.subtleFill, border: `1px solid ${C.cardBorder}`, borderRadius: 7, padding: "3px 7px"
+            } }, attendanceShortDate(d))),
+            r.recent.length === 0 && !r.never && e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.ink3, fontStyle: "italic" } }, `nothing in the last ${range} days`)
+          )
+        ))
+      )
+    );
+  }
+
   function TrainerView({ trainer, onLogout, theme, onToggleTheme }) {
     const [loading, setLoading] = useState(true);
     const [allEntries, setAllEntries] = useState([]);
@@ -19640,6 +19803,11 @@
     // it at a glance instead of opening every client one by one.
     const [clientPrograms, setClientPrograms] = useState({});
     const [selectedClient, setSelectedClient] = useState(null);
+    // Oct 15 2026: Members list vs the new Attendance roll-up. A tab of its
+    // own would have made ten items in the bottom nav, and the labels
+    // already clipped at eight (see the "Dashboard" -> "Stats" note below),
+    // so it rides on top of the members list instead.
+    const [rosterView, setRosterView] = useState("list");
     // Sept 23 2026, Jimmy: "can WE do an option the trainer can unassign a
     // client from his side? and the client end up unassigned?" — instant,
     // no manager approval (his call), but the owner/manager gets notified
@@ -20578,7 +20746,13 @@
               trainer, birthday: trainerBirthday, onSaved: setTrainerBirthday, selfUserId, selfProfile,
               personalFields: trainerProfileFields, onPersonalFieldSaved: setTrainerProfileFields, onLogout
             })
+          : trainerTab === "clients" && rosterView === "attendance"
+          ? e(React.Fragment, null,
+              e(RosterViewToggle, { value: rosterView, onChange: setRosterView }),
+              e(AttendancePanel, { roster, onSelect: setSelectedClient })
+            )
           : e(React.Fragment, null,
+              e(RosterViewToggle, { value: rosterView, onChange: setRosterView }),
               roster.length === 0 && e("div", { style: styles.empty }, e(PeopleEmptyArt, {}), e("p", { style: styles.emptyText },
                 trainer.invite_code
                   ? `No members yet — share your code (${trainer.invite_code}) with them, or ask your manager to assign some.`
