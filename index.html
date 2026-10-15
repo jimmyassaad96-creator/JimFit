@@ -9026,7 +9026,7 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Almost there!"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Thanks for signing up${trainer && trainer.name ? `, ${trainer.name}` : ""} — your trainer account is waiting for approval. Once it's approved you get ${TRAINER_TRIAL_DAYS} days free, nothing to pay until then.`
+          `Your account is awaiting approval. You'll get ${TRAINER_TRIAL_DAYS} days free once approved.`
         ),
         e("button", { style: { ...styles.gateLogoutBtn, marginTop: 18, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" }, onClick: onLogout }, "Log out")
       )
@@ -9125,7 +9125,7 @@
         const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
         try {
           notifyTrainer(trainer.id, inTrial
-            ? `Your free JimFit trial ends ${when} (${fmtDateMed(due)}). Your plan after that: ${plan.name}, ${fmtPrice(plan.rate)}/month.`
+            ? `Your free trial ends ${when}. Plan: ${plan.name}, ${fmtPrice(plan.rate)}/month.`
             : `Your JimFit access ends ${when} (${fmtDateMed(due)}). Send your payment and mark it in the app to keep it active.`);
         } catch (err) {}
       })();
@@ -9136,21 +9136,15 @@
     // Same tone pass as the member banner — this said "Your access ends" and
     // "Send your payment", which reads like an invoice to somebody who has
     // been on the team for months.
-    const period = inTrial ? "free trial" : "JimFit month";
-    const headline = daysLeft === 0
-      ? `Last day of your ${period}`
-      : daysLeft === 1
-      ? `One day left on your ${period}`
-      : `${daysLeft} days left on your ${period}`;
+    const what = inTrial ? "Free trial ends" : "Renews";
+    const headline = daysLeft === 0 ? `${what} today` : daysLeft === 1 ? `${what} tomorrow` : `${what} in ${daysLeft} days`;
     return e("div", { style: { padding: 14, borderRadius: 12, marginBottom: 14, background: withAlpha(C.warning, 0.1), border: `1px solid ${withAlpha(C.warning, 0.38)}` } },
       e("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
         e(Icon, { name: "alert", size: 15, color: C.warning }),
         e("span", { style: { fontFamily: "'Inter', sans-serif", fontSize: 14.5, fontWeight: 700, color: C.ink } }, headline)
       ),
       e("p", { style: { ...styles.profileGoalText, fontSize: 12.5, marginTop: 6, color: C.ink2 } },
-        inTrial
-          ? `Runs to ${fmtDateMed(due)}. With ${plan.clients} client${plan.clients === 1 ? "" : "s"} you're on ${plan.name} — ${fmtPrice(plan.rate)}/month. Everything you've set up stays.`
-          : `Runs to ${fmtDateMed(due)}. Everything you've logged stays — let Jimmy know below whenever you've sorted it and he'll confirm.`),
+        `${fmtDateMed(due)} · ${plan.name} · ${fmtPrice(plan.rate)}/month`),
       e(PaymentStatusStepper, {
         email: trainer && trainer.email, context: inTrial ? "trainer_first_payment" : "trainer_monthly",
         amount: plan.rate,
@@ -9204,7 +9198,7 @@
         // they stand instead, and leaves the doing to the stepper below.
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your JimFit month has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your month ran to ${trainer && trainer.next_payment_date ? fmtDateMed(trainer.next_payment_date) : "recently"}. Your clients, programs and history are all exactly where you left them. ${(() => { const p = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0); return `With ${p.clients} client${p.clients === 1 ? "" : "s"} you're on ${p.name}: ${fmtPrice(p.rate)}/month.`; })()} Let Jimmy know below once you've sorted it and he'll switch you straight back on.`
+          `Your clients and data are saved. ${(() => { const p = trainerPlanFor(trainer, trainer ? trainer._clientCount : 0); return `Plan: ${p.name} · ${fmtPrice(p.rate)}/month.`; })()} You'll be back in as soon as payment is confirmed.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
@@ -9249,7 +9243,7 @@
         e("div", { style: { opacity: 0, animation: "popIn 0.4s cubic-bezier(.16,1,.3,1) 0.06s forwards" } }, e(BrandMark, {})),
         e("h1", { style: { ...styles.gateTitle, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.16s forwards" } }, "Your free trial has ended"),
         e("p", { style: { ...styles.gateSub, opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.26s forwards" } },
-          `Hi${trainer && trainer.name ? ` ${trainer.name}` : ""} — your ${TRAINER_TRIAL_DAYS} days ran${ended ? ` to ${ended}` : " out"}. Your clients and everything you set up are exactly where you left them. With ${plan.clients} client${plan.clients === 1 ? "" : "s"} you're on ${plan.name}: ${fmtPrice(plan.rate)}/month. Send it below and you'll be switched straight back on.`
+          `Your clients and data are saved.${ended ? ` Trial ended ${ended}.` : ""} Plan: ${plan.name} · ${fmtPrice(plan.rate)}/month.`
         ),
         e("div", { style: { width: "100%", opacity: 0, animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) 0.38s forwards" } },
           e(PaymentStatusStepper, {
@@ -12404,7 +12398,7 @@
       }
       setTrainers((prev) => prev.map((x) => (x.id === trainerId ? { ...x, ...updates } : x)));
       try {
-        notifyTrainer(trainerId, `You're approved — your ${TRAINER_TRIAL_DAYS}-day free JimFit trial has started. Nothing to pay until ${fmtDateMed(updates.next_payment_date)}.`);
+        notifyTrainer(trainerId, `You're approved. Your ${TRAINER_TRIAL_DAYS}-day free trial starts today.`);
       } catch (err) {}
     }
 
@@ -12950,7 +12944,7 @@
                 pendingTrainers.length > 0 && e("div", { style: { marginBottom: 14 } },
                   e("div", { style: styles.sectionHead }, e("span", { style: styles.sectionTitle }, `Pending trainer signups (${pendingTrainers.length})`)),
                   e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: -4, marginBottom: 8 } },
-                    `Approve to start their ${TRAINER_TRIAL_DAYS}-day free trial — nothing to collect yet. If someone has already sent money, use "Already paid?" to approve and log it together.`
+                    `Approving starts a ${TRAINER_TRIAL_DAYS}-day free trial. Already paid? Approve and log it together.`
                   ),
                   // Sept 13 2026: trainerStatCard is a shared single-row
                   // (space-between) style used all over the app for simple
@@ -14546,9 +14540,9 @@
     return e("div", null,
       saveError && e("div", { style: { ...styles.setupNotice, marginBottom: 14 } }, e(Icon, { name: "alert", size: 14, color: C.critical }), " ", saveError),
       trainersList.length > 0 && e(StatTile, { label: "Estimated monthly revenue, all trainers", value: Math.round(totalMonthly * 100) / 100, unit: "", size: "lg" }),
-      trainersList.length > 0 && trialTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.brand } }, `Excludes ${trialTrainerCount} trainer${trialTrainerCount === 1 ? "" : "s"} on their free trial — counted once they pay.`),
+      trainersList.length > 0 && trialTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.brand } }, `Excludes ${trialTrainerCount} on free trial.`),
       trainersList.length > 0 && frozenTrainerCount > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 4, color: C.critical } }, `Excludes ${frozenTrainerCount} frozen trainer${frozenTrainerCount === 1 ? "" : "s"} — not counted as revenue until unfrozen.`),
-      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Two plans, set automatically by client count: Starter ${fmtPrice(STARTER_RATE_MONTHLY)}/month for up to ${STARTER_CLIENT_LIMIT} clients, Pro ${fmtPrice(B2B_FLAT_RATE_MONTHLY)}/month above that. New trainers get ${TRAINER_TRIAL_DAYS} days free after you approve them. Set a custom price on a trainer below only if you've agreed a different one.`),
+      trainersList.length > 0 && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 6 } }, `Starter ${fmtPrice(STARTER_RATE_MONTHLY)} (up to ${STARTER_CLIENT_LIMIT} clients) · Pro ${fmtPrice(B2B_FLAT_RATE_MONTHLY)} (${STARTER_CLIENT_LIMIT + 1}+). Set automatically. ${TRAINER_TRIAL_DAYS} days free after approval.`),
       // Sept 18 2026, Jimmy: same clarification added to GymsBillingPanel —
       // spelling out these are two intentionally separate revenue streams so
       // this doesn't read as a double-billing bug.
@@ -14632,18 +14626,18 @@
             // Blank = automatic (the plan price). A number here overrides it
             // for this one trainer — the manual override every paid thing in
             // JimFit keeps.
-            e(EditableStat, { label: "Custom price ($/mo)", value: t.rate_override, suffix: "$", placeholder: "Automatic", onCommit: (v) => updateField(t.id, "rate_override", v) })
+            e(EditableStat, { label: "Custom price ($/mo)", value: t.rate_override, suffix: "$", placeholder: "Auto", onCommit: (v) => updateField(t.id, "rate_override", v) })
           ),
           (() => {
             const now = new Date();
             const due = t.next_payment_date ? new Date(t.next_payment_date + "T23:59:59") : null;
             const upToDate = exempt || (due && due > now);
             const statusText = exempt
-              ? "Not billed — never locked out"
+              ? "Free account"
               : t.is_approved === false
-              ? "Waiting for your approval — nothing owed yet"
+              ? "Awaiting approval"
               : inTrial
-              ? `Free trial — first payment due ${fmtDateMed(t.next_payment_date)}`
+              ? `Free trial · first payment ${fmtDateMed(t.next_payment_date)}`
               : upToDate
               ? `Active — next payment due ${fmtDateMed(t.next_payment_date)}`
               : t.next_payment_date
@@ -14690,7 +14684,7 @@
           // never charged, never locked out, left out of revenue.
           e("label", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 12, cursor: "pointer" } },
             e("input", { type: "checkbox", checked: exempt, onChange: () => updateField(t.id, "billing_exempt", !exempt) }),
-            e("span", { style: { ...styles.profileGoalText, fontSize: 12.5, margin: 0 } }, "Never bill this account (test or free account)")
+            e("span", { style: { ...styles.profileGoalText, fontSize: 12.5, margin: 0 } }, "Free account (never billed)")
           ),
           confirmFreezeId === t.id
             ? e("div", { style: { ...styles.deleteConfirmBar, flexDirection: "column", alignItems: "stretch", gap: 10, marginTop: 12 } },
@@ -19411,16 +19405,19 @@
           const plan = trainerPlanFor(trainer, clientCount != null ? clientCount : trainer._clientCount);
           const trial = isTrainerInTrial(trainer, trainer._hasEverPaid !== false);
           const lines = [];
-          if (trial) lines.push(`Free trial until ${fmtDateMed(trainer.next_payment_date)} — nothing to pay until then.`);
+          if (trial) lines.push(`Free trial until ${fmtDateMed(trainer.next_payment_date)}.`);
           if (!plan.custom) {
             lines.push(plan.tier === "starter"
-              ? `Starter covers up to ${STARTER_CLIENT_LIMIT} clients. With a ${STARTER_CLIENT_LIMIT + 1}th you move to Pro (${fmtPrice(B2B_FLAT_RATE_MONTHLY)}/month, unlimited) from your next payment — nobody gets blocked.`
-              : `Pro covers unlimited clients. At ${STARTER_CLIENT_LIMIT} or fewer you'd drop back to Starter (${fmtPrice(STARTER_RATE_MONTHLY)}/month) from your next payment.`);
+              ? `Up to ${STARTER_CLIENT_LIMIT} clients. Pro (${fmtPrice(B2B_FLAT_RATE_MONTHLY)}) applies from ${STARTER_CLIENT_LIMIT + 1}.`
+              : `Unlimited clients. Starter (${fmtPrice(STARTER_RATE_MONTHLY)}) applies at ${STARTER_CLIENT_LIMIT} or fewer.`);
           }
           return e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, lines.join(" "));
         })(),
-        !isBillingExempt(trainer) && !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "Your first payment date hasn't been confirmed yet — pay below, then message JimFit to confirm."),
-        !isBillingExempt(trainer) && e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { note: "Tap WhatsApp at the top to confirm your payment — it renews monthly." })),
+        !isBillingExempt(trainer) && !trainer.next_payment_date && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, "First payment not confirmed yet."),
+        // "Payment pending" read as a warning to a trainer who owes nothing.
+        // Inside the app they are either on trial or paid up, so this is
+        // simply how to pay.
+        !isBillingExempt(trainer) && e("div", { style: { marginTop: 10 } }, e(WhishPayBox, { title: "How to pay", note: "Message us on WhatsApp. Billed monthly." })),
         trainer.billing_note && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10 } }, trainer.billing_note),
         trainer.is_frozen && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 10, color: C.critical } }, "Your account is frozen — contact JimFit to reactivate.")
       ),
@@ -23428,9 +23425,9 @@
   // Nothing here names a payment method or an amount — that stays stripped
   // for App Store/Play Store compliance (see the Sept 28 note above). A
   // support contact is not an in-app purchase mechanism.
-  function WhishPayBox({ amount = null, note = "" }) {
+  function WhishPayBox({ amount = null, note = "", title = "Payment pending" }) {
     return e("div", { style: { background: withAlpha(C.brand, 0.08), borderRadius: 10, padding: "10px 12px", width: "100%" } },
-      e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, "Payment pending"),
+      e("p", { style: { margin: 0, fontSize: 12, color: C.ink3, textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 } }, title),
       e("p", { style: { margin: "4px 0 0", fontSize: 13.5, color: C.ink } }, note || "Message us on WhatsApp to arrange payment."),
       e("button", {
         type: "button", onClick: openSupportWhatsApp,
@@ -23584,7 +23581,7 @@
     // same underlying payment_claims data/flow as before, just no in-app
     // purchase instructions surfaced alongside it.
     return e("div", { style: { width: "100%", marginTop: 4 } },
-      e(WhishPayBox, {}),
+      e(WhishPayBox, { title: "How to pay", note: "Message us on WhatsApp." }),
       e("button", {
         style: { ...styles.saveBtn, marginTop: 10, width: "100%", ...((isFresh || submitting || !loaded) ? styles.btnDisabled : {}) },
         disabled: isFresh || submitting || !loaded,
@@ -23602,8 +23599,8 @@
       // a pending state, so those stay the plain neutral color.
       e("p", { style: { ...styles.stepperHintLine, ...(isFresh ? { color: C.warning } : {}) } },
         isFresh
-          ? `Sent ${fmtDateTimeMed(claim.submitted_at)} — usually confirmed within a day.`
-          : "Tap WhatsApp at the top to arrange payment, then mark it as sent."
+          ? `Sent ${fmtDateTimeMed(claim.submitted_at)}. Usually confirmed within a day.`
+          : "Pay via WhatsApp, then tap the button above."
       ),
       isFresh && e("p", { style: { ...styles.stepperHintLine, marginTop: 4, color: C.ink3, fontSize: 11 } }, approvedCopy || "We'll notify you the moment it's approved.")
     );
