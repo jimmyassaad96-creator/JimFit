@@ -8614,6 +8614,32 @@
     );
   }
 
+  // Oct 20 2026, Jimmy: "some random emails are signing up into my app" — once
+  // email confirmation is on, a typo'd domain (a real one seen: hotmsil.com)
+  // means the person never gets the link and can never log in. Catch the common
+  // misspellings before the account is created.
+  const EMAIL_DOMAIN_TYPOS = {
+    "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gamil.com": "gmail.com", "gnail.com": "gmail.com",
+    "gmal.com": "gmail.com", "gmali.com": "gmail.com", "gmaill.com": "gmail.com", "gmail.co": "gmail.com",
+    "gmail.cm": "gmail.com", "gmail.con": "gmail.com", "gmsil.com": "gmail.com", "gmil.com": "gmail.com",
+    "hotmsil.com": "hotmail.com", "hotmial.com": "hotmail.com", "hotmal.com": "hotmail.com", "hotmai.com": "hotmail.com",
+    "hotmil.com": "hotmail.com", "hotmaill.com": "hotmail.com", "hotmail.co": "hotmail.com", "hotmail.con": "hotmail.com",
+    "yaho.com": "yahoo.com", "yahooo.com": "yahoo.com", "yahoo.co": "yahoo.com", "yahoo.con": "yahoo.com",
+    "outlok.com": "outlook.com", "outllok.com": "outlook.com", "outlook.co": "outlook.com", "outlook.con": "outlook.com",
+    "iclod.com": "icloud.com", "icoud.com": "icloud.com", "iclould.com": "icloud.com", "icloud.co": "icloud.com", "icloud.con": "icloud.com"
+  };
+  function suggestEmailFix(addr) {
+    const at = (addr || "").lastIndexOf("@");
+    if (at < 1) return "";
+    const domain = addr.slice(at + 1).toLowerCase();
+    const fix = EMAIL_DOMAIN_TYPOS[domain];
+    return fix ? addr.slice(0, at + 1) + fix : "";
+  }
+  // Where the confirmation / resend link brings the person back to.
+  function authRedirectUrl() {
+    return window.location.origin + window.location.pathname;
+  }
+
   function AuthGate({ onBackToWelcome }) {
     // Picked up once, on mount, if "← Back" from ProfileGate stashed a draft
     // (name/last name already typed, wrong email about to be retyped) —
@@ -8647,17 +8673,39 @@
     // since a Turnstile token is single-use and short-lived.
     const [captchaToken, setCaptchaToken] = useState("");
     const [captchaResetKey, setCaptchaResetKey] = useState(0);
+    // Oct 20 2026: email confirmation. unconfirmedEmail = the address that
+    // still needs its link clicked (offers "Resend"); emailSuggestion = a
+    // likely typo fix; typoKept = an address the person said is correct as typed.
+    const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
+    const [emailSuggestion, setEmailSuggestion] = useState("");
+    const [typoKept, setTypoKept] = useState("");
 
     function switchMode(next) {
-      setError(""); setNotice(""); setMode(next);
+      setError(""); setNotice(""); setEmailSuggestion(""); setMode(next);
     }
 
     function backToRoles() {
-      setError(""); setNotice(""); setMode("login"); setRole(null);
+      setError(""); setNotice(""); setEmailSuggestion(""); setUnconfirmedEmail(""); setMode("login"); setRole(null);
+    }
+
+    async function resendConfirmation() {
+      if (!sb || !unconfirmedEmail) return;
+      setError(""); setNotice("");
+      if (TURNSTILE_ENABLED && !captchaToken) { setError("Complete the verification below, then tap Resend."); return; }
+      setLoading(true);
+      const { error: err } = await sb.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: authRedirectUrl(), ...(TURNSTILE_ENABLED ? { captchaToken } : {}) }
+      });
+      setLoading(false);
+      setCaptchaToken(""); setCaptchaResetKey((k) => k + 1);
+      if (err) { setError(err.message || "Couldn't resend the email. Try again in a minute."); return; }
+      setNotice(`New link sent to ${unconfirmedEmail}. Check your inbox and spam folder.`);
     }
 
     async function handleSubmit() {
-      setError(""); setNotice("");
+      setError(""); setNotice(""); setEmailSuggestion("");
       if (!sb) { setError("Backend not configured yet."); return; }
       if (mode === "forgot") {
         if (!email.trim()) { setError("Enter your email."); return; }
@@ -8684,6 +8732,14 @@
         return;
       }
       if (TURNSTILE_ENABLED && !captchaToken) { setError("Please complete the verification above."); return; }
+      if (mode === "signup") {
+        const fix = suggestEmailFix(identifier);
+        if (fix && typoKept !== identifier.toLowerCase()) {
+          setEmailSuggestion(fix);
+          setError(`Did you mean ${fix}?`);
+          return;
+        }
+      }
       // A trainer signing up fresh (nobody's added this email yet) types their
       // own name, same as a client — it's only the OTHER case, an already-added
       // trainer just setting a password for the email the manager typed in,
@@ -8745,8 +8801,18 @@
           // name from (deriveClientName etc.) — last_name rides alongside it in
           // the same auth metadata so a client's ProfileGate step (which runs
           // after this and creates their client_profiles row) can pick it up.
+          // Oct 20 2026: with email confirmation on, the person may confirm
+          // and log in on another phone, where the localStorage pending-
+          // trainer record above doesn't exist. signup_role/signup_phone ride
+          // along in the account itself as a backup (see the trainer-signup
+          // consumer). emailRedirectTo brings the link back to the app.
           options: {
-            data: { display_name: displayName.trim(), last_name: lastName.trim() },
+            data: {
+              display_name: displayName.trim(), last_name: lastName.trim(),
+              signup_role: role || "client",
+              ...(role === "trainer" ? { signup_phone: trainerPhone.trim() } : {})
+            },
+            emailRedirectTo: authRedirectUrl(),
             ...(TURNSTILE_ENABLED ? { captchaToken } : {})
           }
         });
@@ -8758,7 +8824,8 @@
         if (role === "trainer") localStorage.setItem(TRAINER_ROLE_ASSERT_KEY, identifier.toLowerCase());
         if (data && data.session) { setLoading(false); return; } // signed in immediately, onAuthStateChange picks it up
         setLoading(false);
-        setNotice("Account created! Check your email to confirm it, then log in below.");
+        setUnconfirmedEmail(identifier);
+        setNotice(`Almost done! We sent a confirmation link to ${identifier}. Open it, then log in here.`);
         setMode("login");
       } else {
         const { error: err } = await sb.auth.signInWithPassword({
@@ -8767,6 +8834,12 @@
           ...(TURNSTILE_ENABLED ? { options: { captchaToken } } : {})
         });
         setCaptchaToken(""); setCaptchaResetKey((k) => k + 1);
+        if (err && (err.code === "email_not_confirmed" || /not confirmed/i.test(err.message || ""))) {
+          setLoading(false);
+          setUnconfirmedEmail(identifier);
+          setError(`Confirm your email first. Open the link we sent to ${identifier}, then log in.`);
+          return;
+        }
         if (err) { setLoading(false); setError(err.message || "Couldn't log you in."); return; }
         // Whether this account is actually a trainer is decided in exactly one
         // place after this: the top-level app check that runs right after
@@ -8881,7 +8954,14 @@
             style: styles.forgotBtn, onClick: () => switchMode("forgot")
           }, "Forgot password?"),
           error && e("span", { style: styles.inlineError }, error),
+          emailSuggestion && e("div", { style: { display: "flex", gap: 14, flexWrap: "wrap", marginTop: 6 } },
+            e("button", { type: "button", style: styles.forgotBtn, onClick: () => { setEmail(emailSuggestion); setEmailSuggestion(""); setError(""); } }, `Use ${emailSuggestion}`),
+            e("button", { type: "button", style: { ...styles.forgotBtn, color: C.ink3 }, onClick: () => { setTypoKept(email.trim().toLowerCase()); setEmailSuggestion(""); setError(""); } }, "Keep mine")
+          ),
           notice && e("span", { style: styles.inlineNotice }, notice),
+          unconfirmedEmail && mode === "login" && e("button", {
+            type: "button", style: { ...styles.forgotBtn, marginTop: 8 }, disabled: loading, onClick: resendConfirmation
+          }, "Resend confirmation email"),
           e(TurnstileWidget, { onToken: setCaptchaToken, resetKey: captchaResetKey }),
           (() => {
             // Sept 16 2026, Jimmy QA: caught right after shipping the
@@ -25727,9 +25807,25 @@
       // and the existing (already-approved) row is used as-is.
       try {
         const rawPendingTrainer = localStorage.getItem(PENDING_TRAINER_CREATE_KEY);
+        let pending = null;
         if (rawPendingTrainer) {
-          const pending = JSON.parse(rawPendingTrainer);
-          if (pending && pending.email === userEmail.toLowerCase()) {
+          const p = JSON.parse(rawPendingTrainer);
+          if (p && p.email === userEmail.toLowerCase()) pending = p;
+        }
+        // Oct 20 2026: confirmed + logged in on a different device than the
+        // one they signed up on — no localStorage record there. Use the
+        // signup details saved in the account itself, once (trainer_signup_done).
+        let fromAccount = false;
+        if (!pending) {
+          const { data: sessData } = await sb.auth.getSession();
+          const meta = (sessData && sessData.session && sessData.session.user && sessData.session.user.user_metadata) || {};
+          if (meta.signup_role === "trainer" && !meta.trainer_signup_done && meta.display_name) {
+            pending = { email: userEmail.toLowerCase(), name: meta.display_name, lastName: meta.last_name || "", phone: meta.signup_phone || "" };
+            fromAccount = true;
+          }
+        }
+        {
+          if (pending) {
             let succeeded = false;
             for (let attempt = 0; attempt < 5 && !succeeded; attempt++) {
               if (attempt > 0) await new Promise((r) => setTimeout(r, 1500));
@@ -25743,7 +25839,8 @@
               succeeded = true;
             }
             if (succeeded) {
-              localStorage.removeItem(PENDING_TRAINER_CREATE_KEY);
+              if (!fromAccount) localStorage.removeItem(PENDING_TRAINER_CREATE_KEY);
+              try { await sb.auth.updateUser({ data: { trainer_signup_done: true } }); } catch (markErr) { console.error("[trainer-signup] couldn't mark done:", markErr); }
             } else {
               console.error("[trainer-signup] gave up after retries — will retry again on next login/reload");
             }
