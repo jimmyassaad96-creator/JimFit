@@ -323,6 +323,10 @@
   const TURNSTILE_SITE_KEY = "0x4AAAAAAE4BdmWSch95dAg1";
   const TURNSTILE_ENABLED = !!TURNSTILE_SITE_KEY && TURNSTILE_SITE_KEY !== "YOUR_TURNSTILE_SITE_KEY_HERE";
   const MANAGER_EMAILS = ["jimmyassaad96@gmail.com"];
+  // Oct 20 2026, Jimmy: only he edits the shared exercise library (demo
+  // links, muscle tags) — the database now refuses anyone else, so the
+  // edit buttons only show for him. Set once the signed-in email is known.
+  let appViewerIsManager = false;
   // "Start your own gym" signup is invite-only, not a public button — reached
   // only via a link with ?newgym=1 on it, handed out directly by Jimmy to
   // pilot gym owners he knows. Nobody stumbles into creating a gym by accident.
@@ -6545,17 +6549,17 @@
           // a trainer's own manually-added link needs no such caveat.
           !isManual && matchedName && e("span", { style: { ...styles.demoNote, display: "block", marginTop: 6 } },
             "Matched: “", matchedName, "”", looksOff ? " — does this look right?" : ""),
-          !showManual && e("button", { style: styles.demoLinkBtn, onClick: () => setShowManual(true) },
+          appViewerIsManager && !showManual && e("button", { style: styles.demoLinkBtn, onClick: () => setShowManual(true) },
             !isManual && looksOff ? "That's not right — add the correct link" : "Not right? Add your own link")
         ),
         !loading && !imgUrl && !showManual && e("div", null,
           e("span", { style: styles.demoNote }, "No demo found for “", name, "”."),
           e("div", { style: { display: "flex", gap: 14, marginTop: 4 } },
             e("a", { href: youtubeSearchUrl(name), target: "_blank", rel: "noopener noreferrer", style: { ...styles.demoLinkBtn, marginTop: 0 } }, "Search YouTube ↗"),
-            e("button", { style: { ...styles.demoLinkBtn, marginTop: 0 }, onClick: () => setShowManual(true) }, "+ Add your own link")
+            appViewerIsManager && e("button", { style: { ...styles.demoLinkBtn, marginTop: 0 }, onClick: () => setShowManual(true) }, "+ Add your own link")
           )
         ),
-        !loading && showManual && e("div", { style: { display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" } },
+        appViewerIsManager && !loading && showManual && e("div", { style: { display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" } },
           e("input", {
             style: { ...styles.input, flex: 1, minWidth: 160 }, placeholder: "Paste a YouTube link or direct GIF/image URL",
             value: manualUrl, onChange: (ev) => setManualUrl(ev.target.value)
@@ -6567,8 +6571,8 @@
         // they have no demo photo also means no muscle tags. Let whoever's
         // looking tag it once; after that, everyone who looks this exercise
         // up gets the diagram too, same as a manually-added demo link.
-        !loading && musclesChecked && !muscles && !showMuscleForm && e("button", { style: styles.demoLinkBtn, onClick: () => setShowMuscleForm(true) }, "+ Tag which muscles this works"),
-        showMuscleForm && e("div", { style: { marginTop: 8, display: "flex", flexDirection: "column", gap: 8 } },
+        appViewerIsManager && !loading && musclesChecked && !muscles && !showMuscleForm && e("button", { style: styles.demoLinkBtn, onClick: () => setShowMuscleForm(true) }, "+ Tag which muscles this works"),
+        appViewerIsManager && showMuscleForm && e("div", { style: { marginTop: 8, display: "flex", flexDirection: "column", gap: 8 } },
           e("select", {
             style: styles.input, value: muscleFormPrimary,
             onChange: (ev) => { setMuscleFormPrimary(ev.target.value); setMuscleFormSecondary((prev) => prev.filter((k) => k !== ev.target.value)); }
@@ -11103,6 +11107,13 @@
   // any lookup here went through a name-keyed map (profileByName[r.name]) —
   // whichever one was last in the map "won" for both cards. Selecting,
   // clearing, and deleting are all now keyed by r.id too.
+  // Oct 20 2026, Jimmy: a self-training member read "trains with
+  // Self-Training (no trainer)" / "trains with Unassigned" — sounds like
+  // they train with someone. They train alone, so say that.
+  function rosterTrainLabel(name) {
+    return (!name || name === "Unassigned" || name === SELF_TRAIN_NAME) ? "trains alone" : `trains with ${name}`;
+  }
+
   function ClientRosterList({ roster, balanceFor, onSelect, onDelete, onClearWorkouts, emptyText, trainerNameFor, categoriesFor, renewalFor }) {
     // Sept 14 2026, Jimmy: "i want for every tab in it a search button i
     // dont want to scroll all the way down" — this roster is used by both
@@ -11335,7 +11346,7 @@
             r.clientEmail && e("span", { style: { ...styles.muscleSubText, opacity: 0.75 } }, r.clientEmail),
             e("span", { style: styles.muscleSubText },
               r.sessions, " session", r.sessions === 1 ? "" : "s", " · last ", r.lastDate ? fmtDate(r.lastDate) : "—",
-              trainerNameFor && ` · trains with ${trainerNameFor(r.trainerId)}`
+              trainerNameFor && ` · ${rosterTrainLabel(trainerNameFor(r.trainerId))}`
             ),
             // Why this person is on the worklist, in their own words-worth of
             // detail. Only while the filter is on — see the note on
@@ -11444,7 +11455,7 @@
             e("div", { style: styles.avatar }, r.name.slice(0, 1).toUpperCase()),
             e("div", { style: { display: "flex", flexDirection: "column", gap: 3 } },
               e("span", { style: styles.exerciseName }, r.name),
-              trainerNameFor && e("span", { style: styles.muscleSubText }, `trains with ${trainerNameFor(r.trainerId)}`),
+              trainerNameFor && e("span", { style: styles.muscleSubText }, rosterTrainLabel(trainerNameFor(r.trainerId))),
               parts ? e("span", { style: { ...styles.muscleSubText, opacity: 0.85 } }, parts) : e("span", { style: styles.muscleSubText }, "No payments logged yet"),
               renewal && e("span", { style: { ...styles.goalChip, ...(renewal.ok ? styles.goalChipGood : styles.goalChipBad), alignSelf: "flex-start", marginTop: 2 } }, renewal.label)
             )
@@ -11964,8 +11975,15 @@
       const t = trainers.find((tr) => tr.email === SELF_TRAIN_EMAIL);
       return t ? t.id : null;
     }, [trainers]);
-    const selfTrainClients = useMemo(() => roster.filter((r) => selfTrainBucketId && r.trainerId === selfTrainBucketId), [roster, selfTrainBucketId]);
-    const trainerAssignedClients = useMemo(() => roster.filter((r) => !(selfTrainBucketId && r.trainerId === selfTrainBucketId)), [roster, selfTrainBucketId]);
+    // Oct 20 2026, Jimmy: "self training some showing under training with
+    // someone" — a member with NO trainer at all (trainer_id empty, e.g. a
+    // sign-up that never got the self-training bucket) was falling into
+    // "With a trainer" labelled "Unassigned". The rest of the app already
+    // treats an empty trainer as self-training (renewalFor, paywall), so
+    // this list now does too.
+    const isTrainingAlone = (r) => !!r.profile && (!r.trainerId || (!!selfTrainBucketId && r.trainerId === selfTrainBucketId));
+    const selfTrainClients = useMemo(() => roster.filter(isTrainingAlone), [roster, selfTrainBucketId]);
+    const trainerAssignedClients = useMemo(() => roster.filter((r) => !isTrainingAlone(r)), [roster, selfTrainBucketId]);
 
     // Sept 14 2026, Jimmy: "i want also here to see alone the clients who
     // paid per subscription and per diet and per program" — a second way
@@ -25885,6 +25903,7 @@
     const [statsRange, setStatsRange] = useState(() => ({ from: daysAgoISO(7), to: todayISO() }));
     const [statsMetric, setStatsMetric] = useState("volume");
     const isManager = !!userEmail && MANAGER_EMAILS.includes(userEmail.toLowerCase());
+    appViewerIsManager = isManager;
     const [editingId, setEditingId] = useState(null);
     // Sept 12 2026, Jimmy: "add an exercise below or above the other
     // exercise option" — see the matching note on ClientLogPanel's own
