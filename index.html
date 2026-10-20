@@ -9441,7 +9441,15 @@
   // discarded it — commitBirthday derives the real age from the birthday and
   // calls setAge with it, so whatever was picked on the age stepper never
   // survived to the database. Eight questions, one of them pointless.
-  const PROFILE_WIZARD_STEPS = ["birthday", "gender", "phone", "heightWeight", "days", "medical", "goal"];
+  const PROFILE_WIZARD_STEPS = ["birthday", "gender", "phone", "heightWeight", "days", "experience", "medical", "goal"];
+  // Oct 20 2026, Jimmy approved: "How long have you been training?" — feeds
+  // the "Recommended for you" program pick (level match). Stored as
+  // client_profiles.training_experience (check: lt6m / 6m_2y / 2y_plus).
+  const TRAINING_EXPERIENCE_OPTIONS = [
+    { value: "lt6m", label: "Under 6 months" },
+    { value: "6m_2y", label: "6 months – 2 years" },
+    { value: "2y_plus", label: "2+ years" }
+  ];
   const GENDER_CHIPS = ["Male", "Female", "Prefer not to say", "Other"];
   const GOAL_CHIPS = ["Build muscle", "Lose fat", "Get stronger", "Feel better"];
 
@@ -9519,6 +9527,7 @@
     // target math since activity level is derived from it. This tracks
     // whether the "days" step chip was actually tapped.
     const [daysPerWeekTouched, setDaysPerWeekTouched] = useState(false);
+    const [trainingExperience, setTrainingExperience] = useState("");
     const [hasMedical, setHasMedical] = useState("");
     const [medicalDetails, setMedicalDetails] = useState("");
     const [goal, setGoal] = useState("");
@@ -9696,6 +9705,7 @@
         height_cm: Number(height),
         weight_kg: Number(weight),
         days_per_week: Number(daysPerWeek),
+        training_experience: trainingExperience || null,
         ...medicalFieldsForSave(),
         goal: goalText,
         // A self-serve client with no trainer starts a 14-day free trial of
@@ -9843,6 +9853,7 @@
         height_cm: heightAnswered ? Number(height) : null,
         weight_kg: weightAnswered ? Number(weight) : null,
         days_per_week: daysPerWeekTouched ? Number(daysPerWeek) : null,
+        training_experience: trainingExperience || null,
         ...medicalFieldsForSave(),
         goal: [...selectedGoalChips, goal.trim()].filter(Boolean).join(", ") || null,
         trial_ends_at: landedSelfTrain ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() : null
@@ -9998,6 +10009,19 @@
               style: { ...styles.dayChip, ...(daysPerWeek === n ? styles.dayChipActive : {}) },
               onClick: () => { setDaysPerWeek(n); setDaysPerWeekTouched(true); goNext(); }
             }, n)
+          )
+        )
+      ),
+      stepName === "experience" && e(React.Fragment, null,
+        e("h1", { style: styles.wizardQuestion }, "How long have you been training?"),
+        e("p", { style: styles.wizardSub }, "Tap one to continue"),
+        e("div", { style: styles.chipRow },
+          TRAINING_EXPERIENCE_OPTIONS.map((o) =>
+            e("button", {
+              key: o.value, type: "button",
+              style: { ...styles.chipBtn, ...(trainingExperience === o.value ? styles.chipBtnActive : {}) },
+              onClick: () => { setTrainingExperience(o.value); goNext(); }
+            }, o.label)
           )
         )
       ),
@@ -21835,6 +21859,12 @@
         }, e(Icon, { name: "dumbbell", size: 11, strokeWidth: 2.5 }), "Log weight")
       ),
       ex.notes && e("p", { style: { ...styles.profileGoalText, marginTop: 6 } }, ex.notes),
+      // Oct 20 2026, Jimmy: "every exercise should have a regression and
+      // progression" — e.g. can't do Pull-Ups yet -> Assisted Pull-Up.
+      (ex.regression || ex.progression) && e("div", { style: { display: "flex", flexDirection: "column", gap: 3, marginTop: 7, fontSize: 12, lineHeight: 1.4, color: C.ink2 } },
+        ex.regression && e("div", null, e("span", { style: { fontWeight: 700, color: C.ink3 } }, "Easier: "), ex.regression),
+        ex.progression && e("div", null, e("span", { style: { fontWeight: 700, color: C.brand } }, "Harder: "), ex.progression)
+      ),
       e(ExerciseDemo, { name: ex.exercise, ref: demoRef })
       )
     );
@@ -21994,7 +22024,7 @@
     return { setsReps, rest, weight };
   }
 
-  function ExerciseForm({ values, onChange, onSave, onCancel, saving, showDayField, showWeekField, showWeightField, saveLabel = "Save", isEditing = false, savedFlash = false }) {
+  function ExerciseForm({ values, onChange, onSave, onCancel, saving, showDayField, showWeekField, showWeightField, showAltFields = false, saveLabel = "Save", isEditing = false, savedFlash = false }) {
     return e("div", { style: { ...styles.sessionForm, marginTop: 10, marginBottom: 0 } },
       // Same one-mic "speak the whole exercise" experience as the Log
       // feature's New Exercise form. This form used to also have small
@@ -22060,6 +22090,10 @@
       ),
       e("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
         e("input", { style: { ...styles.input, flex: 1 }, placeholder: "Notes (optional)", value: values.notes, onChange: (ev) => onChange({ ...values, notes: ev.target.value }) })
+      ),
+      showAltFields && e("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 10 } },
+        e("input", { style: styles.input, placeholder: "Easier option (optional) — e.g. Assisted Pull-Up", value: values.regression || "", onChange: (ev) => onChange({ ...values, regression: ev.target.value }) }),
+        e("input", { style: styles.input, placeholder: "Harder option (optional) — e.g. Weighted Pull-Up", value: values.progression || "", onChange: (ev) => onChange({ ...values, progression: ev.target.value }) })
       ),
       // Sept 14 2026, Jimmy: "can we do the same when the trainer wants to
       // assign a program for a client... when i add an exercise i want the
@@ -22221,8 +22255,9 @@
       setError("");
       setPickedId("");
       if (sb) {
-        const { data } = await sb.from("training_programs").select("id, name, style").order("style", { ascending: true }).order("order_index", { ascending: true });
-        const list = data || [];
+        const { data } = await sb.from("training_programs").select("id, name, style, is_hidden").order("style", { ascending: true }).order("order_index", { ascending: true });
+        // Oct 20 2026: is_hidden programs (empty placeholders) never offered.
+        const list = (data || []).filter((p) => !p.is_hidden);
         setAllPrograms(list);
         // A native <select> with no matching option for value="" still visually
         // shows the first option in the list — but our state stays empty until
@@ -24099,6 +24134,156 @@
     }, e(Icon, { name: icon, size: Math.round(size * 0.42), color, strokeWidth: 2.1 }));
   }
 
+  // ============================================================
+  // Oct 20 2026, Jimmy: program tags + "Recommended for you".
+  // training_programs now carries days_per_week, level, goals[] and
+  // stress_parts[] (body parts the program loads hardest). The pick below is
+  // a highlight only — the client still chooses any program they want.
+  // ------------------------------------------------------------
+  function programTagText(p) {
+    const parts = [];
+    if (p && p.days_per_week) parts.push(`${p.days_per_week} day${p.days_per_week === 1 ? "" : "s"}/week`);
+    if (p && p.level) parts.push(p.level);
+    return parts.join(" · ");
+  }
+
+  // Free-text goal ("Build muscle, Lose fat", "tone my body") -> tag set
+  // matching training_programs.goals.
+  function programGoalTagsFromText(text) {
+    const g = (text || "").toLowerCase();
+    const tags = new Set();
+    if (/muscle|gain|bulk|mass|grow|glute|size|hypertroph/.test(g)) tags.add("muscle_gain");
+    if (/lose|loose|fat|weight|cut|lean|waist|slim/.test(g)) tags.add("fat_loss");
+    if (/strong|strength|power/.test(g)) tags.add("strength");
+    if (/ton(e|ed|ing)\b|definition|shape|sculpt/.test(g)) tags.add("toning");
+    if (/feel|health|fit|move|better|energy|\ball\b|active/.test(g)) tags.add("general_fitness");
+    if (/cardio|endurance|stamina|condition|run|hiit/.test(g)) tags.add("conditioning");
+    if (/hyrox/.test(g)) tags.add("hyrox");
+    if (/powerlift|squat.*bench|bench.*dead|sbd|1rm|compet/.test(g)) tags.add("powerlifting");
+    if (/calisthenic|bodyweight|pull.?up|muscle.?up|handstand|street workout/.test(g)) tags.add("calisthenics");
+    if (/home/.test(g)) tags.add("home");
+    return tags;
+  }
+
+  const PROGRAM_GOAL_WORDS = { muscle_gain: "build muscle", fat_loss: "lose fat", strength: "get stronger", toning: "tone up", general_fitness: "feel better", conditioning: "conditioning", hyrox: "Hyrox", powerlifting: "powerlifting", calisthenics: "calisthenics", home: "train at home" };
+  const EXPERIENCE_LEVEL = { lt6m: "Beginner", "6m_2y": "Intermediate", "2y_plus": "Advanced" };
+  const LEVEL_RANK = { Beginner: 0, Intermediate: 1, Advanced: 2 };
+  // Specialist styles only come up when the goal actually asks for them.
+  const SPECIALIST_STYLES = ["hyrox", "powerlifting", "calisthenics"];
+  // Medical free text -> the stress_parts names used on programs.
+  const MEDICAL_PART_WORDS = [
+    ["knee", /knee|acl|menisc|patell/], ["lower back", /back|spine|disc|lumbar|sciatic/],
+    ["shoulder", /shoulder|rotator|labrum/], ["hip", /\bhip/], ["ankle", /ankle|achilles/],
+    ["wrist", /wrist|carpal/], ["elbow", /elbow|tennis elbow|golfer/]
+  ];
+
+  function recommendProgram(programs, profile, injuries) {
+    const goalTags = programGoalTagsFromText(profile && profile.goal);
+    const days = profile && profile.days_per_week ? Math.min(Number(profile.days_per_week), 5) : null;
+    const expLevel = profile && EXPERIENCE_LEVEL[profile.training_experience];
+    // Nothing to go on yet — no card rather than a random guess.
+    if (!profile || (goalTags.size === 0 && days == null)) return null;
+    // Body part -> worst severity told to us (injury list + medical text).
+    const SEV = { Mild: 1, Moderate: 2, Severe: 3 };
+    const hurt = {};
+    (injuries || []).forEach((i) => {
+      const part = String(i.body_part || "").toLowerCase();
+      const sev = SEV[i.severity] || 2;
+      if (part) hurt[part] = Math.max(hurt[part] || 0, sev);
+    });
+    const medicalText = profile && profile.has_medical_condition ? String(profile.medical_details || "") : "";
+    MEDICAL_PART_WORDS.forEach(([part, re]) => { if (re.test(medicalText.toLowerCase())) hurt[part] = Math.max(hurt[part] || 0, 2); });
+    const hurtParts = Object.keys(hurt);
+    const hasCaution = hurtParts.length > 0 || !!medicalText.trim();
+
+    let best = null;
+    let excludedForInjury = 0;
+    (programs || []).forEach((p) => {
+      if (p.is_hidden || !p.days_per_week) return;
+      const goals = p.goals || [];
+      if (goals.includes("addon")) return; // 1-day add-ons sit on top of a main program
+      // Experienced lifters chasing strength can also be pointed at powerlifting.
+      const strengthVet = p.style === "powerlifting" && goalTags.has("strength") && profile.training_experience === "2y_plus";
+      if (SPECIALIST_STYLES.includes(p.style) && !goalTags.has(p.style) && !strengthVet) return;
+      if (goals.includes("home") && !goalTags.has("home")) return;
+      const stress = (p.stress_parts || []).map((s) => s.toLowerCase());
+      const hits = stress.filter((s) => hurt[s]);
+      if (hits.some((s) => hurt[s] >= 2)) { excludedForInjury++; return; }
+      let score = 0;
+      const matched = goals.filter((g) => goalTags.has(g));
+      score += matched.length * 3;
+      if (goalTags.size > 0 && matched.length === 0) score -= 5;
+      if (goalTags.size === 0 && goals.includes("general_fitness")) score += 2;
+      if (days != null) {
+        const diff = Math.abs(p.days_per_week - days);
+        score += diff === 0 ? 4 : diff === 1 ? 1 : -4;
+      }
+      const lvl = p.level || "";
+      if (expLevel) {
+        if (lvl === expLevel) score += 3;
+        else if (lvl === "All levels") score += 2;
+        else if (lvl === "Beginner-Intermediate" && expLevel !== "Advanced") score += 3;
+        else if (LEVEL_RANK[lvl] != null && Math.abs(LEVEL_RANK[lvl] - LEVEL_RANK[expLevel]) >= 2) score -= 6;
+        else score -= 1;
+      } else {
+        // No answer yet — lean safe.
+        if (lvl === "Beginner" || lvl === "All levels" || lvl === "Beginner-Intermediate") score += 1;
+        if (lvl === "Advanced") score -= 3;
+      }
+      score -= hits.length * 2; // mild injuries in a stressed part
+      if (!best || score > best.score || (score === best.score && matched.length > best.matched.length)) best = { program: p, score, matched };
+    });
+
+    const reasons = [];
+    if (best) {
+      if (best.matched.length) reasons.push(`Fits your goal: ${best.matched.map((g) => PROGRAM_GOAL_WORDS[g] || g).join(", ")}`);
+      if (days != null && best.program.days_per_week === days) reasons.push(`${days} days a week, like you planned`);
+      else if (best.program.days_per_week) reasons.push(days != null ? `${best.program.days_per_week} days a week (you said ${days})` : `${best.program.days_per_week} days a week`);
+      if (expLevel && (best.program.level === expLevel || best.program.level === "All levels" || (best.program.level === "Beginner-Intermediate" && expLevel !== "Advanced"))) reasons.push(`right for your level`);
+    }
+    return {
+      best: best ? best.program : null,
+      reason: reasons.join(" · "),
+      caution: hasCaution,
+      cautionParts: hurtParts,
+      excludedForInjury
+    };
+  }
+
+  function RecommendedProgramCard({ rec, askExperience, savingExperience, onPickExperience, onView }) {
+    const p = rec.best;
+    const styleLabel = p ? ((TRAINING_STYLES.find((s) => s.value === p.style) || {}).label || "") : "";
+    return e("div", { style: { ...styles.browseCard, marginTop: 14, borderColor: C.brand, background: C.brandSoft } },
+      e("div", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.brand } },
+        e(Icon, { name: "sparkle", size: 13 }), "Recommended for you"),
+      p
+        ? e(React.Fragment, null,
+            e("span", { style: { ...styles.sectionTitle, display: "block", marginTop: 8, wordBreak: "break-word" } }, p.name),
+            e("div", { style: { fontSize: 12, color: C.ink3, fontWeight: 600, marginTop: 3 } }, [styleLabel, programTagText(p)].filter(Boolean).join(" · ")),
+            rec.reason && e("p", { style: { ...styles.profileGoalText, marginTop: 8 } }, rec.reason),
+            e("button", { type: "button", style: { ...styles.detailsPill, ...styles.detailsPillOpen }, onClick: () => onView(p) },
+              "View this program",
+              e("span", { style: { ...styles.detailsPillChevron, transform: "rotate(-90deg)" } }, e(Icon, { name: "chevron", size: 12, strokeWidth: 2.6 })))
+          )
+        : e("p", { style: { ...styles.profileGoalText, marginTop: 8 } }, "We couldn't find a safe match for the injury you told us about. Ask a coach to pick one with you."),
+      rec.caution && e("div", { style: { display: "flex", alignItems: "flex-start", gap: 6, marginTop: 10, fontSize: 12, lineHeight: 1.45, color: C.ink2 } },
+        e(Icon, { name: "alert", size: 13, color: C.brand }),
+        e("span", null, `You told us about ${rec.cautionParts.length ? `a ${rec.cautionParts.join(" / ")} issue` : "a medical condition"}. Check with your coach or doctor before starting.`)
+      ),
+      askExperience && e("div", { style: { marginTop: 12 } },
+        e("div", { style: { fontSize: 12.5, fontWeight: 700, color: C.ink2, marginBottom: 6 } }, "How long have you been training? It sharpens this pick."),
+        e("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+          TRAINING_EXPERIENCE_OPTIONS.map((o) => e("button", {
+            key: o.value, type: "button", disabled: savingExperience,
+            style: { ...styles.browseChip, ...(savingExperience ? styles.btnDisabled : {}) },
+            onClick: () => onPickExperience(o.value)
+          }, o.label))
+        )
+      ),
+      e("p", { style: { ...styles.emptyText, fontSize: 11, marginTop: 10, textAlign: "left" } }, "Just a suggestion — pick any program you like.")
+    );
+  }
+
   function ProgramsPanel({ canManage = false, canAssign = null, canBrowse = true, clientName = null, clientId = null, userId = null, userEmail = null, isSelfTrain = false, gatePayment = false, appAccessOk = true, paidAccessOk = true, trainerId = null }) {
     // canAssign controls the "assign a program to yourself/this member" button
     // on the ClientProgramCard below — separate from canManage, which is full
@@ -24246,6 +24431,53 @@
     // name; tapping the chevron reveals the rest. Per-card so browsing one
     // program open doesn't collapse another.
     const [expandedProgramIds, setExpandedProgramIds] = useState(() => new Set());
+    // Oct 20 2026, Jimmy: "Recommended for you" — goal + days/week + how
+    // long they've trained + injuries/medical. Highlight only; the client
+    // still picks. Self-train clients browsing the library only.
+    const showRecommendation = canBrowse && !canManage && !!clientId;
+    const [recData, setRecData] = useState(null); // { programs, profile, injuries }
+    const [savingExperience, setSavingExperience] = useState(false);
+    const [pendingScrollId, setPendingScrollId] = useState(null);
+    const styleTouchedRef = useRef(false);
+    useEffect(() => {
+      if (!sb || !showRecommendation) return;
+      let cancelled = false;
+      (async () => {
+        const [progRes, profRes, injRes] = await Promise.all([
+          sb.from("training_programs").select("id, name, style, days_per_week, level, goals, stress_parts, is_hidden"),
+          sb.from("client_profiles").select("id, goal, days_per_week, training_experience, has_medical_condition, medical_details").eq("id", clientId).maybeSingle(),
+          userId ? sb.from("client_injuries").select("body_part, severity").eq("user_id", userId) : Promise.resolve({ data: [] })
+        ]);
+        if (cancelled || progRes.error || !progRes.data) return;
+        setRecData({ programs: progRes.data, profile: profRes.data || null, injuries: (injRes && injRes.data) || [] });
+      })();
+      return () => { cancelled = true; };
+    }, [showRecommendation, clientId, userId]);
+    const recommendation = recData ? recommendProgram(recData.programs, recData.profile, recData.injuries) : null;
+    // Open the browse list on the recommended program's style the first time,
+    // unless the client already tapped a style chip themselves.
+    useEffect(() => {
+      if (recommendation && recommendation.best && !styleTouchedRef.current && style !== recommendation.best.style) setStyle(recommendation.best.style);
+    }, [recommendation && recommendation.best && recommendation.best.id]);
+    useEffect(() => {
+      if (!pendingScrollId || !loaded) return;
+      const node = dupRefs.current[`program:${pendingScrollId}:${pendingScrollId}`];
+      if (node) { node.scrollIntoView({ behavior: "smooth", block: "start" }); setPendingScrollId(null); }
+    }, [pendingScrollId, loaded, programs]);
+    function viewRecommended(p) {
+      styleTouchedRef.current = true;
+      if (style !== p.style) setStyle(p.style);
+      setExpandedProgramIds((prev) => { const next = new Set(prev); next.add(p.id); return next; });
+      setPendingScrollId(p.id);
+    }
+    async function saveTrainingExperience(value) {
+      if (!sb || !clientId) return;
+      setSavingExperience(true);
+      const { error: err } = await sb.from("client_profiles").update({ training_experience: value }).eq("id", clientId);
+      setSavingExperience(false);
+      if (err) { setError("Couldn't save that. Try again."); return; }
+      setRecData((prev) => prev ? { ...prev, profile: { ...(prev.profile || {}), training_experience: value } } : prev);
+    }
     function toggleProgramExpanded(id) {
       setExpandedProgramIds((prev) => {
         const next = new Set(prev);
@@ -24294,10 +24526,16 @@
     }, [style, canBrowse]);
 
     async function loadPrograms() {
-      const { data: progs, error: progErr } = await sb.from("training_programs").select("*").eq("style", style).order("order_index", { ascending: true });
-      if (progErr || !progs) { setPrograms([]); setExercisesByProgram({}); setLoaded(true); return; }
+      const { data: progsRaw, error: progErr } = await sb.from("training_programs").select("*").eq("style", style).order("order_index", { ascending: true });
+      if (progErr || !progsRaw) { setPrograms([]); setExercisesByProgram({}); setLoaded(true); return; }
+      // Oct 20 2026: hidden (empty placeholder) programs only show to managers.
+      const progs = canManage ? progsRaw : progsRaw.filter((p) => !p.is_hidden);
       setPrograms(progs);
       if (progs.length === 0) { setExercisesByProgram({}); setLoaded(true); return; }
+      // Oct 20 2026, Jimmy: "they cant see the full program if they didnt
+      // pay" — a gated client's browse list never shows exercises, so it no
+      // longer downloads them either (they used to reach the phone unseen).
+      if (gatePayment) { setExercisesByProgram({}); setLoaded(true); return; }
       const ids = progs.map((p) => p.id);
       const { data: exRows } = await sb.from("program_exercises").select("*").in("program_id", ids).order("order_index", { ascending: true });
       const grouped = {};
@@ -24380,6 +24618,7 @@
         weekLabel: ex.week_label || "Week 1", dayLabel: ex.day_label, exercise: ex.exercise,
         setsReps: formatSetsReps(ex.sets, ex.reps),
         rest: ex.rest_seconds != null ? String(ex.rest_seconds) : "", notes: ex.notes || "",
+        regression: ex.regression || "", progression: ex.progression || "",
         noWeightLog: !!ex.no_weight_log
       });
     }
@@ -24401,6 +24640,7 @@
       const payload = {
         program_id: programId, week_label: ex.week_label || "Week 1", day_label: ex.day_label, exercise: ex.exercise,
         sets: ex.sets, reps: ex.reps, rest_seconds: ex.rest_seconds, notes: ex.notes,
+        regression: ex.regression || null, progression: ex.progression || null,
         order_index: existing.length
       };
       const { data, error: err } = await sb.from("program_exercises").insert([payload]).select();
@@ -24434,7 +24674,9 @@
           sets: parsed.sets,
           reps: parsed.reps,
           rest_seconds: form.rest ? Number(form.rest) : null,
-          notes: form.notes.trim() || null
+          notes: form.notes.trim() || null,
+          regression: (form.regression || "").trim() || null,
+          progression: (form.progression || "").trim() || null
         };
         const { data, error: err } = await sb.from("program_exercises").update(payload).eq("id", editTarget.id).select();
         setSaving(false);
@@ -24461,6 +24703,8 @@
         reps: newParsed.reps,
         rest_seconds: form.rest ? Number(form.rest) : null,
         notes: form.notes.trim() || null,
+        regression: (form.regression || "").trim() || null,
+        progression: (form.progression || "").trim() || null,
         order_index: existing.length // placeholder — insertOrderedExercise below fixes the real position
       };
       const { data, error: err } = await sb.from("program_exercises").insert([payload]).select();
@@ -24584,6 +24828,7 @@
         reps: ex.reps,
         rest_seconds: ex.rest_seconds,
         notes: ex.notes,
+        regression: ex.regression || null, progression: ex.progression || null,
         order_index: ex.order_index
       }));
       const { data: newExRows, error: exErr } = await sb.from("program_exercises").insert(exPayload).select();
@@ -24609,6 +24854,7 @@
         reps: ex.reps,
         rest_seconds: ex.rest_seconds,
         notes: ex.notes,
+        regression: ex.regression || null, progression: ex.progression || null,
         order_index: i
       }));
       const { data, error: err } = await sb.from("program_exercises").insert(payload).select();
@@ -24647,6 +24893,7 @@
         reps: ex.reps,
         rest_seconds: ex.rest_seconds,
         notes: ex.notes,
+        regression: ex.regression || null, progression: ex.progression || null,
         order_index: existing.length + i
       }));
       const { data, error: err } = await sb.from("program_exercises").insert(payload).select();
@@ -24700,6 +24947,7 @@
             reps: ex.reps,
             rest_seconds: ex.rest_seconds,
             notes: ex.notes,
+            regression: ex.regression || null, progression: ex.progression || null,
             order_index: idx++
           });
         });
@@ -24745,11 +24993,18 @@
       // Sept 11 2026, Jimmy: restyled to the same horizontally-scrolling
       // pill chip strip as the Diet tab's goal filter, matching the
       // reference mockup — same `style`/`setStyle` state as before.
+      showRecommendation && recommendation && e(RecommendedProgramCard, {
+        rec: recommendation,
+        askExperience: !!(recData && recData.profile && !recData.profile.training_experience),
+        savingExperience,
+        onPickExperience: saveTrainingExperience,
+        onView: viewRecommended
+      }),
       canBrowse && e("div", { style: styles.browseChipStrip }, TRAINING_STYLES.map((opt) =>
         e("button", {
           key: opt.value,
           style: { ...styles.browseChip, ...(style === opt.value ? styles.browseChipActive : {}) },
-          onClick: () => setStyle(opt.value)
+          onClick: () => { styleTouchedRef.current = true; setStyle(opt.value); }
         }, opt.label)
       )),
       canBrowse && canManage && PROGRESSIVE_OVERLOAD_STYLES.includes(style) && e("p", { style: { ...styles.profileGoalText, fontSize: 12, marginTop: 8 } }, PROGRESSIVE_OVERLOAD_HINT),
@@ -24828,6 +25083,12 @@
                   e(IconBadge, { icon: visual.icon, color: visual.color }),
                   e("div", { style: { minWidth: 0, flex: 1 } },
                     e("span", { style: { ...styles.sectionTitle, display: "block", wordBreak: "break-word" } }, p.name),
+                    // Oct 20 2026: days/week + level at a glance.
+                    (programTagText(p) || p.is_hidden || (showRecommendation && recommendation && recommendation.best && recommendation.best.id === p.id)) && e("div", { style: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 4 } },
+                      programTagText(p) && e("span", { style: { fontSize: 12, color: C.ink3, fontWeight: 600 } }, programTagText(p)),
+                      showRecommendation && recommendation && recommendation.best && recommendation.best.id === p.id && e("span", { style: { fontSize: 10.5, fontWeight: 700, color: C.brand, background: C.brandSoft, border: `1px solid ${C.brand}`, borderRadius: 999, padding: "2px 8px" } }, "Recommended for you"),
+                      canManage && p.is_hidden && e("span", { style: { fontSize: 10.5, fontWeight: 700, color: C.ink3, border: `1px solid ${C.cardBorder}`, borderRadius: 999, padding: "2px 8px" } }, "Hidden from clients")
+                    ),
                     // "make something fun and pro to tap... and see this
                     // description" — a labeled pill instead of a bare
                     // circular arrow. The card used to dump the name AND a
@@ -25059,9 +25320,9 @@
                         "aria-label": `Add an exercise above ${ex.exercise}`, title: "Insert an exercise here"
                       }, e(Icon, { name: "plus", size: 10, strokeWidth: 3 }), "Insert exercise here"),
                       insertingHere
-                        ? e(ExerciseForm, { values: form, onChange: setForm, onSave: handleSaveExercise, onCancel: closeExerciseForm, saving, showWeekField: false, showDayField: false, savedFlash })
+                        ? e(ExerciseForm, { values: form, onChange: setForm, onSave: handleSaveExercise, onCancel: closeExerciseForm, saving, showWeekField: false, showDayField: false, showAltFields: true, savedFlash })
                         : editingHere
-                        ? e(ExerciseForm, { values: form, onChange: setForm, onSave: handleSaveExercise, onCancel: closeExerciseForm, saving, showWeekField: false, showDayField: true, saveLabel: "Save changes", isEditing: true })
+                        ? e(ExerciseForm, { values: form, onChange: setForm, onSave: handleSaveExercise, onCancel: closeExerciseForm, saving, showWeekField: false, showDayField: true, showAltFields: true, saveLabel: "Save changes", isEditing: true })
                         : e(ProgramExerciseRow, {
                             ex, canManage, onEdit: (row) => openEditRow(p.id, row), onDelete: (id) => handleDeleteExercise(p.id, id), onDuplicate: (row) => handleDuplicateExercise(p.id, row), onLogWeight: () => setLogTarget({ ex, contextLabel: `${p.name} — ${week.label} · ${day.label}` }),
                             justDuplicated: !!(justDuplicated && justDuplicated.type === "exercise" && justDuplicated.programId === p.id && justDuplicated.key === ex.id),
