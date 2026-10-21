@@ -7914,6 +7914,12 @@
         workout_title: en.workoutTitle || null, sets: en.sets,
         client_name: clientName, client_id: clientId || null
       }));
+      // Oct 21 2026, Jimmy: "its not the same order like the workout we
+      // copied" — a multi-row insert gives every row the same created_at,
+      // and the log orders exercises by created_at, so ties came back in a
+      // random order. One second apart, in the original order, fixes it.
+      const repeatBase = Date.now();
+      rows.forEach((r, i) => { r.created_at = new Date(repeatBase + i * 1000).toISOString(); });
       if (!sb) { setError("Couldn't repeat that workout — you look offline."); return; }
       const { data, error: err } = await sb.from("workout_entries").insert(rows).select();
       if (err || !data || !data.length) {
@@ -26972,6 +26978,12 @@
         workout_title: en.workoutTitle || null, sets: en.sets,
         client_name: clientName, client_id: profile ? profile.id : null
       }));
+      // Oct 21 2026, Jimmy: "its not the same order like the workout we
+      // copied" — a multi-row insert gives every row the same created_at,
+      // and the log orders exercises by created_at, so ties came back in a
+      // random order. One second apart, in the original order, fixes it.
+      const repeatBase = Date.now();
+      rows.forEach((r, i) => { r.created_at = new Date(repeatBase + i * 1000).toISOString(); });
       if (!sb) { showLogError("Couldn't repeat that workout — you look offline."); return; }
       const { data, error: err } = await sb.from("workout_entries").insert(rows).select();
       if (err || !data || !data.length) {
