@@ -1511,6 +1511,13 @@
     const [y, m, d] = iso.split("-").map(Number);
     return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   }
+  // Oct 21 2026: YYYY-MM-DD plus n days, in local time (same as todayISO).
+  function addDaysToISO(iso, n) {
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  }
+
   function fmtDateMed(iso) {
     const [y, m, d] = iso.split("-").map(Number);
     return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -7226,6 +7233,10 @@
     // beside it, it writes several rows at once, and unlike a single-entry
     // delete there's no per-session undo.
     const [confirmRepeatSession, setConfirmRepeatSession] = useState(null); // { date, title, count, sets }
+    // Oct 21 2026, Jimmy: "i want to do it on any days i want" — the copy
+    // lands on whatever day is picked here (defaults to today, or tomorrow
+    // when the session being copied is already today's).
+    const [repeatToDate, setRepeatToDate] = useState(todayISO());
     const [repeatingSession, setRepeatingSession] = useState(false);
     function openEditSession(d, title) {
       setEditingSession({ date: d, title });
@@ -7347,7 +7358,7 @@
                       // would fold the copies straight back into THIS card and read
                       // as "my exercises just doubled", not as a new workout. Every
                       // past session still offers it.
-                      onRepeatSession && d !== todayISO() && e("button", { style: styles.editBtn, onClick: () => setConfirmRepeatSession({ date: d, title, count: group.length, sets: group.reduce((n, x) => n + ((x.sets && x.sets.length) || 0), 0) }), "aria-label": "Repeat this workout today", title: "Repeat this workout — copies every exercise and its sets onto today" }, e(Icon, { name: "rotate", size: 13 })),
+                      onRepeatSession && e("button", { style: styles.editBtn, onClick: () => { setRepeatToDate(d === todayISO() ? addDaysToISO(todayISO(), 1) : todayISO()); setConfirmRepeatSession({ date: d, title, count: group.length, sets: group.reduce((n, x) => n + ((x.sets && x.sets.length) || 0), 0) }); }, "aria-label": "Repeat this workout today", title: "Repeat this workout — copies every exercise and its sets onto today" }, e(Icon, { name: "rotate", size: 13 })),
                       onEditSession && e("button", { style: styles.editBtn, onClick: () => openEditSession(d, title), "aria-label": "Edit this session's date or title", title: "Edit this session's date or title — applies to every exercise in it" }, e(Icon, { name: "edit", size: 13 })),
                       // Sept 18 2026, Jimmy: "delete button also for the title" —
                       // removes every exercise sharing this date+title, not just
@@ -7417,19 +7428,35 @@
       // Oct 2 2026: the counts are spelled out because this writes rows —
       // someone tapping it on a ten-exercise session should see "10
       // exercises" before it lands, not after.
-      confirmRepeatSession && e(ConfirmDialog, {
-        title: "Repeat this workout?",
-        message: `This copies all ${confirmRepeatSession.count} exercise${confirmRepeatSession.count === 1 ? "" : "s"} under “${confirmRepeatSession.title}” onto today, with the same ${confirmRepeatSession.sets} set${confirmRepeatSession.sets === 1 ? "" : "s"} and weights. Edit anything after — the original session isn't touched.`,
-        confirmLabel: "Repeat on today",
-        busy: repeatingSession,
-        onCancel: () => setConfirmRepeatSession(null),
-        onConfirm: async () => {
-          setRepeatingSession(true);
-          await onRepeatSession(confirmRepeatSession.date, confirmRepeatSession.title);
-          setRepeatingSession(false);
-          setConfirmRepeatSession(null);
-        }
-      })
+      confirmRepeatSession && (() => {
+        const sameDay = !repeatToDate || repeatToDate === confirmRepeatSession.date;
+        const targetHasSame = !sameDay && entries.some((x) => x.date === repeatToDate && (x.workoutTitle || "") === (confirmRepeatSession.title || ""));
+        const dayLabel = repeatToDate === todayISO() ? "today" : (repeatToDate ? fmtDateMed(repeatToDate) : "");
+        return e(ConfirmDialog, {
+          title: "Repeat this workout?",
+          message: `This copies all ${confirmRepeatSession.count} exercise${confirmRepeatSession.count === 1 ? "" : "s"} under “${confirmRepeatSession.title}” with the same ${confirmRepeatSession.sets} set${confirmRepeatSession.sets === 1 ? "" : "s"} and weights onto the day you pick. Edit anything after — the original session isn't touched.`,
+          extra: e("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginTop: -8, marginBottom: 18 } },
+            e("label", { style: styles.filterLabel }, "Copy to"),
+            e("input", {
+              type: "date", value: repeatToDate || "",
+              onChange: (ev) => setRepeatToDate(ev.target.value),
+              style: { ...styles.dateFilterInput, colorScheme: C.colorScheme, width: "100%" }
+            }),
+            sameDay && e("span", { style: { fontSize: 12, color: C.critical } }, "Pick a different day than the one you're copying."),
+            targetHasSame && e("span", { style: { fontSize: 12, color: C.ink3 } }, `That day already has a “${confirmRepeatSession.title}” workout — these exercises will be added to it.`)
+          ),
+          confirmLabel: sameDay ? "Pick a day" : `Copy to ${dayLabel}`,
+          busy: repeatingSession,
+          onCancel: () => setConfirmRepeatSession(null),
+          onConfirm: async () => {
+            if (sameDay) return;
+            setRepeatingSession(true);
+            await onRepeatSession(confirmRepeatSession.date, confirmRepeatSession.title, repeatToDate);
+            setRepeatingSession(false);
+            setConfirmRepeatSession(null);
+          }
+        });
+      })()
     );
   }
 
@@ -7719,7 +7746,7 @@
         return;
       }
       const row = data[0];
-      const mapped = { id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, createdAt: row.created_at };
+      const mapped = { id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, clientId: row.client_id || null, createdAt: row.created_at };
       setEntries((prev) => {
         if (editingId) return prev.map((x) => (x.id === editingId ? { ...x, ...mapped } : x));
         if (addBeforeId) {
@@ -7822,7 +7849,7 @@
         return;
       }
       const row = data[0];
-      const mapped = { id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, createdAt: row.created_at };
+      const mapped = { id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, clientId: row.client_id || null, createdAt: row.created_at };
       // Sept 9 2026, Jimmy: "i want when i undo to see the exercise where it
       // was, not below other exercises" — reinsert at the same array spot it
       // was removed from (clamped, in case the list shrank further since)
@@ -7878,10 +7905,10 @@
     // a moment's wait. Rows are reordered to match the order they were sent in,
     // because the session card renders its exercises in array order and Postgres
     // makes no promise about the order of a multi-row RETURNING.
-    async function handleRepeatSession(date, title) {
+    async function handleRepeatSession(date, title, pickedDate) {
       const group = entries.filter((x) => x.date === date && (x.workoutTitle || "") === (title || ""));
       if (!group.length) return;
-      const toDate = todayISO();
+      const toDate = pickedDate || todayISO();
       const rows = group.map((en) => ({
         date: toDate, exercise: en.exercise, muscle_group: en.muscleGroup,
         workout_title: en.workoutTitle || null, sets: en.sets,
@@ -7900,7 +7927,7 @@
         if (i === -1) i = 0;
         return pool.splice(i, 1)[0];
       }).filter(Boolean);
-      const mapped = ordered.map((row) => ({ id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, createdAt: row.created_at }));
+      const mapped = ordered.map((row) => ({ id: row.id, date: row.date, exercise: row.exercise, muscleGroup: row.muscle_group, sets: row.sets, workoutTitle: row.workout_title, clientName: row.client_name, clientId: row.client_id || null, createdAt: row.created_at }));
       setEntries((prev) => [...prev, ...mapped]);
       // Same rule as the back-dating pass: a date filter narrower than today
       // would hide the session that was just created, which reads as "nothing
@@ -26936,10 +26963,10 @@
     // a moment's wait. Rows are reordered to match the order they were sent in,
     // because the session card renders its exercises in array order and Postgres
     // makes no promise about the order of a multi-row RETURNING.
-    async function handleRepeatSession(date, title) {
+    async function handleRepeatSession(date, title, pickedDate) {
       const group = entries.filter((x) => x.date === date && (x.workoutTitle || "") === (title || ""));
       if (!group.length) return;
-      const toDate = todayISO();
+      const toDate = pickedDate || todayISO();
       const rows = group.map((en) => ({
         date: toDate, exercise: en.exercise, muscle_group: en.muscleGroup,
         workout_title: en.workoutTitle || null, sets: en.sets,
