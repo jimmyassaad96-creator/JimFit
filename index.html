@@ -12294,7 +12294,7 @@
       setUnlockAmount((() => { const p = trainerPlanFor(t, trainerCountOf(t.id)); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
-      setUnlockDate(d.toISOString().slice(0, 10));
+      setUnlockDate(dateToISO(d));
     }
 
     async function handleUnlockPaid(t) {
@@ -12515,7 +12515,7 @@
       setApproveAmount((() => { const p = trainerPlanFor(t, trainerCountOf(t.id)); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
-      setApproveDate(d.toISOString().slice(0, 10));
+      setApproveDate(dateToISO(d));
     }
 
     async function handleApproveAndConfirmPayment(trainerId) {
@@ -12562,7 +12562,7 @@
       setTrialApprovingId(trainerId);
       const d = new Date();
       d.setDate(d.getDate() + TRAINER_TRIAL_DAYS);
-      const updates = { is_approved: true, next_payment_date: d.toISOString().slice(0, 10) };
+      const updates = { is_approved: true, next_payment_date: dateToISO(d) };
       const { error: updErr } = await sb.from("trainers").update(updates).eq("id", trainerId);
       setTrialApprovingId(null);
       if (updErr) {
@@ -14595,7 +14595,7 @@
         if (needsBackfill.length > 0 && sb) {
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + TRAINER_TRIAL_DAYS);
-          const dueDateStr = dueDate.toISOString().slice(0, 10);
+          const dueDateStr = dateToISO(dueDate);
           const backfillUpdates = {};
           needsBackfill.forEach((t) => {
             backfillUpdates[t.id] = { next_payment_date: dueDateStr, ...(t.rate_monthly == null ? { rate_monthly: B2B_FLAT_RATE_MONTHLY } : {}) };
@@ -14647,7 +14647,7 @@
       setPayAmount((() => { const p = trainerPlanFor(t, countsOk ? (clientCounts[t.id] || 0) : null); return p.known ? String(p.rate) : ""; })());
       const d = new Date();
       d.setDate(d.getDate() + 30);
-      setPayDate(d.toISOString().slice(0, 10));
+      setPayDate(dateToISO(d));
     }
 
     async function handleConfirmPaid(t) {
@@ -23891,7 +23891,7 @@
     const [paidThrough, setPaidThrough] = useState(() => {
       const d = new Date();
       d.setDate(d.getDate() + 30);
-      return d.toISOString().slice(0, 10);
+      return dateToISO(d);
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
@@ -26228,7 +26228,7 @@
           && trainerRow.email !== OWNER_TRAINER_EMAIL && trainerRow.email !== SELF_TRAIN_EMAIL) {
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + TRAINER_TRIAL_DAYS);
-          const dueDateStr = dueDate.toISOString().slice(0, 10);
+          const dueDateStr = dateToISO(dueDate);
           const backfill = { next_payment_date: dueDateStr, ...(trainerRow.rate_monthly == null ? { rate_monthly: B2B_FLAT_RATE_MONTHLY } : {}) };
           trainerRow.next_payment_date = backfill.next_payment_date;
           if (backfill.rate_monthly != null) trainerRow.rate_monthly = backfill.rate_monthly;
